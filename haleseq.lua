@@ -384,6 +384,7 @@ end
 -- grid
 
 local G_Y_PRESS = 8
+local G_Y_KNOB = 2
 
 function grid_redraw()
   g:all(0)
@@ -404,7 +405,7 @@ function grid_redraw()
       else
         l = round(util.linlin(0, V_MAX, 0, 12, seqvals[s][vs]))
       end
-      g:led(x, y+vs, l) -- value
+      g:led(x, G_Y_KNOB+vs-1, l) -- value
     end
     y = y + NB_VSTEPS + 1
     --                -- <pad>
@@ -451,6 +452,16 @@ function grid_key(x, y, z)
     if y == 7 and z >= 1 then
       local s = x - STEPS_GRID_X_OFFSET
       stages[s]:mode_cycle()
+      return
+    end
+    if y >= G_Y_KNOB and y < G_Y_KNOB + NB_STEPS then
+      if z >= 1 then
+        local s = x - STEPS_GRID_X_OFFSET
+        local vs = y - G_Y_KNOB + 1
+        g_knob = {s, vs}
+      else
+        g_knob = nil
+      end
     end
   end
 
@@ -480,6 +491,14 @@ end
 -- controls
 
 function enc(n, d)
+
+  if g_knob ~= nil then
+    local v = g_knob[1]
+    local vs = g_knob[2]
+    seqvals[v][vs] = util.clamp(seqvals[v][vs] + d*5, 0, V_MAX)
+    return
+  end
+
   if n == 1 then
     params:set("clock_tempo", params:get("clock_tempo") + d)
     return
@@ -574,9 +593,10 @@ function draw_knob(x, y, v)
 
   x = x + SCREEN_STAGE_W/2
   y = y + SCREEN_STAGE_W/2
+  v = v - (V_MAX / 4)
 
   screen.move(round(x), round(y))
-  screen.line(x + radius * cos(v/V_MAX), y + radius * sin(v/V_MAX))
+  screen.line(x + radius * cos(v/V_MAX) * -1, y + radius * sin(v/V_MAX))
   screen.stroke()
 end
 
