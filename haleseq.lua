@@ -364,7 +364,21 @@ function clock_tick()
 end
 
 function vclock_tick()
-  vclock_acum = vclock_acum + clock_div_opt_v(params:string("vclock_div")) / MCLOCK_DIVS
+
+  local vclock_div = clock_div_opt_v(params:string("vclock_div"))
+  vclock_acum = vclock_acum + vclock_div / MCLOCK_DIVS
+
+  -- NB: if clock is off (clock_div at 0), take immediate effect
+  --     otherwise, wait for quantization
+  if next_vstep ~= nil and ((vclock_div == 0) or (vclock_acum >= 1)) then
+    if (vclock_acum >= 1) then
+      vclock_acum = 0
+    end
+    vstep = next_vstep
+    next_vstep = nil
+    return true
+  end
+
   if vclock_acum < 1 then
     return false
   end
