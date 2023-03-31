@@ -67,6 +67,8 @@ end
 -- ------------------------------------------------------------------------
 -- state - sequence values
 
+local is_resetting = false
+
 local prev_step = nil
 local step = 1
 local vstep = 1
@@ -124,14 +126,20 @@ function randomize_seqvals()
   end
 end
 
-function are_all_stage_skip()
+function are_all_stage_skip(are_all_stage_skip)
   local nb_skipped = 0
-  for s=1,NB_STEPS do
+
+  local start = params:get("preset")
+  if are_all_stage_skip then
+    start = 1
+  end
+
+  for s=start,NB_STEPS do
     if stages[s]:get_mode() == Stage.M_SKIP then
       nb_skipped = nb_skipped + 1
     end
   end
-  return (nb_skipped == NB_STEPS)
+  return (nb_skipped == (NB_STEPS-start+1))
 end
 
 -- ------------------------------------------------------------------------
@@ -204,6 +212,12 @@ function init()
   init_seqvals(NB_STEPS, NB_VSTEPS)
   randomize_seqvals()
 
+  local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
+  params:add_option("clock_div", "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
+  params:add_option("vclock_div", "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
+
+  params:add{type = "number", id = "preset", name = "Preset Position", min = 0, max = NB_STEPS, default = 1}
+
   nb.voice_count = NB_VSTEPS + 1
   nb:init()
   for vs=1, NB_VSTEPS + 1 do
@@ -219,11 +233,6 @@ function init()
   -- if p_id ~= nil then
   --   params:set("nb_voice_"..vs_mux, p_id)
   -- end
-
-
-  local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
-  params:add_option("clock_div", "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
-  params:add_option("vclock_div", "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
 
   redraw_clock = clock.run(
     function()
@@ -263,7 +272,6 @@ end
 
 local next_step = nil
 local clock_acum = 0
-local preset = 1
 local reverse = false
 local hold = false
 
@@ -317,7 +325,7 @@ function clock_tick()
     return false
   end
 
-  if are_all_stage_skip() then
+  if are_all_stage_skip(is_resetting) then
     return false
   end
 
@@ -326,11 +334,27 @@ function clock_tick()
   end
 
   local sign = reverse and -1 or 1
+
   step = mod1(step + sign, NB_STEPS)
+
+  -- skip until at preset
+  if not is_resetting then
+    while step < params:get("preset") do
+      step = mod1(step + sign, NB_STEPS)
+    end
+  end
+  -- skip stages in skip mode
   while stages[step]:get_mode() == Stage.M_SKIP do
     local sign = reverse and -1 or 1
     step = mod1(step + sign, NB_STEPS)
   end
+  -- skip until at preset (2)
+  if not is_resetting then
+    while step < params:get("preset") do
+      step = mod1(step + sign, NB_STEPS)
+    end
+  end
+
 
   return true
 end
@@ -368,11 +392,12 @@ function mclock_tick()
 end
 
 function reset()
+  is_resetting = true
   next_step = 1
 end
 
 function reset_preset()
-  next_step = preset
+  next_step = params:get("preset")
 end
 
 function vreset()
@@ -409,7 +434,7 @@ function grid_redraw()
     end
     y = y + NB_VSTEPS + 1
     --                -- <pad>
-    l = (preset == s) and 5 or 1
+    l = (params:get("preset") == s) and 5 or 1
     g:led(x, y, l)   -- tie / run / skip
     l = 1
     if next_step ~= nil then
@@ -445,7 +470,7 @@ end
 function grid_key(x, y, z)
   if x > STEPS_GRID_X_OFFSET and x <= STEPS_GRID_X_OFFSET + NB_STEPS then
     if y == G_Y_PRESS and z >= 1 then
-      preset = x - STEPS_GRID_X_OFFSET
+      params:set("preset", x - STEPS_GRID_X_OFFSET)
       reset_preset()
       return
     end
@@ -587,6 +612,15 @@ function draw_mode_skip(x, y)
   screen.stroke()
 end
 
+function draw_preset(x, y)
+  screen.aa(0)
+  screen.level(10)
+  local radius = 4
+  screen.move(x + radius + 1, y + 1)
+  screen.circle(x + radius + 1, y + radius +1, radius)
+  screen.stroke()
+end
+
 function draw_knob(x, y, v)
   -- draw_nana(x, y, false)
   local radius = SCREEN_STAGE_W/2
@@ -623,6 +657,10 @@ function redraw_stage(x, y, s)
     draw_mode_tie(x, y)
   elseif mode == Stage.M_SKIP then
     draw_mode_skip(x, y)
+  end
+
+  if params:get("preset") == s then
+    draw_preset(x, y)
   end
 end
 
