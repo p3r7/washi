@@ -405,7 +405,7 @@ function grid_redraw()
       else
         l = round(util.linlin(0, V_MAX, 0, 12, seqvals[s][vs]))
       end
-      g:led(x, G_Y_KNOB+vs-1, l) -- value
+      g:led(x, G_Y_KNOB+vs, l) -- value
     end
     y = y + NB_VSTEPS + 1
     --                -- <pad>
@@ -457,7 +457,7 @@ function grid_key(x, y, z)
     if y >= G_Y_KNOB and y < G_Y_KNOB + NB_STEPS then
       if z >= 1 then
         local s = x - STEPS_GRID_X_OFFSET
-        local vs = y - G_Y_KNOB + 1
+        local vs = y - G_Y_KNOB
         g_knob = {s, vs}
       else
         g_knob = nil
