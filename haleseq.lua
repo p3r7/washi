@@ -45,6 +45,7 @@ local g = nil
 local has_grid = false
 
 local g_knob = nil
+local g_btn = nil
 
 function grid_connect_maybe(_g)
   if not has_grid then
@@ -348,6 +349,9 @@ function clock_tick()
     local sign = reverse and -1 or 1
     step = mod1(step + sign, NB_STEPS)
   end
+  if step >= params:get("preset") then
+    is_resetting = false
+  end
   -- skip until at preset (2)
   if not is_resetting then
     while step < params:get("preset") do
@@ -469,9 +473,15 @@ end
 
 function grid_key(x, y, z)
   if x > STEPS_GRID_X_OFFSET and x <= STEPS_GRID_X_OFFSET + NB_STEPS then
-    if y == G_Y_PRESS and z >= 1 then
-      params:set("preset", x - STEPS_GRID_X_OFFSET)
-      reset_preset()
+    if y == G_Y_PRESS then
+      if (z >= 1) then
+        local s = x - STEPS_GRID_X_OFFSET
+        g_btn = s
+        params:set("preset", s)
+        reset_preset()
+      else
+        g_btn = false
+      end
       return
     end
     if y == 7 and z >= 1 then
@@ -585,7 +595,9 @@ function draw_trig_in(x, y, trig)
   screen.line(x, y)
   screen.stroke()
   -- nana
-  -- draw_nana(x, y, trig)
+  if trig then
+    draw_nana(x, y, trig)
+  end
 end
 
 function draw_mode_run(x, y)
@@ -640,7 +652,7 @@ function redraw_stage(x, y, s)
 
   -- trig in
   y = y + SCREEN_STAGE_W
-  draw_trig_in(x, y, false)
+  draw_trig_in(x, y, (g_btn == s))
 
   -- vals
   for vs=1,NB_VSTEPS do
