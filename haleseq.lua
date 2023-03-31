@@ -604,7 +604,7 @@ function draw_trig_in(x, y, trig)
   screen.aa(0)
   screen.level(5)
   screen.move(x, y)
-  screen.line(round(x+SCREEN_STAGE_W/2), round(y+SCREEN_STAGE_W*2/3))
+  screen.line(math.floor(x+SCREEN_STAGE_W/2), math.floor(y+SCREEN_STAGE_W*2/3))
   screen.line(x+SCREEN_STAGE_W, y)
   screen.line(x, y)
   screen.stroke()
@@ -639,12 +639,7 @@ function draw_mode_skip(x, y)
 end
 
 function draw_preset(x, y)
-  screen.aa(0)
-  screen.level(10)
-  local radius = 4
-  screen.move(x + radius + 1, y + 1)
-  screen.circle(x + radius + 1, y + radius +1, radius)
-  screen.stroke()
+  draw_nana(x, y, false)
 end
 
 function draw_knob(x, y, v)
@@ -667,6 +662,9 @@ function redraw_stage(x, y, s)
   -- trig in
   y = y + SCREEN_STAGE_W
   draw_trig_in(x, y, (g_btn == s))
+  if params:get("preset") == s then
+    draw_preset(x, y)
+  end
 
   -- vals
   for vs=1,NB_VSTEPS do
@@ -685,9 +683,6 @@ function redraw_stage(x, y, s)
     draw_mode_skip(x, y)
   end
 
-  if params:get("preset") == s then
-    draw_preset(x, y)
-  end
 end
 
 function redraw()
