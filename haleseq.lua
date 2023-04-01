@@ -666,15 +666,26 @@ end
 
 function draw_knob(x, y, v)
   -- draw_nana(x, y, false)
-  local radius = SCREEN_STAGE_W/2
+  local radius = (SCREEN_STAGE_W/2) - 1
+  local KNOB_BLINDSPOT_PERCENT = 10
 
   x = x + SCREEN_STAGE_W/2
   y = y + SCREEN_STAGE_W/2
-  v = v - (V_MAX / 4)
+  v2 = v - (V_MAX / 4)
 
-  screen.move(round(x), round(y))
-  screen.line(x + radius * cos(v/V_MAX) * -1, y + radius * sin(v/V_MAX))
+  screen.aa(1)
+
+  screen.move(round(x), round(y)+radius)
+
+  -- screen.move(x, y)
+  -- screen.line(x, y+radius)
+
+  screen.arc(x, y, radius, math.pi/2, math.pi/2 + util.linlin(0, V_MAX, 0, math.pi * 2, v))
   screen.stroke()
+  screen.move(x, y)
+  screen.line(x + radius * cos(v2/V_MAX) * -1, y + radius * sin(v2/V_MAX))
+  screen.stroke()
+  -- screen.fill()
 end
 
 function redraw_stage(x, y, s)
