@@ -14,6 +14,7 @@
 -- deps
 
 local lattice = require "lattice"
+local musicutil = require "musicutil"
 
 local nb = include("haleseq/lib/nb/lib/nb")
 
@@ -113,7 +114,7 @@ function randomize_seqvals_octaves()
   end
 end
 
-function randomize_seqvals()
+function randomize_seqvals_rnd()
   local nbx = tab.count(seqvals)
   local nby = tab.count(seqvals[1])
 
@@ -123,6 +124,27 @@ function randomize_seqvals()
     for x=1,nbx do
       local note = math.random(round(3*V_MAX/4) + 1) - 1
       seqvals[x][y] = note
+    end
+  end
+end
+
+function randomize_seqvals()
+  local nbx = tab.count(seqvals)
+  local nby = tab.count(seqvals[1])
+
+  local chords = {'A', 'B', 'C', 'D'}
+  local octaves = {1, 2, 3, 4}
+
+  srand(math.random(10000))
+
+  local chord_root_freq = 0
+  for y=1,nby do
+    -- local chord_root_freq = tab.key(musicutil.NOTE_NAMES, chords[y]) - 1
+    local scale = musicutil.generate_scale_of_length(chord_root_freq, nbx)
+    local nb_notes_in_scale = tab.count(scale)
+    for x=1,nbx do
+      local note = scale[math.random(nb_notes_in_scale)] + 12 * octaves[math.random(4)]
+      seqvals[x][y] = round(util.linlin(0, 127, 0, V_MAX, note))
     end
   end
 end
