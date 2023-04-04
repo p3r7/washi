@@ -36,7 +36,6 @@ local NB_VSTEPS = 4
 local MCLOCK_DIVS = 64
 
 
-
 -- ------------------------------------------------------------------------
 -- state
 
@@ -75,12 +74,20 @@ local prev_step = nil
 local step = 1
 local vstep = 1
 
+local last_step_t = 0
+local last_vstep_t = 0
+
 local stages = {}
 local seqvals = {}
+
+local last_preset_t = 0
 
 local V_MAX = 1000
 local V_NB_OCTAVES = 10
 local V_TRIG = 500
+
+local PULSE_T = 0.02 --FIXME: don't use os.clock() but a lattice clock for stable gate beahvior
+
 
 function init_stages(nb)
   for x=1,nb do
@@ -114,7 +121,7 @@ function randomize_seqvals_octaves()
   end
 end
 
-function randomize_seqvals_rnd()
+function randomize_seqvals_blip_bloop()
   local nbx = tab.count(seqvals)
   local nby = tab.count(seqvals[1])
 
@@ -128,20 +135,19 @@ function randomize_seqvals_rnd()
   end
 end
 
-function randomize_seqvals()
+function randomize_seqvals_scale(root_note)
   local nbx = tab.count(seqvals)
   local nby = tab.count(seqvals[1])
 
-  local chords = {'A', 'B', 'C', 'D'}
   local octaves = {1, 2, 3, 4}
 
   srand(math.random(10000))
 
-  local chord_root_freq = 0
+  local chord_root_freq = tab.key(musicutil.NOTE_NAMES, root_note) - 1
+  local scale = musicutil.generate_scale_of_length(chord_root_freq, nbx)
+  local nb_notes_in_scale = tab.count(scale)
+
   for y=1,nby do
-    -- local chord_root_freq = tab.key(musicutil.NOTE_NAMES, chords[y]) - 1
-    local scale = musicutil.generate_scale_of_length(chord_root_freq, nbx)
-    local nb_notes_in_scale = tab.count(scale)
     for x=1,nbx do
       local note = scale[math.random(nb_notes_in_scale)] + 12 * octaves[math.random(4)]
       seqvals[x][y] = round(util.linlin(0, 127, 0, V_MAX, note))
@@ -170,7 +176,9 @@ end
 
 local nb_playing_notes = {}
 
-function note_play(vs)
+local last_enc_note_play_t = 0
+
+function note_play(s, vs)
   local player = params:lookup_param("nb_voice_"..vs):get_player()
 
   if nb_playing_notes[vs] ~= nil then
@@ -179,11 +187,6 @@ function note_play(vs)
   end
 
   local v = 0
-  local s = step
-  if stages[s]:get_mode() == Stage.M_TIE and prev_step ~= nil then
-    s = prev_step
-  end
-
   if vs > NB_VSTEPS then -- special multiplexed step
     v = seqvals[s][vstep]
   else
@@ -191,12 +194,21 @@ function note_play(vs)
   end
 
   local note = round(util.linlin(0, V_MAX, 0, 127, v))
-  local vel = 0.8
+  -- local vel = 0.8
+  local vel = 1
 
   -- print("playing "..note)
 
   player:note_on(note, vel)
   nb_playing_notes[vs] = note
+end
+
+function curr_note_play(vs)
+  local s = step
+  if stages[s]:get_mode() == Stage.M_TIE and prev_step ~= nil then
+    s = prev_step
+  end
+  note_play(s, vs)
 end
 
 function all_notes_off()
@@ -206,87 +218,6 @@ function all_notes_off()
       nb_playing_notes[vs] = nil
     end
   end
-end
-
--- ------------------------------------------------------------------------
--- script lifecycle
-
-local redraw_clock
-local grid_redraw_clock
-
-function get_first_nb_voice_midi_param_option_id(voice_id)
-  local nb_voices = params:lookup_param("nb_voice_"..voice_id).options
-  for i, v in ipairs(nb_voices) do
-    if util.string_starts(v, "midi: ") and not (util.string_starts(v, "midi: nb ") or util.string_starts(v, "midi: virtual ")) then
-      return i
-    end
-  end
-end
-
-function init()
-  screen.aa(0)
-  screen.line_width(1)
-
-  s_lattice = lattice:new{}
-
-  grid_connect_maybe()
-
-  init_stages(NB_STEPS)
-  init_seqvals(NB_STEPS, NB_VSTEPS)
-  randomize_seqvals()
-
-  local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
-  params:add_option("clock_div", "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
-  params:add_option("vclock_div", "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
-
-  params:add{type = "number", id = "preset", name = "Preset Position", min = 0, max = NB_STEPS, default = 1}
-
-  nb.voice_count = NB_VSTEPS + 1
-  nb:init()
-  for vs=1, NB_VSTEPS + 1 do
-    nb_playing_notes[vs] = nil
-    nb:add_param("nb_voice_"..vs, "nb Voice "..vs)
-  end
-  nb:add_player_params()
-
-  -- FIXME: can't be set at init like that...
-  -- NB: bind multiplexed voice to first midi out if found
-  -- local vs_mux = NB_VSTEPS + 1
-  -- local p_id = get_first_nb_voice_midi_param_option_id(vs_mux)
-  -- if p_id ~= nil then
-  --   params:set("nb_voice_"..vs_mux, p_id)
-  -- end
-
-  redraw_clock = clock.run(
-    function()
-      local step_s = 1 / FPS
-      while true do
-        clock.sleep(step_s)
-        redraw()
-      end
-  end)
-  grid_redraw_clock = clock.run(
-    function()
-      local step_s = 1 / GRID_FPS
-      while true do
-        clock.sleep(step_s)
-        grid_redraw()
-      end
-  end)
-
-  local sprocket = s_lattice:new_sprocket{
-    action = mclock_tick,
-    division = 1/MCLOCK_DIVS,
-    enabled = true
-  }
-  s_lattice:start()
-end
-
-function cleanup()
-  all_notes_off()
-  clock.cancel(redraw_clock)
-  clock.cancel(grid_redraw_clock)
-  s_lattice:destroy()
 end
 
 
@@ -300,6 +231,7 @@ local hold = false
 
 local next_vstep = nil
 local vclock_acum = 0
+local vreverse = false
 
 -- base1 modulo
 function mod1(v, m)
@@ -324,9 +256,11 @@ function clock_div_opt_v(o)
   return m[o]
 end
 
-function clock_tick()
+function clock_tick(forced)
   local clock_div = clock_div_opt_v(params:string("clock_div"))
-  clock_acum = clock_acum + clock_div / MCLOCK_DIVS
+  if not forced then
+    clock_acum = clock_acum + clock_div / MCLOCK_DIVS
+  end
 
   -- NB: if clock is off (clock_div at 0), take immediate effect
   --     otherwise, wait for quantization
@@ -336,6 +270,7 @@ function clock_tick()
     end
     step = next_step
     next_step = nil
+    last_step_t = os.clock()
     return true
   end
 
@@ -381,14 +316,16 @@ function clock_tick()
     end
   end
 
-
+  last_step_t = os.clock()
   return true
 end
 
-function vclock_tick()
+function vclock_tick(forced)
 
   local vclock_div = clock_div_opt_v(params:string("vclock_div"))
-  vclock_acum = vclock_acum + vclock_div / MCLOCK_DIVS
+  if not forced then
+    vclock_acum = vclock_acum + vclock_div / MCLOCK_DIVS
+  end
 
   -- NB: if clock is off (clock_div at 0), take immediate effect
   --     otherwise, wait for quantization
@@ -398,6 +335,7 @@ function vclock_tick()
     end
     vstep = next_vstep
     next_vstep = nil
+    last_vstep_t = os.clock()
     return true
   end
 
@@ -409,25 +347,29 @@ function vclock_tick()
   if next_vstep ~= nil then
     vstep = next_vstep
     next_vstep = nil
+    last_vstep_t = os.clock()
     return true
   end
-  vstep = mod1(vstep + 1, NB_VSTEPS)
-  -- print(step)
 
+  local sign = vreverse and -1 or 1
+
+  vstep = mod1(vstep + sign, NB_VSTEPS)
+
+  last_vstep_t = os.clock()
   return true
 end
 
-function mclock_tick()
-  local ticked = clock_tick()
-  local vticked = vclock_tick()
+function mclock_tick(t, forced)
+  local ticked = clock_tick(forced)
+  local vticked = vclock_tick(forced)
 
   if ticked then
     for vs=1,NB_VSTEPS do
-      note_play(vs)
+      curr_note_play(vs)
     end
   end
   if ticked or vticked then
-    note_play(NB_VSTEPS+1)
+    curr_note_play(NB_VSTEPS+1)
   end
 end
 
@@ -442,6 +384,178 @@ end
 
 function vreset()
   next_vstep = 1
+end
+
+
+-- ------------------------------------------------------------------------
+-- script lifecycle
+
+local redraw_clock
+local grid_redraw_clock
+
+function get_first_nb_voice_midi_param_option_id(voice_id)
+  local nb_voices = params:lookup_param("nb_voice_"..voice_id).options
+  for i, v in ipairs(nb_voices) do
+    if util.string_starts(v, "midi: ") and not (util.string_starts(v, "midi: nb ") or util.string_starts(v, "midi: virtual ")) then
+      return i
+    end
+  end
+end
+
+function init()
+  screen.aa(0)
+  screen.line_width(1)
+
+  s_lattice = lattice:new{}
+
+  grid_connect_maybe()
+
+  -- --------------------------------
+  -- state
+
+  init_stages(NB_STEPS)
+  init_seqvals(NB_STEPS, NB_VSTEPS)
+
+  -- --------------------------------
+  -- params
+
+  params:add{type = "number", id = "preset", name = "Preset", min = 1, max = NB_STEPS, default = 1}
+  params:set_action("preset",
+                    function(v)
+                      last_preset_t = os.clock()
+                      reset_preset()
+                    end
+  )
+
+  params:add_trigger("fw", "Forward")
+  params:set_action("fw",
+                    function(v)
+                      clock_acum = clock_acum + 1
+                      mclock_tick(nil, true)
+                    end
+  )
+  params:add_trigger("bw", "Backward")
+  params:set_action("bw",
+                    function(v)
+                      local reverse_prev = reverse
+                      reverse = true
+                      clock_acum = clock_acum + 1
+                      mclock_tick(nil, true)
+                      reverse = reverse_prev
+                    end
+  )
+  params:add_trigger("vfw", "VForward")
+  params:set_action("vfw",
+                    function(v)
+                      vclock_acum = vclock_acum + 1
+                      mclock_tick(nil, true)
+                    end
+  )
+  params:add_trigger("vbw", "VBackward")
+  params:set_action("vbw",
+                    function(v)
+                      local vreverse_prev = vreverse
+                      vreverse = true
+                      vclock_acum = vclock_acum + 1
+                      mclock_tick(nil, true)
+                      vreverse = vreverse_prev
+                    end
+  )
+
+
+  local RND_MODES = {'Scale', 'Blip Bloop'}
+  params:add_trigger("rnd_seqs", "Randomize Seqs")
+  params:set_action("rnd_seqs",
+                    function(v)
+                      if params:string("rnd_seq_mode") == 'Scale' then
+                        randomize_seqvals_scale(params:string("rnd_seq_root"))
+                      else
+                        randomize_seqvals_blip_bloop()
+                      end
+                    end
+  )
+  params:add_option("rnd_seq_mode", "Rnd Mode", RND_MODES, tab.key(RND_MODES, 'Scale'))
+  params:set_action("rnd_seq_mode",
+                    function(v)
+                      if RND_MODES[v] == 'Scale' then
+                        params:show("rnd_seq_root")
+                      else
+                        params:hide("rnd_seq_root")
+                      end
+                      _menu.rebuild_params()
+                    end
+  )
+  params:add_option("rnd_seq_root", "Rnd Scale", musicutil.NOTE_NAMES, tab.key(musicutil.NOTE_NAMES, 'C'))
+
+  local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
+  params:add_option("clock_div", "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
+  params:add_option("vclock_div", "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/2'))
+
+  local label_all = ""
+  for vs=1, NB_VSTEPS + 1 do
+    local label = ""
+    if vs == NB_VSTEPS + 1 then
+      label = label_all
+    else
+      label = string.char(string.byte("A") + vs - 1)
+      label_all = label_all..label
+    end
+
+    local llabel = string.lower(label)
+
+    params:add_group("track_"..llabel, label, 1)
+    nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
+  end
+
+  nb.voice_count = NB_VSTEPS + 1
+  nb:init()
+  for vs=1, NB_VSTEPS + 1 do
+    nb_playing_notes[vs] = nil
+    nb:add_param("nb_voice_"..vs, "nb Voice "..vs)
+  end
+  nb:add_player_params()
+
+  -- FIXME: can't be set at init like that...
+  -- NB: bind multiplexed voice to first midi out if found
+  -- local vs_mux = NB_VSTEPS + 1
+  -- local p_id = get_first_nb_voice_midi_param_option_id(vs_mux)
+  -- if p_id ~= nil then
+  --   params:set("nb_voice_"..vs_mux, p_id)
+  -- end
+
+  -- NB: randomize seqs
+  params:set("rnd_seqs", 1)
+
+  redraw_clock = clock.run(
+    function()
+      local step_s = 1 / FPS
+      while true do
+        clock.sleep(step_s)
+        redraw()
+      end
+  end)
+  grid_redraw_clock = clock.run(
+    function()
+      local step_s = 1 / GRID_FPS
+      while true do
+        clock.sleep(step_s)
+        grid_redraw()
+      end
+  end)
+
+  local sprocket = s_lattice:new_sprocket{
+    action = mclock_tick,
+    division = 1/MCLOCK_DIVS,
+    enabled = true
+  }
+  s_lattice:start()
+end
+
+function cleanup()
+  all_notes_off()
+  clock.cancel(redraw_clock)
+  clock.cancel(grid_redraw_clock)
+  s_lattice:destroy()
 end
 
 
@@ -514,7 +628,8 @@ function grid_key(x, y, z)
         local s = x - STEPS_GRID_X_OFFSET
         g_btn = s
         params:set("preset", s)
-        reset_preset()
+        last_preset_t = os.clock()
+        -- mclock_tick(nil, true)
       else
         g_btn = false
       end
@@ -567,6 +682,10 @@ function enc(n, d)
     local v = g_knob[1]
     local vs = g_knob[2]
     seqvals[v][vs] = util.clamp(seqvals[v][vs] + d*5, 0, V_MAX)
+    if (math.abs(os.clock() - last_enc_note_play_t) >= PULSE_T) then
+      note_play(v, vs) -- retrig note to get a preview
+      last_enc_note_play_t = os.clock()
+    end
     return
   end
 
@@ -592,6 +711,9 @@ end
 local SCREEN_W = 128
 local SCREEN_H = 64
 
+local SCREEN_LEVEL_LABEL = 3
+local SCREEN_LEVEL_LABEL_SPE = 5
+
 local SCREEN_STAGE_W = 9
 -- local SCREEN_STAGE_Y_OFFSET = 12
 local SCREEN_STAGE_Y_OFFSET = 1
@@ -609,27 +731,70 @@ function draw_nana(x, y, fill)
   end
 end
 
-function draw_trig_out(x, y, trig)
-  -- panel grahpic (square)
+-- panel graphic (square)
+function draw_trig_out_label(x, y, l)
   screen.aa(0)
-  screen.level(5)
+
+  if l == nil then l = SCREEN_LEVEL_LABEL end
+  screen.level(l)
+
   screen.rect(x, y, SCREEN_STAGE_W, SCREEN_STAGE_W)
   screen.stroke()
+end
+
+
+function draw_trig_out(x, y, trig)
+  draw_trig_out_label(x, y)
+  if trig then
+    draw_nana(x, y, trig)
+  end
+end
+
+function draw_trig_out_special(x, y, trig)
+  draw_trig_out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
+  if trig then
+    draw_nana(x, y, trig)
+  end
+end
+
+-- panel graphic (triangle)
+function draw_trig_in_label(x, y, l)
+  screen.aa(0)
+
+  if l == nil then l = SCREEN_LEVEL_LABEL end
+  screen.level(l)
+
+  -- NB: for some reason looks better if doing a stroke in between
+  screen.move(x, y)
+  screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+  screen.stroke()
+  screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+  screen.line(x + SCREEN_STAGE_W, y)
+  screen.stroke()
+end
+
+function draw_trig_in_label_filled(x, y, l)
+  screen.aa(0)
+
+  if l == nil then l = SCREEN_LEVEL_LABEL end
+  screen.level(l)
+
+  screen.move(x, y)
+  screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+  screen.line(x + SCREEN_STAGE_W, y)
+  screen.fill()
+end
+
+function draw_trig_in(x, y, trig)
+  draw_trig_in_label(x, y)
   -- nana
   if trig then
     draw_nana(x, y, trig)
   end
 end
 
-function draw_trig_in(x, y, trig)
-  -- panel grahpic (triangle)
-  screen.aa(0)
-  screen.level(5)
-  screen.move(x, y)
-  screen.line(math.floor(x+SCREEN_STAGE_W/2), math.floor(y+SCREEN_STAGE_W*2/3))
-  screen.line(x+SCREEN_STAGE_W, y)
-  screen.line(x, y)
-  screen.stroke()
+function draw_trig_in_special(x, y, trig)
+  draw_trig_in_label_filled(x, y, SCREEN_LEVEL_LABEL_SPE)
   -- nana
   if trig then
     draw_nana(x, y, trig)
@@ -680,7 +845,7 @@ function draw_knob(x, y, v)
   -- screen.move(x, y)
   -- screen.line(x, y+radius)
 
-  screen.arc(x, y, radius, math.pi/2, math.pi/2 + util.linlin(0, V_MAX, 0, math.pi * 2, v))
+  screen.arc(round(x), round(y), radius, math.pi/2, math.pi/2 + util.linlin(0, V_MAX, 0, math.pi * 2, v))
   screen.stroke()
   screen.move(x, y)
   screen.line(x + radius * cos(v2/V_MAX) * -1, y + radius * sin(v2/V_MAX))
@@ -690,13 +855,20 @@ end
 
 function redraw_stage(x, y, s)
   -- trig out
-  draw_trig_out(x, y, (step == s))
+  local at = (step == s)
+  local trig = at and (math.abs(os.clock() - last_step_t) < PULSE_T)
+  draw_trig_out(x, y, trig)
+  if not trig and at then
+    draw_nana(x, y, false)
+  end
 
   -- trig in
   y = y + SCREEN_STAGE_W
-  draw_trig_in(x, y, (g_btn == s))
   if params:get("preset") == s then
-    draw_preset(x, y)
+      -- draw_preset(x, y)
+    draw_trig_in_special(x, y, (g_btn == s))
+  else
+    draw_trig_in(x, y, (g_btn == s))
   end
 
   -- vals
@@ -741,9 +913,18 @@ function redraw()
   -- vseq
   local y = SCREEN_STAGE_Y_OFFSET + 2 * SCREEN_STAGE_W
   for vs=1,NB_VSTEPS do
-    draw_trig_out(x, y, (vstep == vs))
+    local at = (vstep == vs)
+    local trig = at and (math.abs(os.clock() - last_vstep_t) < PULSE_T)
+    draw_trig_out(x, y, trig)
+    if not trig and at then
+      draw_nana(x, y, false)
+    end
     y = y + SCREEN_STAGE_W
   end
+
+  -- preset gate out
+  local y = SCREEN_STAGE_Y_OFFSET
+  draw_trig_out_special(x, y, math.abs(os.clock() - last_preset_t) < PULSE_T)
 
   screen.update()
 end
