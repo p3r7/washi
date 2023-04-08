@@ -711,13 +711,18 @@ end
 local SCREEN_W = 128
 local SCREEN_H = 64
 
-local SCREEN_LEVEL_LABEL = 3
+local SCREEN_LEVEL_LABEL = 1
 local SCREEN_LEVEL_LABEL_SPE = 5
 
 local SCREEN_STAGE_W = 9
 -- local SCREEN_STAGE_W = 15
 -- local SCREEN_STAGE_Y_OFFSET = 12
 local SCREEN_STAGE_Y_OFFSET = 1
+
+local SCREEN_STAGE_OUT_Y = 1
+local SCREEN_STAGE_KNOB_Y = 2
+local SCREEN_STAGE_MODE_Y = 6
+local SCREEN_PRESET_IN_Y = 7
 
 function draw_nana(x, y, fill)
   screen.aa(1)
@@ -742,7 +747,6 @@ function draw_trig_out_label(x, y, l)
   screen.rect(x, y, SCREEN_STAGE_W, SCREEN_STAGE_W)
   screen.stroke()
 end
-
 
 function draw_trig_out(x, y, trig)
   draw_trig_out_label(x, y)
@@ -772,6 +776,10 @@ function draw_trig_in_label(x, y, l)
   screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
   screen.line(x + SCREEN_STAGE_W, y)
   screen.stroke()
+
+  screen.move(x, y)
+  screen.line(x + SCREEN_STAGE_W, y)
+  screen.stroke()
 end
 
 function draw_trig_in_label_filled(x, y, l)
@@ -781,7 +789,8 @@ function draw_trig_in_label_filled(x, y, l)
   screen.level(l)
 
   screen.move(x, y)
-  screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+  -- NB: needed the 0.5s to get clean triangle edge
+  screen.line(x + SCREEN_STAGE_W / 2 + 0.5, y + SCREEN_STAGE_W / 2 + 0.5)
   screen.line(x + SCREEN_STAGE_W, y)
   screen.fill()
 end
@@ -830,7 +839,26 @@ function draw_preset(x, y)
   draw_nana(x, y, false)
 end
 
-function draw_knob(x, y, v)
+function draw_rect_label(x, y, l)
+  screen.aa(0)
+
+  if l == nil then l = SCREEN_LEVEL_LABEL end
+  screen.level(l)
+
+  screen.move(x, y)
+  screen.line(x, y + SCREEN_STAGE_W)
+  screen.stroke()
+  screen.move(x + SCREEN_STAGE_W, y)
+  screen.line(x + SCREEN_STAGE_W, y + SCREEN_STAGE_W)
+  screen.stroke()
+end
+
+function draw_knob(x, y, v, l)
+
+  if l then
+    screen.level(l)
+  end
+
   local radius = (SCREEN_STAGE_W/2) - 1
   -- local KNB_BLINDSPOT_PCT = 10
   local KNB_BLINDSPOT_PCT = 0
@@ -838,8 +866,8 @@ function draw_knob(x, y, v)
   -- NB: drawing an arc slightly overshoots compared to the equivalent x,y coords
   local ARC_OVERSHOOT_COMP = 0.2
 
-  x = x + SCREEN_STAGE_W/2
-  y = y + SCREEN_STAGE_W/2
+  x = x + SCREEN_STAGE_W/2 - 0.5
+  y = y + SCREEN_STAGE_W/2 - 0.5
 
   local v_offset = - (V_MAX / 4)
   local v_blind_pct = KNB_BLINDSPOT_PCT * V_MAX / 100
@@ -866,45 +894,58 @@ function draw_knob(x, y, v)
              math.pi/2 + (arc_offset/2),
              math.pi/2 + (arc_offset/2) + util.linlin(0, v_max, 0, math.pi * 2 - ARC_OVERSHOOT_COMP, v))
 
-
   screen.move(round(x), round(y))
   screen.line(arc_end_x, arc_end_y)
   screen.fill()
 end
 
 function redraw_stage(x, y, s)
+  local y2
+
   -- trig out
+  y2 = y + (SCREEN_STAGE_OUT_Y - 1) * SCREEN_STAGE_W
   local at = (step == s)
   local trig = at and (math.abs(os.clock() - last_step_t) < PULSE_T)
-  draw_trig_out(x, y, trig)
+  draw_trig_out(x, y2, trig)
   if not trig and at then
-    draw_nana(x, y, false)
+    draw_nana(x, y2, false)
   end
 
   -- trig in
-  y = y + SCREEN_STAGE_W
+  y2 = y + (SCREEN_PRESET_IN_Y - 1) * SCREEN_STAGE_W
   if params:get("preset") == s then
-      -- draw_preset(x, y)
-    draw_trig_in_special(x, y, (g_btn == s))
+    -- draw_preset(x, y)
+    if (g_btn == s) then
+      draw_trig_in(x, y2, true)
+    else
+      draw_trig_in_special(x, y2, false)
+    end
   else
-    draw_trig_in(x, y, (g_btn == s))
+    draw_trig_in(x, y2, (g_btn == s))
   end
 
   -- vals
+  y2 = y + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
   for vs=1,NB_VSTEPS do
-    y = y + SCREEN_STAGE_W
-    draw_knob(x, y, seqvals[s][vs])
+    draw_rect_label(x, y2)
+    l = 1
+    if params:get("preset") == s then
+      l = SCREEN_LEVEL_LABEL_SPE
+    end
+    draw_knob(x, y2, seqvals[s][vs], l)
+    y2 = y2 + SCREEN_STAGE_W
   end
 
   -- mode
-  y = y + SCREEN_STAGE_W
+  y2 = y + (SCREEN_STAGE_MODE_Y - 1) * SCREEN_STAGE_W
+  draw_rect_label(x, y2)
   local mode = stages[s]:get_mode()
   if mode == Stage.M_RUN then
-    draw_mode_run(x, y)
+    draw_mode_run(x, y2)
   elseif mode == Stage.M_TIE then
-    draw_mode_tie(x, y)
+    draw_mode_tie(x, y2)
   elseif mode == Stage.M_SKIP then
-    draw_mode_skip(x, y)
+    draw_mode_skip(x, y2)
   end
 
 end
