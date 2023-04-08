@@ -715,6 +715,7 @@ local SCREEN_LEVEL_LABEL = 3
 local SCREEN_LEVEL_LABEL_SPE = 5
 
 local SCREEN_STAGE_W = 9
+-- local SCREEN_STAGE_W = 15
 -- local SCREEN_STAGE_Y_OFFSET = 12
 local SCREEN_STAGE_Y_OFFSET = 1
 
@@ -830,27 +831,45 @@ function draw_preset(x, y)
 end
 
 function draw_knob(x, y, v)
-  -- draw_nana(x, y, false)
   local radius = (SCREEN_STAGE_W/2) - 1
-  local KNOB_BLINDSPOT_PERCENT = 10
+  -- local KNB_BLINDSPOT_PCT = 10
+  local KNB_BLINDSPOT_PCT = 0
+
+  -- NB: drawing an arc slightly overshoots compared to the equivalent x,y coords
+  local ARC_OVERSHOOT_COMP = 0.2
 
   x = x + SCREEN_STAGE_W/2
   y = y + SCREEN_STAGE_W/2
-  v2 = v - (V_MAX / 4)
+
+  local v_offset = - (V_MAX / 4)
+  local v_blind_pct = KNB_BLINDSPOT_PCT * V_MAX / 100
+  local v2 = v + v_offset + (v_blind_pct/4)
+  local v_max = V_MAX + v_blind_pct
+
+  -- print(v)
 
   screen.aa(1)
 
-  screen.move(round(x), round(y)+radius)
+  local arc_start_x = x + radius * cos((v_offset + (v_blind_pct/4))/v_max) * -1
+  local arc_start_y = y + radius * sin((v_offset + (v_blind_pct/4))/v_max)
 
-  -- screen.move(x, y)
-  -- screen.line(x, y+radius)
+  local arc_end_x = x + radius * cos(v2/v_max) * -1
+  local arc_end_y = y + radius * sin(v2/v_max)
 
-  screen.arc(round(x), round(y), radius, math.pi/2, math.pi/2 + util.linlin(0, V_MAX, 0, math.pi * 2, v))
-  screen.stroke()
-  screen.move(x, y)
-  screen.line(x + radius * cos(v2/V_MAX) * -1, y + radius * sin(v2/V_MAX))
-  screen.stroke()
-  -- screen.fill()
+  local arc_start = KNB_BLINDSPOT_PCT/100 - 1/4
+
+  screen.move(round(x), round(y))
+  screen.line(arc_start_x, arc_start_y)
+
+  local arc_offset = KNB_BLINDSPOT_PCT * math.pi*2 / 100
+  screen.arc(round(x), round(y), radius,
+             math.pi/2 + (arc_offset/2),
+             math.pi/2 + (arc_offset/2) + util.linlin(0, v_max, 0, math.pi * 2 - ARC_OVERSHOOT_COMP, v))
+
+
+  screen.move(round(x), round(y))
+  screen.line(arc_end_x, arc_end_y)
+  screen.fill()
 end
 
 function redraw_stage(x, y, s)
