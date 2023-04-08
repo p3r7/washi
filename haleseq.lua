@@ -139,7 +139,7 @@ function randomize_seqvals_scale(root_note)
   local nbx = tab.count(seqvals)
   local nby = tab.count(seqvals[1])
 
-  local octaves = {1, 2, 3, 4}
+  local octaves = {1, 2, 3, 4, 5, 7, 8, 9}
 
   srand(math.random(10000))
 
@@ -149,7 +149,7 @@ function randomize_seqvals_scale(root_note)
 
   for y=1,nby do
     for x=1,nbx do
-      local note = scale[math.random(nb_notes_in_scale)] + 12 * octaves[math.random(4)]
+      local note = scale[math.random(nb_notes_in_scale)] + 12 * octaves[math.random(#octaves)]
       seqvals[x][y] = round(util.linlin(0, 127, 0, V_MAX, note))
     end
   end
