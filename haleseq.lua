@@ -983,7 +983,7 @@ function redraw()
   end
 
   -- vseq
-  local y = SCREEN_STAGE_Y_OFFSET + 2 * SCREEN_STAGE_W
+  local y = SCREEN_STAGE_Y_OFFSET + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
   for vs=1,NB_VSTEPS do
     local at = (vstep == vs)
     local trig = at and (math.abs(os.clock() - last_vstep_t) < PULSE_T)
