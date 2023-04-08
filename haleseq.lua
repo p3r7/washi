@@ -1,4 +1,4 @@
--- 8scsp.
+-- haleseq.
 -- @eigen
 --
 --      8 stage       complex

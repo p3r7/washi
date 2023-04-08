@@ -1,4 +1,4 @@
--- 8scsp. stage
+-- haleseq. stage
 
 include("haleseq/lib/core")
 
