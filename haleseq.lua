@@ -588,7 +588,17 @@ function grid_redraw()
     end
     y = y + NB_VSTEPS + 1
     --                -- <pad>
-    l = (params:get("preset") == s) and 5 or 1
+    l = 1
+    local mode = stages[s]:get_mode()
+    if (params:get("preset") == s) then
+      l = 8
+    elseif mode == Stage.M_RUN then
+      l = 2
+    elseif mode == Stage.M_SKIP then
+      l = 0
+    elseif mode == Stage.M_TIE then
+      l = 4
+    end
     g:led(x, y, l)   -- tie / run / skip
     l = 1
     if next_step ~= nil then
@@ -812,16 +822,18 @@ function draw_trig_in_special(x, y, trig)
 end
 
 function draw_mode_run(x, y)
-  screen.aa(1)
+  screen.aa(0)
   screen.level(5)
-  screen.pixel(round(x + SCREEN_STAGE_W / 2), round(y + SCREEN_STAGE_W / 2))
+  screen.pixel(math.floor(x + SCREEN_STAGE_W / 2), math.floor(y + SCREEN_STAGE_W / 2))
+  screen.stroke()
 end
 
 function draw_mode_tie(x, y)
-  screen.aa(1)
+  screen.aa(0)
   screen.level(5)
   screen.move(x, round(y + SCREEN_STAGE_W/2))
   screen.line(x + SCREEN_STAGE_W, round(y + SCREEN_STAGE_W/2))
+  screen.stroke()
 end
 
 function draw_mode_skip(x, y)
