@@ -779,7 +779,7 @@ function redraw_stage(x, y, s)
     if (g_btn == s) then
       paperface.trig_in(x, y2, true)
     else
-      paperface.trig_in_special(x, y2, false)
+      paperface.trig_in(x, y2, false, true)
     end
   else
     paperface.trig_in(x, y2, (g_btn == s))
@@ -850,7 +850,7 @@ function redraw_haleseq()
 
   -- preset gate out
   local y = SCREEN_STAGE_Y_OFFSET
-  paperface.trig_out_special(x, y, math.abs(os.clock() - last_preset_t) < PULSE_T)
+  paperface.trig_out(x, y, math.abs(os.clock() - last_preset_t) < PULSE_T, SCREEN_LEVEL_LABEL_SPE)
 
   x = x + SCREEN_STAGE_W * 2
 

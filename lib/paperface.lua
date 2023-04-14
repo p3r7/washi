@@ -179,23 +179,40 @@ function paperface.trig_out_label(x, y, l)
 end
 
 -- panel graphic (triangle)
-function paperface.trig_in_label(x, y, l)
+function paperface.trig_in_label(x, y, l, fill)
   screen.aa(0)
 
-  if l == nil then l = SCREEN_LEVEL_LABEL end
+  if fill == nil then fill = false end
+
+  if l == nil then
+    if fill then
+      l = SCREEN_LEVEL_LABEL_SPE
+    else
+      l = SCREEN_LEVEL_LABEL
+    end
+  end
   screen.level(l)
 
-  -- NB: for some reason looks better if doing a stroke in between
-  screen.move(x, y)
-  screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
-  screen.line(x + SCREEN_STAGE_W, y)
-  screen.stroke()
+  if fill then
+      screen.move(x, y)
+      -- NB: needed the 0.5s to get clean triangle edge
+      screen.line(x + SCREEN_STAGE_W / 2 + 0.5, y + SCREEN_STAGE_W / 2 + 0.5)
+      screen.line(x + SCREEN_STAGE_W, y)
+      screen.fill()
+  else
+    -- NB: for some reason looks better if doing a stroke in between
+    screen.move(x, y)
+    screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+    screen.stroke()
 
-  screen.move(x, y)
-  screen.line(x + SCREEN_STAGE_W, y)
-  screen.stroke()
+    screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+    screen.line(x + SCREEN_STAGE_W, y)
+    screen.stroke()
+
+    screen.move(x, y)
+    screen.line(x + SCREEN_STAGE_W, y)
+    screen.stroke()
+  end
 end
 
 function paperface.trig_in_label_filled(x, y, l)
@@ -204,11 +221,7 @@ function paperface.trig_in_label_filled(x, y, l)
   if l == nil then l = SCREEN_LEVEL_LABEL end
   screen.level(l)
 
-  screen.move(x, y)
-  -- NB: needed the 0.5s to get clean triangle edge
-  screen.line(x + SCREEN_STAGE_W / 2 + 0.5, y + SCREEN_STAGE_W / 2 + 0.5)
-  screen.line(x + SCREEN_STAGE_W, y)
-  screen.fill()
+
 end
 
 
@@ -222,30 +235,16 @@ function paperface.main_in(x, y, trig)
   end
 end
 
-function paperface.trig_out(x, y, trig)
-  paperface.trig_out_label(x, y)
+function paperface.trig_out(x, y, trig, l)
+  paperface.trig_out_label(x, y, l)
   if trig then
     paperface.banana(x, y, trig)
   end
 end
 
-function paperface.trig_out_special(x, y, trig)
-  paperface.trig_out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
-  if trig then
-    paperface.banana(x, y, trig)
-  end
-end
+function paperface.trig_in(x, y, trig, filled)
+  paperface.trig_in_label(x, y, nil, filled)
 
-function paperface.trig_in(x, y, trig)
-  paperface.trig_in_label(x, y)
-  -- nana
-  if trig then
-    paperface.banana(x, y, trig)
-  end
-end
-
-function paperface.trig_in_special(x, y, trig)
-  paperface.trig_in_label_filled(x, y, SCREEN_LEVEL_LABEL_SPE)
   -- nana
   if trig then
     paperface.banana(x, y, trig)
