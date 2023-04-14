@@ -44,7 +44,7 @@ local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
 
 local page_list = {'clock', 'haleseq 1', 'haleseq 2'}
 local pages = UI.Pages.new(1, #page_list)
-
+pages:set_index(tab.key(page_list, 'haleseq 1'))
 
 -- ------------------------------------------------------------------------
 -- state
