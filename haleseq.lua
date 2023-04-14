@@ -15,10 +15,12 @@
 
 local lattice = require "lattice"
 local musicutil = require "musicutil"
+local UI = require "ui"
 
 local nb = include("haleseq/lib/nb/lib/nb")
 
 local Stage = include("haleseq/lib/stage")
+local paperface = include("haleseq/lib/paperface")
 include("haleseq/lib/core")
 
 
@@ -33,7 +35,15 @@ local STEPS_GRID_X_OFFSET = 4
 local NB_STEPS = 8
 local NB_VSTEPS = 4
 
+local NB_BARS = 2
+
 local MCLOCK_DIVS = 64
+
+local CLOCK_DIV_DENOMS = {1, 2, 4, 8, 16, 32, 64}
+local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
+
+local page_list = {'clock', 'haleseq 1', 'haleseq 2'}
+local pages = UI.Pages.new(1, #page_list)
 
 
 -- ------------------------------------------------------------------------
@@ -233,6 +243,9 @@ local next_vstep = nil
 local vclock_acum = 0
 local vreverse = false
 
+local mclock_acum = 0
+local last_mclock_tick_t = 0
+
 -- base1 modulo
 function mod1(v, m)
   return ((v - 1) % m) + 1
@@ -271,6 +284,9 @@ function clock_tick(forced)
     step = next_step
     next_step = nil
     last_step_t = os.clock()
+    if stages[step].o ~= nil and not (clock_div == 0) then
+      next_step = stages[step].o
+    end
     return true
   end
 
@@ -314,6 +330,10 @@ function clock_tick(forced)
     while step < params:get("preset") do
       step = mod1(step + sign, NB_STEPS)
     end
+  end
+
+  if stages[step].o ~= nil then
+    next_step = stages[step].o
   end
 
   last_step_t = os.clock()
@@ -360,6 +380,11 @@ function vclock_tick(forced)
 end
 
 function mclock_tick(t, forced)
+  if mclock_acum % (MCLOCK_DIVS / NB_BARS) == 0 then
+    last_mclock_tick_t = os.clock()
+  end
+  mclock_acum = mclock_acum + 1
+
   local ticked = clock_tick(forced)
   local vticked = vclock_tick(forced)
 
@@ -415,6 +440,8 @@ function init()
 
   init_stages(NB_STEPS)
   init_seqvals(NB_STEPS, NB_VSTEPS)
+
+  -- stages[5].o = 2
 
   -- --------------------------------
   -- params
@@ -487,7 +514,6 @@ function init()
   )
   params:add_option("rnd_seq_root", "Rnd Scale", musicutil.NOTE_NAMES, tab.key(musicutil.NOTE_NAMES, 'C'))
 
-  local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
   params:add_option("clock_div", "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
   params:add_option("vclock_div", "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/2'))
 
@@ -700,7 +726,8 @@ function enc(n, d)
   end
 
   if n == 1 then
-    params:set("clock_tempo", params:get("clock_tempo") + d)
+    -- params:set("clock_tempo", params:get("clock_tempo") + d)
+    pages:set_index_delta(d, false)
     return
   end
   if n == 2 then
@@ -734,183 +761,6 @@ local SCREEN_STAGE_KNOB_Y = 2
 local SCREEN_STAGE_MODE_Y = 6
 local SCREEN_PRESET_IN_Y = 7
 
-function draw_nana(x, y, fill)
-  screen.aa(1)
-  screen.level(10)
-  local radius = math.floor((SCREEN_STAGE_W/2) - 1)
-  screen.move(x + radius + 1, y)
-  screen.circle(x + radius + 1, y + radius + 1, radius)
-  if fill then
-    screen.fill()
-  else
-    screen.stroke()
-  end
-end
-
--- panel graphic (square)
-function draw_trig_out_label(x, y, l)
-  screen.aa(0)
-
-  if l == nil then l = SCREEN_LEVEL_LABEL end
-  screen.level(l)
-
-  screen.rect(x, y, SCREEN_STAGE_W, SCREEN_STAGE_W)
-  screen.stroke()
-end
-
-function draw_trig_out(x, y, trig)
-  draw_trig_out_label(x, y)
-  if trig then
-    draw_nana(x, y, trig)
-  end
-end
-
-function draw_trig_out_special(x, y, trig)
-  draw_trig_out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
-  if trig then
-    draw_nana(x, y, trig)
-  end
-end
-
--- panel graphic (triangle)
-function draw_trig_in_label(x, y, l)
-  screen.aa(0)
-
-  if l == nil then l = SCREEN_LEVEL_LABEL end
-  screen.level(l)
-
-  -- NB: for some reason looks better if doing a stroke in between
-  screen.move(x, y)
-  screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
-  screen.line(x + SCREEN_STAGE_W, y)
-  screen.stroke()
-
-  screen.move(x, y)
-  screen.line(x + SCREEN_STAGE_W, y)
-  screen.stroke()
-end
-
-function draw_trig_in_label_filled(x, y, l)
-  screen.aa(0)
-
-  if l == nil then l = SCREEN_LEVEL_LABEL end
-  screen.level(l)
-
-  screen.move(x, y)
-  -- NB: needed the 0.5s to get clean triangle edge
-  screen.line(x + SCREEN_STAGE_W / 2 + 0.5, y + SCREEN_STAGE_W / 2 + 0.5)
-  screen.line(x + SCREEN_STAGE_W, y)
-  screen.fill()
-end
-
-function draw_trig_in(x, y, trig)
-  draw_trig_in_label(x, y)
-  -- nana
-  if trig then
-    draw_nana(x, y, trig)
-  end
-end
-
-function draw_trig_in_special(x, y, trig)
-  draw_trig_in_label_filled(x, y, SCREEN_LEVEL_LABEL_SPE)
-  -- nana
-  if trig then
-    draw_nana(x, y, trig)
-  end
-end
-
-function draw_mode_run(x, y)
-  screen.aa(0)
-  screen.level(5)
-  screen.pixel(math.floor(x + SCREEN_STAGE_W / 2), math.floor(y + SCREEN_STAGE_W / 2))
-  screen.stroke()
-end
-
-function draw_mode_tie(x, y)
-  screen.aa(0)
-  screen.level(5)
-  screen.move(x, round(y + SCREEN_STAGE_W/2))
-  screen.line(x + SCREEN_STAGE_W, round(y + SCREEN_STAGE_W/2))
-  screen.stroke()
-end
-
-function draw_mode_skip(x, y)
-  screen.aa(0)
-  screen.level(5)
-  screen.move(x, y)
-  screen.line(x + SCREEN_STAGE_W, y + SCREEN_STAGE_W)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W, y)
-  screen.line(x, y + SCREEN_STAGE_W)
-  screen.stroke()
-end
-
-function draw_preset(x, y)
-  draw_nana(x, y, false)
-end
-
-function draw_rect_label(x, y, l)
-  screen.aa(0)
-
-  if l == nil then l = SCREEN_LEVEL_LABEL end
-  screen.level(l)
-
-  screen.move(x, y)
-  screen.line(x, y + SCREEN_STAGE_W)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W, y)
-  screen.line(x + SCREEN_STAGE_W, y + SCREEN_STAGE_W)
-  screen.stroke()
-end
-
-function draw_knob(x, y, v, l)
-
-  if l then
-    screen.level(l)
-  end
-
-  local radius = (SCREEN_STAGE_W/2) - 1
-  -- local KNB_BLINDSPOT_PCT = 10
-  local KNB_BLINDSPOT_PCT = 0
-
-  -- NB: drawing an arc slightly overshoots compared to the equivalent x,y coords
-  local ARC_OVERSHOOT_COMP = 0.2
-
-  x = x + SCREEN_STAGE_W/2 - 0.5
-  y = y + SCREEN_STAGE_W/2 - 0.5
-
-  local v_offset = - (V_MAX / 4)
-  local v_blind_pct = KNB_BLINDSPOT_PCT * V_MAX / 100
-  local v2 = v + v_offset + (v_blind_pct/4)
-  local v_max = V_MAX + v_blind_pct
-
-  -- print(v)
-
-  screen.aa(1)
-
-  local arc_start_x = x + radius * cos((v_offset + (v_blind_pct/4))/v_max) * -1
-  local arc_start_y = y + radius * sin((v_offset + (v_blind_pct/4))/v_max)
-
-  local arc_end_x = x + radius * cos(v2/v_max) * -1
-  local arc_end_y = y + radius * sin(v2/v_max)
-
-  local arc_start = KNB_BLINDSPOT_PCT/100 - 1/4
-
-  screen.move(round(x), round(y))
-  screen.line(arc_start_x, arc_start_y)
-
-  local arc_offset = KNB_BLINDSPOT_PCT * math.pi*2 / 100
-  screen.arc(round(x), round(y), radius,
-             math.pi/2 + (arc_offset/2),
-             math.pi/2 + (arc_offset/2) + util.linlin(0, v_max, 0, math.pi * 2 - ARC_OVERSHOOT_COMP, v))
-
-  screen.move(round(x), round(y))
-  screen.line(arc_end_x, arc_end_y)
-  screen.fill()
-end
-
 function redraw_stage(x, y, s)
   local y2
 
@@ -918,64 +768,68 @@ function redraw_stage(x, y, s)
   y2 = y + (SCREEN_STAGE_OUT_Y - 1) * SCREEN_STAGE_W
   local at = (step == s)
   local trig = at and (math.abs(os.clock() - last_step_t) < PULSE_T)
-  draw_trig_out(x, y2, trig)
+   paperface.trig_out(x, y2, trig)
   if not trig and at then
-    draw_nana(x, y2, false)
+    paperface.banana(x, y2, false)
   end
 
   -- trig in
   y2 = y + (SCREEN_PRESET_IN_Y - 1) * SCREEN_STAGE_W
   if params:get("preset") == s then
-    -- draw_preset(x, y)
     if (g_btn == s) then
-      draw_trig_in(x, y2, true)
+      paperface.trig_in(x, y2, true)
     else
-      draw_trig_in_special(x, y2, false)
+      paperface.trig_in_special(x, y2, false)
     end
   else
-    draw_trig_in(x, y2, (g_btn == s))
+    paperface.trig_in(x, y2, (g_btn == s))
   end
 
   -- vals
   y2 = y + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
   for vs=1,NB_VSTEPS do
-    draw_rect_label(x, y2)
+    paperface.rect_label(x, y2)
     l = 1
     if params:get("preset") == s then
       l = SCREEN_LEVEL_LABEL_SPE
     end
-    draw_knob(x, y2, seqvals[s][vs], l)
+    paperface.knob(x, y2, seqvals[s][vs], l)
     y2 = y2 + SCREEN_STAGE_W
   end
 
   -- mode
   y2 = y + (SCREEN_STAGE_MODE_Y - 1) * SCREEN_STAGE_W
-  draw_rect_label(x, y2)
-  local mode = stages[s]:get_mode()
-  if mode == Stage.M_RUN then
-    draw_mode_run(x, y2)
-  elseif mode == Stage.M_TIE then
-    draw_mode_tie(x, y2)
-  elseif mode == Stage.M_SKIP then
-    draw_mode_skip(x, y2)
-  end
-
+  paperface.rect_label(x, y2)
+  paperface.mode_switch(x, y2, stages[s]:get_mode())
 end
 
-function redraw()
-  screen.clear()
+function redraw_haleclock()
+  local x = SCREEN_STAGE_W
+  local y = SCREEN_STAGE_Y_OFFSET
 
-  screen.level(15)
-
-  -- clock(s)
-  screen.move(0, 8)
+  -- norns clock
+  -- local trig = (math.abs(os.clock() - last_mclock_tick_t) < PULSE_T)
+  local trig = mclock_acum % (MCLOCK_DIVS / 4) == 0
+  paperface.trig_out(x, y, trig)
+  screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
   screen.text(params:get("clock_tempo") .. " BPM ")
-  screen.move(0, 18)
-  screen.text(params:string("clock_div"))
-  screen.move(0, 28)
-  screen.text(params:string("vclock_div"))
 
-  -- seq
+  x = x + SCREEN_STAGE_W * 5
+
+  -- quantizer (beat divisions)
+  for i, v in ipairs(CLOCK_DIVS) do
+    if v ~= 'off' then
+      local trig = mclock_acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i-1]) == 0
+      paperface.trig_out(x, y, trig)
+      screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
+      screen.text(v)
+      y = y + SCREEN_STAGE_W
+    end
+  end
+end
+
+function redraw_haleseq()
+    -- seq
   local x = (SCREEN_W - (NB_STEPS * SCREEN_STAGE_W)) / 2
   for s=1,NB_STEPS do
     redraw_stage(x, SCREEN_STAGE_Y_OFFSET, s)
@@ -987,16 +841,45 @@ function redraw()
   for vs=1,NB_VSTEPS do
     local at = (vstep == vs)
     local trig = at and (math.abs(os.clock() - last_vstep_t) < PULSE_T)
-    draw_trig_out(x, y, trig)
+    paperface.trig_out(x, y, trig)
     if not trig and at then
-      draw_nana(x, y, false)
+      paperface.banana(x, y, false)
     end
     y = y + SCREEN_STAGE_W
   end
 
   -- preset gate out
   local y = SCREEN_STAGE_Y_OFFSET
-  draw_trig_out_special(x, y, math.abs(os.clock() - last_preset_t) < PULSE_T)
+  paperface.trig_out_special(x, y, math.abs(os.clock() - last_preset_t) < PULSE_T)
+
+  x = x + SCREEN_STAGE_W * 2
+
+  paperface.main_in(x, y, trig)
+end
+
+function redraw()
+  screen.clear()
+
+  pages:redraw()
+
+  screen.level(15)
+
+  -- clock(s)
+  -- screen.move(0, 8)
+  -- screen.text(params:get("clock_tempo") .. " BPM ")
+  -- screen.move(0, 18)
+  -- screen.text(params:string("clock_div"))
+  -- screen.move(0, 28)
+  -- screen.text(params:string("vclock_div"))
+
+  local curr_page = page_list[pages.index]
+  if curr_page == "clock" then
+    redraw_haleclock()
+  else
+    redraw_haleseq()
+  end
+
+  --
 
   screen.update()
 end
