@@ -1,27 +1,12 @@
 -- haleseq. paperface
 
 local Stage = include("haleseq/lib/stage")
+include("haleseq/lib/consts")
 
 
 -- ------------------------------------------------------------------------
 
 local paperface = {}
-
-
--- ------------------------------------------------------------------------
--- conf
-
-local SCREEN_W = 128
-local SCREEN_H = 64
-
-local SCREEN_LEVEL_LABEL = 1
-local SCREEN_LEVEL_LABEL_SPE = 5
-
-local SCREEN_STAGE_W = 9
-
-local SCREEN_STAGE_Y_OFFSET = 1
-
-local V_MAX = 1000
 
 
 -- ------------------------------------------------------------------------

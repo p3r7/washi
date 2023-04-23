@@ -18,6 +18,7 @@ Stage.M_SKIP = "skip"
 
 local draw_modes = {Stage.M_TIE, Stage.M_RUN, Stage.M_SKIP}
 
+
 -- ------------------------------------------------------------------------
 -- constructors
 

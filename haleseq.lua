@@ -7,7 +7,10 @@
 --
 --    ▼ instructions below ▼
 --
--- original idea by @hale
+-- based on the work of:
+-- - Serge Tcherepnin
+-- - Ken Stone
+-- - Dakota Merlin (@hale)
 
 
 -- ------------------------------------------------------------------------
@@ -19,9 +22,16 @@ local UI = require "ui"
 
 local nb = include("haleseq/lib/nb/lib/nb")
 
-local Stage = include("haleseq/lib/stage")
 local paperface = include("haleseq/lib/paperface")
+
+-- modules
+local Haleseq = include("haleseq/lib/module/haleseq")
+local norns_clock = include("haleseq/lib/module/norns_clock")
+local QuantizedClock = include("haleseq/lib/module/quantized_clock")
+local pulse_divider = include("haleseq/lib/module/pulse_divider")
+
 include("haleseq/lib/core")
+include("haleseq/lib/consts")
 
 
 -- ------------------------------------------------------------------------
@@ -30,21 +40,19 @@ include("haleseq/lib/core")
 local FPS = 15
 local GRID_FPS = 15
 
-local STEPS_GRID_X_OFFSET = 4
-
-local NB_STEPS = 8
-local NB_VSTEPS = 4
-
 local NB_BARS = 2
 
-local MCLOCK_DIVS = 64
+local NB_HALESEQS = 1
+local haleseqs = {}
+local quantized_clocks = {}
 
-local CLOCK_DIV_DENOMS = {1, 2, 4, 8, 16, 32, 64}
-local CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
-
-local page_list = {'clock', 'haleseq 1', 'haleseq 2'}
+local page_list = {'clock'}
+for h=1, NB_HALESEQS do
+  table.insert(page_list, 'haleseq '..h)
+end
 local pages = UI.Pages.new(1, #page_list)
 pages:set_index(tab.key(page_list, 'haleseq 1'))
+
 
 -- ------------------------------------------------------------------------
 -- state
@@ -75,6 +83,15 @@ function grid_remove_maybe(_g)
 end
 
 
+local function get_current_haleseq()
+  local curr_page = page_list[pages.index]
+  for i=1,NB_HALESEQS do
+    if curr_page == "haleseq "..i then
+      return haleseqs[i]
+    end
+  end
+end
+
 -- ------------------------------------------------------------------------
 -- state - sequence values
 
@@ -86,100 +103,15 @@ local vstep = 1
 
 local last_step_t = 0
 local last_vstep_t = 0
+local last_preset_t = 0
 
 local stages = {}
 local seqvals = {}
-
-local last_preset_t = 0
 
 local V_MAX = 1000
 local V_NB_OCTAVES = 10
 local V_TRIG = 500
 
-local PULSE_T = 0.02 --FIXME: don't use os.clock() but a lattice clock for stable gate beahvior
-
-
-function init_stages(nb)
-  for x=1,nb do
-    stages[x] = Stage:new()
-  end
-end
-
-function init_seqvals(nbx, nby)
-  for x=1,nbx do
-    seqvals[x] = {}
-    for y=1,nby do
-      seqvals[x][y] = V_MAX/2
-    end
-  end
-end
-
-function randomize_seqvals_octaves()
-  local nbx = tab.count(seqvals)
-  local nby = tab.count(seqvals[1])
-
-  srand(math.random(10000))
-
-  local octave = 3
-  local octave_v = V_MAX / V_NB_OCTAVES
-  for y=1,nby do
-    for x=1,nbx do
-      local note = math.random(octave_v + 1) - 1
-      seqvals[x][y] = octave * octave_v + note
-    end
-    octave = octave + 1
-  end
-end
-
-function randomize_seqvals_blip_bloop()
-  local nbx = tab.count(seqvals)
-  local nby = tab.count(seqvals[1])
-
-  srand(math.random(10000))
-
-  for y=1,nby do
-    for x=1,nbx do
-      local note = math.random(round(3*V_MAX/4) + 1) - 1
-      seqvals[x][y] = note
-    end
-  end
-end
-
-function randomize_seqvals_scale(root_note)
-  local nbx = tab.count(seqvals)
-  local nby = tab.count(seqvals[1])
-
-  local octaves = {1, 2, 3, 4, 5, 7, 8, 9}
-
-  srand(math.random(10000))
-
-  local chord_root_freq = tab.key(musicutil.NOTE_NAMES, root_note) - 1
-  local scale = musicutil.generate_scale_of_length(chord_root_freq, nbx)
-  local nb_notes_in_scale = tab.count(scale)
-
-  for y=1,nby do
-    for x=1,nbx do
-      local note = scale[math.random(nb_notes_in_scale)] + 12 * octaves[math.random(#octaves)]
-      seqvals[x][y] = round(util.linlin(0, 127, 0, V_MAX, note))
-    end
-  end
-end
-
-function are_all_stage_skip(are_all_stage_skip)
-  local nb_skipped = 0
-
-  local start = params:get("preset")
-  if are_all_stage_skip then
-    start = 1
-  end
-
-  for s=start,NB_STEPS do
-    if stages[s]:get_mode() == Stage.M_SKIP then
-      nb_skipped = nb_skipped + 1
-    end
-  end
-  return (nb_skipped == (NB_STEPS-start+1))
-end
 
 -- ------------------------------------------------------------------------
 -- playback
@@ -188,37 +120,22 @@ local nb_playing_notes = {}
 
 local last_enc_note_play_t = 0
 
-function note_play(s, vs)
-  local player = params:lookup_param("nb_voice_"..vs):get_player()
+function volts_note_play(voice, volts)
+  local player = params:lookup_param("nb_voice_"..voice):get_player()
 
-  if nb_playing_notes[vs] ~= nil then
-    player:note_off(nb_playing_notes[vs])
-    nb_playing_notes[vs] = nil
+  if nb_playing_notes[voice] ~= nil then
+    player:note_off(nb_playing_notes[voice])
+    nb_playing_notes[voice] = nil
   end
 
-  local v = 0
-  if vs > NB_VSTEPS then -- special multiplexed step
-    v = seqvals[s][vstep]
-  else
-    v = seqvals[s][vs]
-  end
-
-  local note = round(util.linlin(0, V_MAX, 0, 127, v))
+  local note = round(util.linlin(0, V_MAX, 0, 127, volts))
   -- local vel = 0.8
   local vel = 1
 
   -- print("playing "..note)
 
   player:note_on(note, vel)
-  nb_playing_notes[vs] = note
-end
-
-function curr_note_play(vs)
-  local s = step
-  if stages[s]:get_mode() == Stage.M_TIE and prev_step ~= nil then
-    s = prev_step
-  end
-  note_play(s, vs)
+  nb_playing_notes[voice] = note
 end
 
 function all_notes_off()
@@ -269,114 +186,86 @@ function clock_div_opt_v(o)
   return m[o]
 end
 
+-- NB: `forced` means triggered but not from master clock tick
 function clock_tick(forced)
-  local clock_div = clock_div_opt_v(params:string("clock_div"))
-  if not forced then
-    clock_acum = clock_acum + clock_div / MCLOCK_DIVS
-  end
+  -- local clock_div = clock_div_opt_v(params:string("clock_div"))
+  -- local clock_is_off = (clock_div == 0)
 
-  -- NB: if clock is off (clock_div at 0), take immediate effect
-  --     otherwise, wait for quantization
-  if next_step ~= nil and ((clock_div == 0) or (clock_acum >= 1)) then
-    if (clock_acum >= 1) then
-      clock_acum = 0
-    end
-    step = next_step
-    next_step = nil
-    last_step_t = os.clock()
-    if stages[step].o ~= nil and not (clock_div == 0) then
-      next_step = stages[step].o
-    end
-    return true
-  end
+  -- if not forced then
+    -- clock_acum = clock_acum + clock_div / MCLOCK_DIVS
+  -- end
 
-  if clock_acum < 1 then
-    return false
-  end
-  clock_acum = 0
+  for _, h in ipairs(haleseqs) do
 
-  if hold then
-    return false
-  end
+    return h:clock_tick()
 
-  if are_all_stage_skip(is_resetting) then
-    return false
-  end
+    -- -- --------------------------------
+    -- -- case 1: has next step
 
-  if stages[step]:get_mode() ~= Stage.M_TIE then
-    prev_step = step
-  end
+    -- -- NB: if clock is off (clock_div at 0), take immediate effect
+    -- --     otherwise, wait for quantization
+    -- if h:has_next_step() and (clock_is_off or (clock_acum >= 1)) then
+    --   if (clock_acum >= 1) then
+    --     clock_acum = 0
+    --   end
+    --   return h:clock_tick()
+    -- end
 
-  local sign = reverse and -1 or 1
+    -- -- --------------------------------
+    -- -- case 2: not yet reached sub-tick
 
-  step = mod1(step + sign, NB_STEPS)
+    -- if clock_acum < 1 then
+    --   return false
+    -- end
 
-  -- skip until at preset
-  if not is_resetting then
-    while step < params:get("preset") do
-      step = mod1(step + sign, NB_STEPS)
-    end
-  end
-  -- skip stages in skip mode
-  while stages[step]:get_mode() == Stage.M_SKIP do
-    local sign = reverse and -1 or 1
-    step = mod1(step + sign, NB_STEPS)
-  end
-  if step >= params:get("preset") then
-    is_resetting = false
-  end
-  -- skip until at preset (2)
-  if not is_resetting then
-    while step < params:get("preset") do
-      step = mod1(step + sign, NB_STEPS)
-    end
-  end
+    -- -- --------------------------------
+    -- -- case 3: sub-tick
 
-  if stages[step].o ~= nil then
-    next_step = stages[step].o
+    -- clock_acum = 0
+    -- return h:clock_tick()
   end
-
-  last_step_t = os.clock()
-  return true
 end
 
+
+-- NB: `forced` means triggered but not from master clock tick
 function vclock_tick(forced)
+  -- local vclock_div = clock_div_opt_v(params:string("vclock_div"))
+  -- local vclock_is_off = (vclock_div == 0)
+  -- if not forced then
+  --   vclock_acum = vclock_acum + vclock_div / MCLOCK_DIVS
+  -- end
 
-  local vclock_div = clock_div_opt_v(params:string("vclock_div"))
-  if not forced then
-    vclock_acum = vclock_acum + vclock_div / MCLOCK_DIVS
+
+  for _, h in ipairs(haleseqs) do
+
+    return h:vclock_tick()
+
+    -- -- --------------------------------
+    -- -- case 1: has next vstep
+
+    -- -- NB: if vclock is off (vclock_div at 0), take immediate effect
+    -- --     otherwise, wait for quantization
+
+    -- if h:has_next_vstep() ~= nil and (vclock_is_off or (vclock_acum >= 1)) then
+    --   if (vclock_acum >= 1) then
+    --     vclock_acum = 0
+    --   end
+    --   return h:vclock_tick()
+    -- end
+
+    -- -- --------------------------------
+    -- -- case 2: not yet reached sub-tick
+
+    -- if vclock_acum < 1 then
+    --   return false
+    -- end
+
+    -- -- --------------------------------
+    -- -- case 3: sub-tick
+
+    -- vclock_acum = 0
+    -- return h:vclock_tick()
   end
-
-  -- NB: if clock is off (clock_div at 0), take immediate effect
-  --     otherwise, wait for quantization
-  if next_vstep ~= nil and ((vclock_div == 0) or (vclock_acum >= 1)) then
-    if (vclock_acum >= 1) then
-      vclock_acum = 0
-    end
-    vstep = next_vstep
-    next_vstep = nil
-    last_vstep_t = os.clock()
-    return true
-  end
-
-  if vclock_acum < 1 then
-    return false
-  end
-  vclock_acum = 0
-
-  if next_vstep ~= nil then
-    vstep = next_vstep
-    next_vstep = nil
-    last_vstep_t = os.clock()
-    return true
-  end
-
-  local sign = vreverse and -1 or 1
-
-  vstep = mod1(vstep + sign, NB_VSTEPS)
-
-  last_vstep_t = os.clock()
-  return true
 end
 
 function mclock_tick(t, forced)
@@ -385,31 +274,35 @@ function mclock_tick(t, forced)
   end
   mclock_acum = mclock_acum + 1
 
+  for _, h in ipairs(haleseqs) do
+    local hclock = h:get_hclock()
+    local vclock = h:get_vclock()
+
+    hclock:tick()
+    vclock:tick()
+  end
+
   local ticked = clock_tick(forced)
   local vticked = vclock_tick(forced)
 
+  --TODO: support more than 1 haleseq
+  local h = haleseqs[1]
+
   if ticked then
-    for vs=1,NB_VSTEPS do
-      curr_note_play(vs)
+    for vs=1,h:get_nb_vsteps() do
+      local volts = h:get_current_play_volts(vs)
+      local voice = vs
+      volts_note_play(voice, volts)
     end
   end
   if ticked or vticked then
-    curr_note_play(NB_VSTEPS+1)
+    local volts = h:get_current_mux_play_volts()
+    local voice = h:get_nb_vsteps() + 1
+    volts_note_play(voice, volts)
   end
 end
 
-function reset()
-  is_resetting = true
-  next_step = 1
-end
 
-function reset_preset()
-  next_step = params:get("preset")
-end
-
-function vreset()
-  next_vstep = 1
-end
 
 
 -- ------------------------------------------------------------------------
@@ -435,72 +328,23 @@ function init()
 
   grid_connect_maybe()
 
-  -- --------------------------------
-  -- state
-
-  init_stages(NB_STEPS)
-  init_seqvals(NB_STEPS, NB_VSTEPS)
-
   -- stages[5].o = 2
 
   -- --------------------------------
-  -- params
+  -- global params
 
-  params:add{type = "number", id = "preset", name = "Preset", min = 1, max = NB_STEPS, default = 1}
-  params:set_action("preset",
-                    function(v)
-                      last_preset_t = os.clock()
-                      reset_preset()
-                    end
-  )
-
-  params:add_trigger("fw", "Forward")
-  params:set_action("fw",
-                    function(v)
-                      clock_acum = clock_acum + 1
-                      mclock_tick(nil, true)
-                    end
-  )
-  params:add_trigger("bw", "Backward")
-  params:set_action("bw",
-                    function(v)
-                      local reverse_prev = reverse
-                      reverse = true
-                      clock_acum = clock_acum + 1
-                      mclock_tick(nil, true)
-                      reverse = reverse_prev
-                    end
-  )
-  params:add_trigger("vfw", "VForward")
-  params:set_action("vfw",
-                    function(v)
-                      vclock_acum = vclock_acum + 1
-                      mclock_tick(nil, true)
-                    end
-  )
-  params:add_trigger("vbw", "VBackward")
-  params:set_action("vbw",
-                    function(v)
-                      local vreverse_prev = vreverse
-                      vreverse = true
-                      vclock_acum = vclock_acum + 1
-                      mclock_tick(nil, true)
-                      vreverse = vreverse_prev
+  params:add_trigger("rnd_seqs", "Randomize Seqs")
+  params:set_action("rnd_seqs",
+                    function(_v)
+                      for _, h in ipairs(haleseqs) do
+                        local id = h:get_id()
+                        params:set("rnd_seqs_"..id, 1)
+                      end
                     end
   )
 
 
   local RND_MODES = {'Scale', 'Blip Bloop'}
-  params:add_trigger("rnd_seqs", "Randomize Seqs")
-  params:set_action("rnd_seqs",
-                    function(v)
-                      if params:string("rnd_seq_mode") == 'Scale' then
-                        randomize_seqvals_scale(params:string("rnd_seq_root"))
-                      else
-                        randomize_seqvals_blip_bloop()
-                      end
-                    end
-  )
   params:add_option("rnd_seq_mode", "Rnd Mode", RND_MODES, tab.key(RND_MODES, 'Scale'))
   params:set_action("rnd_seq_mode",
                     function(v)
@@ -514,8 +358,19 @@ function init()
   )
   params:add_option("rnd_seq_root", "Rnd Scale", musicutil.NOTE_NAMES, tab.key(musicutil.NOTE_NAMES, 'C'))
 
-  params:add_option("clock_div", "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
-  params:add_option("vclock_div", "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/2'))
+
+  -- --------------------------------
+  -- haleseqs
+
+  for i = 1,NB_HALESEQS do
+    local hc = QuantizedClock.new(i, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
+    local vc = QuantizedClock.new(i, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
+    local h = Haleseq.init(i, NB_STEPS, NB_VSTEPS, hc, vc)
+    haleseqs[i] = h
+  end
+
+  -- --------------------------------
+  -- outs
 
   local label_all = ""
   for vs=1, NB_VSTEPS + 1 do
@@ -594,118 +449,18 @@ local G_Y_KNOB = 2
 function grid_redraw()
   g:all(0)
 
-  local l = 3
-
-  for s=1,NB_STEPS do
-    l = 3
-    local x = s + STEPS_GRID_X_OFFSET
-    local y = 1
-
-    g:led(x, y, 1)     -- trig out
-    y = y + 1
-    g:led(x, y, 1)     -- trig in
-    for vs=1,NB_VSTEPS do
-      if (step == s) and (vstep == vs) then
-        l = 15
-      else
-        l = round(util.linlin(0, V_MAX, 0, 12, seqvals[s][vs]))
-      end
-      g:led(x, G_Y_KNOB+vs, l) -- value
-    end
-    y = y + NB_VSTEPS + 1
-    --                -- <pad>
-    l = 1
-    local mode = stages[s]:get_mode()
-    if (params:get("preset") == s) then
-      l = 8
-    elseif mode == Stage.M_RUN then
-      l = 2
-    elseif mode == Stage.M_SKIP then
-      l = 0
-    elseif mode == Stage.M_TIE then
-      l = 4
-    end
-    g:led(x, y, l)   -- tie / run / skip
-    l = 1
-    if next_step ~= nil then
-      if next_step == s then
-        l = 5
-      elseif step == s then
-        l = 2
-      end
-    elseif step == s then
-      l = 10
-    end
-    g:led(x, G_Y_PRESS, l)   -- press / select in
+  local h = get_current_haleseq()
+  if h ~= nil then
+    h:grid_redraw(g)
   end
-
-  local x = STEPS_GRID_X_OFFSET + NB_STEPS + 1
-  for vs=1,NB_VSTEPS do
-    l = (vstep == vs) and 5 or 1
-    g:led(x, 2+vs, l) -- v out
-  end
-
-  g:led(16, 1, 5) -- vreset
-  g:led(16, 2, 1) -- vclock
-  g:led(16, 3, 5) -- reset
-  g:led(16, 4, 3) -- hold
-  g:led(16, 5, 5) -- preset
-  g:led(16, 6, 3) -- reverse
-  g:led(16, 7, 3) -- clock
-  -- preset manual
 
   g:refresh()
 end
 
 function grid_key(x, y, z)
-  if x > STEPS_GRID_X_OFFSET and x <= STEPS_GRID_X_OFFSET + NB_STEPS then
-    if y == G_Y_PRESS then
-      if (z >= 1) then
-        local s = x - STEPS_GRID_X_OFFSET
-        g_btn = s
-        params:set("preset", s)
-        last_preset_t = os.clock()
-        -- mclock_tick(nil, true)
-      else
-        g_btn = false
-      end
-      return
-    end
-    if y == 7 and z >= 1 then
-      local s = x - STEPS_GRID_X_OFFSET
-      stages[s]:mode_cycle()
-      return
-    end
-    if y >= G_Y_KNOB and y < G_Y_KNOB + NB_STEPS then
-      if z >= 1 then
-        local s = x - STEPS_GRID_X_OFFSET
-        local vs = y - G_Y_KNOB
-        g_knob = {s, vs}
-      else
-        g_knob = nil
-      end
-    end
-  end
-
-  if x == 16 and y == 1 and z >= 1 then
-    vreset()
-    return
-  end
-  if x == 16 and y == 3 and z >= 1 then
-    reset()
-    return
-  end
-  if x == 16 and y == 4 then
-    hold = (z >= 1)
-    return
-  end
-  if x == 16 and y == 5 and z >= 1 then
-    reset_preset()
-    return
-  end
-  if x == 16 and y == 6 then
-    reverse = (z >= 1)
-    return
+  local h = get_current_haleseq()
+  if h ~= nil then
+    h:grid_key(x, y, z)
   end
 end
 
@@ -714,15 +469,35 @@ end
 
 function enc(n, d)
 
-  if g_knob ~= nil then
-    local v = g_knob[1]
-    local vs = g_knob[2]
-    seqvals[v][vs] = util.clamp(seqvals[v][vs] + d*5, 0, V_MAX)
-    if (math.abs(os.clock() - last_enc_note_play_t) >= PULSE_T) then
-      note_play(v, vs) -- retrig note to get a preview
-      last_enc_note_play_t = os.clock()
+  local h = get_current_haleseq()
+  if h ~= nil then
+    local id = h:get_id()
+
+    if h:is_editing_knob() then
+      h:knob(n, d)
+
+      -- retrig note to get a preview
+      if (math.abs(os.clock() - last_enc_note_play_t) >= PULSE_T) then
+        local voice = h:knob_vs()
+        local volts = h:knob_volts()
+
+        volts_note_play(voice, volts)
+        last_enc_note_play_t = os.clock()
+      end
+      return
     end
-    return
+
+    if n == 2 then
+      local sign = math.floor(d/math.abs(d))
+      params:set("clock_div_"..id, params:get("clock_div_"..id) + sign)
+      return
+    end
+    if n == 3 then
+      local sign = math.floor(d/math.abs(d))
+      params:set("vclock_div_"..id, params:get("vclock_div_"..id) + sign)
+      return
+    end
+
   end
 
   if n == 1 then
@@ -730,132 +505,26 @@ function enc(n, d)
     pages:set_index_delta(d, false)
     return
   end
-  if n == 2 then
-    local sign = math.floor(d/math.abs(d))
-    params:set("clock_div", params:get("clock_div") + sign)
-    return
-  end
-  if n == 3 then
-    local sign = math.floor(d/math.abs(d))
-    params:set("vclock_div", params:get("vclock_div") + sign)
-    return
-  end
 end
 
 -- ------------------------------------------------------------------------
 -- screen
 
-local SCREEN_W = 128
-local SCREEN_H = 64
-
-local SCREEN_LEVEL_LABEL = 1
-local SCREEN_LEVEL_LABEL_SPE = 5
-
-local SCREEN_STAGE_W = 9
--- local SCREEN_STAGE_W = 15
--- local SCREEN_STAGE_Y_OFFSET = 12
-local SCREEN_STAGE_Y_OFFSET = 1
-
-local SCREEN_STAGE_OUT_Y = 1
-local SCREEN_STAGE_KNOB_Y = 2
-local SCREEN_STAGE_MODE_Y = 6
-local SCREEN_PRESET_IN_Y = 7
-
-function redraw_stage(x, y, s)
-  local y2
-
-  -- trig out
-  y2 = y + (SCREEN_STAGE_OUT_Y - 1) * SCREEN_STAGE_W
-  local at = (step == s)
-  local trig = at and (math.abs(os.clock() - last_step_t) < PULSE_T)
-   paperface.trig_out(x, y2, trig)
-  if not trig and at then
-    paperface.banana(x, y2, false)
-  end
-
-  -- trig in
-  y2 = y + (SCREEN_PRESET_IN_Y - 1) * SCREEN_STAGE_W
-  if params:get("preset") == s then
-    if (g_btn == s) then
-      paperface.trig_in(x, y2, true)
-    else
-      paperface.trig_in(x, y2, false, true)
-    end
-  else
-    paperface.trig_in(x, y2, (g_btn == s))
-  end
-
-  -- vals
-  y2 = y + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
-  for vs=1,NB_VSTEPS do
-    paperface.rect_label(x, y2)
-    l = 1
-    if params:get("preset") == s then
-      l = SCREEN_LEVEL_LABEL_SPE
-    end
-    paperface.knob(x, y2, seqvals[s][vs], l)
-    y2 = y2 + SCREEN_STAGE_W
-  end
-
-  -- mode
-  y2 = y + (SCREEN_STAGE_MODE_Y - 1) * SCREEN_STAGE_W
-  paperface.rect_label(x, y2)
-  paperface.mode_switch(x, y2, stages[s]:get_mode())
-end
-
-function redraw_haleclock()
+function redraw_clock_screen()
   local x = SCREEN_STAGE_W
   local y = SCREEN_STAGE_Y_OFFSET
 
-  -- norns clock
-  -- local trig = (math.abs(os.clock() - last_mclock_tick_t) < PULSE_T)
-  local trig = mclock_acum % (MCLOCK_DIVS / 4) == 0
-  paperface.trig_out(x, y, trig)
-  screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
-  screen.text(params:get("clock_tempo") .. " BPM ")
+  norns_clock.redraw(x, y, mclock_acum)
 
   x = x + SCREEN_STAGE_W * 5
 
-  -- quantizer (beat divisions)
-  for i, v in ipairs(CLOCK_DIVS) do
-    if v ~= 'off' then
-      local trig = mclock_acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i-1]) == 0
-      paperface.trig_out(x, y, trig)
-      screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
-      screen.text(v)
-      y = y + SCREEN_STAGE_W
-    end
-  end
+  QuantizedClock.redraw(x, y, mclock_acum)
+
+  x = x + SCREEN_STAGE_W * 5
+
+  pulse_divider.redraw(x, y, mclock_acum)
 end
 
-function redraw_haleseq()
-    -- seq
-  local x = (SCREEN_W - (NB_STEPS * SCREEN_STAGE_W)) / 2
-  for s=1,NB_STEPS do
-    redraw_stage(x, SCREEN_STAGE_Y_OFFSET, s)
-    x = x + SCREEN_STAGE_W
-  end
-
-  -- vseq
-  local y = SCREEN_STAGE_Y_OFFSET + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
-  for vs=1,NB_VSTEPS do
-    local at = (vstep == vs)
-    local trig = at and (math.abs(os.clock() - last_vstep_t) < PULSE_T)
-    paperface.trig_out(x, y, trig)
-    if not trig and at then
-      paperface.banana(x, y, false)
-    end
-    y = y + SCREEN_STAGE_W
-  end
-
-  -- preset gate out
-  local y = SCREEN_STAGE_Y_OFFSET
-  paperface.trig_out(x, y, math.abs(os.clock() - last_preset_t) < PULSE_T, SCREEN_LEVEL_LABEL_SPE)
-
-  x = x + SCREEN_STAGE_W * 2
-
-  paperface.main_in(x, y, trig)
-end
 
 function redraw()
   screen.clear()
@@ -874,12 +543,13 @@ function redraw()
 
   local curr_page = page_list[pages.index]
   if curr_page == "clock" then
-    redraw_haleclock()
+    redraw_clock_screen()
   else
-    redraw_haleseq()
+    local h = get_current_haleseq()
+    if h ~= nil then
+      h:redraw()
+    end
   end
-
-  --
 
   screen.update()
 end
