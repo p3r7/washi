@@ -26,6 +26,7 @@ local paperface = include("haleseq/lib/paperface")
 
 -- modules
 local Haleseq = include("haleseq/lib/module/haleseq")
+local Output = include("haleseq/lib/module/output")
 local norns_clock = include("haleseq/lib/module/norns_clock")
 local QuantizedClock = include("haleseq/lib/module/quantized_clock")
 local pulse_divider = include("haleseq/lib/module/pulse_divider")
@@ -116,34 +117,13 @@ local V_TRIG = 500
 -- ------------------------------------------------------------------------
 -- playback
 
-local nb_playing_notes = {}
+local outputs = {}
 
 local last_enc_note_play_t = 0
 
-function volts_note_play(voice, volts)
-  local player = params:lookup_param("nb_voice_"..voice):get_player()
-
-  if nb_playing_notes[voice] ~= nil then
-    player:note_off(nb_playing_notes[voice])
-    nb_playing_notes[voice] = nil
-  end
-
-  local note = round(util.linlin(0, V_MAX, 0, 127, volts))
-  -- local vel = 0.8
-  local vel = 1
-
-  -- print("playing "..note)
-
-  player:note_on(note, vel)
-  nb_playing_notes[voice] = note
-end
-
 function all_notes_off()
-  for vs=1,NB_VSTEPS+1 do
-    if nb_playing_notes[vs] ~= nil then
-      player:note_off(nb_playing_notes[vs])
-      nb_playing_notes[vs] = nil
-    end
+  for _, o in ipairs(outputs) do
+    o:nb_note_off()
   end
 end
 
@@ -186,120 +166,43 @@ function clock_div_opt_v(o)
   return m[o]
 end
 
--- NB: `forced` means triggered but not from master clock tick
-function clock_tick(forced)
-  -- local clock_div = clock_div_opt_v(params:string("clock_div"))
-  -- local clock_is_off = (clock_div == 0)
-
-  -- if not forced then
-    -- clock_acum = clock_acum + clock_div / MCLOCK_DIVS
-  -- end
-
-  for _, h in ipairs(haleseqs) do
-
-    return h:clock_tick()
-
-    -- -- --------------------------------
-    -- -- case 1: has next step
-
-    -- -- NB: if clock is off (clock_div at 0), take immediate effect
-    -- --     otherwise, wait for quantization
-    -- if h:has_next_step() and (clock_is_off or (clock_acum >= 1)) then
-    --   if (clock_acum >= 1) then
-    --     clock_acum = 0
-    --   end
-    --   return h:clock_tick()
-    -- end
-
-    -- -- --------------------------------
-    -- -- case 2: not yet reached sub-tick
-
-    -- if clock_acum < 1 then
-    --   return false
-    -- end
-
-    -- -- --------------------------------
-    -- -- case 3: sub-tick
-
-    -- clock_acum = 0
-    -- return h:clock_tick()
-  end
-end
-
-
--- NB: `forced` means triggered but not from master clock tick
-function vclock_tick(forced)
-  -- local vclock_div = clock_div_opt_v(params:string("vclock_div"))
-  -- local vclock_is_off = (vclock_div == 0)
-  -- if not forced then
-  --   vclock_acum = vclock_acum + vclock_div / MCLOCK_DIVS
-  -- end
-
-
-  for _, h in ipairs(haleseqs) do
-
-    return h:vclock_tick()
-
-    -- -- --------------------------------
-    -- -- case 1: has next vstep
-
-    -- -- NB: if vclock is off (vclock_div at 0), take immediate effect
-    -- --     otherwise, wait for quantization
-
-    -- if h:has_next_vstep() ~= nil and (vclock_is_off or (vclock_acum >= 1)) then
-    --   if (vclock_acum >= 1) then
-    --     vclock_acum = 0
-    --   end
-    --   return h:vclock_tick()
-    -- end
-
-    -- -- --------------------------------
-    -- -- case 2: not yet reached sub-tick
-
-    -- if vclock_acum < 1 then
-    --   return false
-    -- end
-
-    -- -- --------------------------------
-    -- -- case 3: sub-tick
-
-    -- vclock_acum = 0
-    -- return h:vclock_tick()
-  end
-end
-
 function mclock_tick(t, forced)
   if mclock_acum % (MCLOCK_DIVS / NB_BARS) == 0 then
     last_mclock_tick_t = os.clock()
   end
-  mclock_acum = mclock_acum + 1
+  if not forced then
+    mclock_acum = mclock_acum + 1
+  end
 
   for _, h in ipairs(haleseqs) do
     local hclock = h:get_hclock()
     local vclock = h:get_vclock()
+    if not forced then
+      hclock:tick()
+      vclock:tick()
+    end
 
-    hclock:tick()
-    vclock:tick()
-  end
+    local ticked = h:clock_tick(forced)
+    local vticked = h:vclock_tick(forced)
 
-  local ticked = clock_tick(forced)
-  local vticked = vclock_tick(forced)
-
-  --TODO: support more than 1 haleseq
-  local h = haleseqs[1]
-
-  if ticked then
-    for vs=1,h:get_nb_vsteps() do
-      local volts = h:get_current_play_volts(vs)
-      local voice = vs
-      volts_note_play(voice, volts)
+    -- A / B / C / D
+    if ticked then
+      for vs=1,h:get_nb_vsteps() do
+        local volts = h:get_current_play_volts(vs)
+        local voiceId = vs
+        local o = outputs[voiceId]
+        o:nb_play_volts(volts)
+      end
+    end
+    -- ABCD
+    if ticked or vticked then
+      local volts = h:get_current_mux_play_volts()
+      local voiceId = h:get_nb_vsteps() + 1
+      local o = outputs[voiceId]
+      o:nb_play_volts(volts)
     end
   end
-  if ticked or vticked then
-    local volts = h:get_current_mux_play_volts()
-    local voice = h:get_nb_vsteps() + 1
-    volts_note_play(voice, volts)
-  end
+
 end
 
 
@@ -382,18 +285,21 @@ function init()
       label_all = label_all..label
     end
 
-    local llabel = string.lower(label)
+    -- local llabel = string.lower(label)
 
-    params:add_group("track_"..llabel, label, 1)
-    nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
+    outputs[vs] = Output.init(label)
+
+    -- params:add_group("track_"..llabel, label, 1)
+    -- nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
   end
 
-  nb.voice_count = NB_VSTEPS + 1
-  nb:init()
-  for vs=1, NB_VSTEPS + 1 do
-    nb_playing_notes[vs] = nil
-    nb:add_param("nb_voice_"..vs, "nb Voice "..vs)
-  end
+  -- nb.voice_count = NB_VSTEPS + 1
+  -- nb:init()
+  -- for vs=1, NB_VSTEPS + 1 do
+  --   nb_playing_notes[vs] = nil
+  --   nb:add_param("nb_voice_"..vs, "nb Voice "..vs)
+  -- end
+
   nb:add_player_params()
 
   -- FIXME: can't be set at init like that...
@@ -478,10 +384,12 @@ function enc(n, d)
 
       -- retrig note to get a preview
       if (math.abs(os.clock() - last_enc_note_play_t) >= PULSE_T) then
-        local voice = h:knob_vs()
+        local voiceId = h:knob_vs()
         local volts = h:knob_volts()
 
-        volts_note_play(voice, volts)
+        local o = outputs[voiceId]
+        o:nb_play_volts(volts)
+
         last_enc_note_play_t = os.clock()
       end
       return

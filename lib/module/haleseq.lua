@@ -139,7 +139,7 @@ function Haleseq:are_all_stage_skip(ignore_preset)
   return (nb_skipped == (self.nb_steps-start+1))
 end
 
-function Haleseq:clock_tick()
+function Haleseq:clock_tick(forced)
 
   local clock_is_off = (params:string("clock_div_"..self.id) == "off")
   local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
@@ -230,7 +230,7 @@ function Haleseq:clock_tick()
   return true
 end
 
-function Haleseq:vclock_tick()
+function Haleseq:vclock_tick(forced)
 
   local vclock_is_off = (params:string("vclock_div_"..self.id) == "off")
   local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
@@ -360,7 +360,7 @@ end
 function Haleseq:init_params()
   local id = self.id
 
-  params:add_group("haleseq_"..id, "haleseq #"..id, 1)
+  params:add_group("haleseq_"..id, "haleseq #"..id, 8)
 
   params:add_trigger("rnd_seqs_"..id, "Randomize Seqs")
   params:set_action("rnd_seqs_"..id,
