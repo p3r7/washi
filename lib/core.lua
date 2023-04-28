@@ -39,3 +39,21 @@ end
 function mod1(v, m)
   return ((v - 1) % m) + 1
 end
+
+
+-- ------------------------------------------------------------------------
+-- output names
+
+
+function output_nb_to_name(vs)
+  return string.char(string.byte("A") + vs - 1)
+end
+
+function mux_output_nb_to_name(vs)
+  local label = ""
+  local nb_vsteps = vs
+  for vs=1, nb_vsteps do
+    label = label .. output_nb_to_name(vs)
+  end
+  return label
+end

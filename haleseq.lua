@@ -27,7 +27,7 @@ local paperface = include("haleseq/lib/paperface")
 -- modules
 local Haleseq = include("haleseq/lib/module/haleseq")
 local Output = include("haleseq/lib/module/output")
-local norns_clock = include("haleseq/lib/module/norns_clock")
+local NornsClock = include("haleseq/lib/module/norns_clock")
 local QuantizedClock = include("haleseq/lib/module/quantized_clock")
 local pulse_divider = include("haleseq/lib/module/pulse_divider")
 
@@ -44,8 +44,11 @@ local GRID_FPS = 15
 local NB_BARS = 2
 
 local NB_HALESEQS = 1
+
+local norns_clock
+local quantized_clocks
 local haleseqs = {}
-local quantized_clocks = {}
+local outputs = {}
 
 local page_list = {'clock'}
 for h=1, NB_HALESEQS do
@@ -53,6 +56,61 @@ for h=1, NB_HALESEQS do
 end
 local pages = UI.Pages.new(1, #page_list)
 pages:set_index(tab.key(page_list, 'haleseq 1'))
+
+
+-- ------------------------------------------------------------------------
+-- patching
+
+local ins = {}
+local outs = {}
+local links = {}
+
+local function add_link(o, i)
+  if links[o] == nil then
+    links[o] = {}
+  end
+  table.insert(links[o], i)
+end
+
+local function remove_link(o, i)
+  if links[o] == nil then
+    return
+  end
+
+  local did_something = false
+
+  -- remove eventually
+  for i_i, v in ipairs(links[o]) do
+    if v == i then
+      table.remove(links[o], i_i)
+      did_something = true
+      break
+    end
+  end
+
+  -- simplify links table
+  if did_something and tab.count(links[o]) == 0 then
+    table.remove(links, o)
+  end
+end
+
+-- local patch_matrix = {
+--   -- outputs:
+--   outputs = {
+--     -- norns master clock: x1
+--     mclock = {
+--       -- quantized clocks
+--     }
+--     -- quantized clocks: x7
+--     -- haleseq: x8 (stage gates) + 1 (press gate) + 5 (CV outs)
+--   },
+--   -- inputs:
+--   inputs = {
+--     -- quantized clocks: x1
+--     -- haleseq: x8
+--     -- outs: x5 (CV in) + x5 (VCA level)
+--   },
+-- }
 
 
 -- ------------------------------------------------------------------------
@@ -116,8 +174,6 @@ local V_TRIG = 500
 
 -- ------------------------------------------------------------------------
 -- playback
-
-local outputs = {}
 
 local last_enc_note_play_t = 0
 
@@ -263,42 +319,38 @@ function init()
 
 
   -- --------------------------------
-  -- haleseqs
+  -- modules
+
+  norns_clock = NornsClock.init(outs)
+  quantized_clocks = QuantizedClock.init("global", MCLOCK_DIVS, CLOCK_DIV_DENOMS, ins, outs)
 
   for i = 1,NB_HALESEQS do
-    local hc = QuantizedClock.new(i, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
-    local vc = QuantizedClock.new(i, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
-    local h = Haleseq.init(i, NB_STEPS, NB_VSTEPS, hc, vc)
+    local h = Haleseq.init(i, NB_STEPS, NB_VSTEPS, ins, outs, quantized_clocks, quantized_clocks)
     haleseqs[i] = h
   end
 
-  -- --------------------------------
-  -- outs
-
-  local label_all = ""
-  for vs=1, NB_VSTEPS + 1 do
-    local label = ""
-    if vs == NB_VSTEPS + 1 then
-      label = label_all
-    else
-      label = string.char(string.byte("A") + vs - 1)
-      label_all = label_all..label
-    end
-
-    -- local llabel = string.lower(label)
-
-    outputs[vs] = Output.init(label)
-
-    -- params:add_group("track_"..llabel, label, 1)
-    -- nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
+  for vs=1, NB_VSTEPS do
+    local label = output_nb_to_name(vs)
+    outputs[vs] = Output.init(label, ins)
   end
+  local mux_label = mux_output_nb_to_name(NB_VSTEPS)
+  outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
-  -- nb.voice_count = NB_VSTEPS + 1
-  -- nb:init()
-  -- for vs=1, NB_VSTEPS + 1 do
-  --   nb_playing_notes[vs] = nil
-  --   nb:add_param("nb_voice_"..vs, "nb Voice "..vs)
-  -- end
+  add_link("norns_clock", "quantized_clock_global")
+  add_link("quantized_clock_16", "haleseq_1_clock")
+  add_link("quantized_clock_2", "haleseq_1_vlclock")
+
+  for vs=1, NB_VSTEPS do
+    local label = output_nb_to_name(vs)
+    local llabel = string.lower(label)
+    add_link("haleseq_1_"..llabel, "output_"..llabel)
+  end
+  local mux_label = mux_output_nb_to_name(NB_VSTEPS)
+  local mux_llabel = string.lower(mux_label)
+  add_link("haleseq_1_"..mux_llabel, "output_"..mux_llabel)
+
+
+  -- --------------------------------
 
   nb:add_player_params()
 

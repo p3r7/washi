@@ -1,6 +1,6 @@
 -- haleseq. paperface
 
-local Stage = include("haleseq/lib/stage")
+local Stage = include("haleseq/lib/submodule/stage")
 include("haleseq/lib/consts")
 
 
@@ -138,18 +138,22 @@ end
 function paperface.main_in_label(x, y, l)
   screen.aa(0)
 
-  if l == nil then l = SCREEN_LEVEL_LABEL end
-  screen.level(l)
+  x = x - 2
 
-  screen.move(x, y + SCREEN_STAGE_W/2)
-  screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W)
-  screen.line(x + SCREEN_STAGE_W / 2, y)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W / 2, y)
-  screen.line(x, y + SCREEN_STAGE_W/2)
-  screen.stroke()
+  -- if l == nil then l = SCREEN_LEVEL_LABEL end
+  -- screen.level(l)
+
+  -- screen.move(x, y + SCREEN_STAGE_W/2)
+  -- screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W)
+  -- screen.stroke()
+  -- screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W)
+  -- screen.line(x + SCREEN_STAGE_W / 2, y)
+  -- screen.stroke()
+  -- screen.move(x + SCREEN_STAGE_W / 2, y)
+  -- screen.line(x, y + SCREEN_STAGE_W/2)
+  -- screen.stroke()
+
+  screen.display_png(norns.state.path .. "img/main_input.png", x, y)
 end
 
 -- panel graphic (square)
@@ -166,6 +170,8 @@ end
 -- panel graphic (triangle)
 function paperface.trig_in_label(x, y, l, fill)
   screen.aa(0)
+
+  x = x - 1
 
   if fill == nil then fill = false end
 

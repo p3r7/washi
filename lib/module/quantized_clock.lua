@@ -1,5 +1,8 @@
 -- haleseq. module/quantized clock
 
+local Comparator = include("haleseq/lib/submodule/comparator")
+local Out = include("haleseq/lib/submodule/out")
+
 local paperface = include("haleseq/lib/paperface")
 include("haleseq/lib/consts")
 include("haleseq/lib/core")
@@ -17,7 +20,12 @@ QuantizedClock.__index = QuantizedClock
 function QuantizedClock.new(id, mclock_div, divs, base)
   local p = setmetatable({}, QuantizedClock)
 
+  p.id = id -- id for param lookup
+  local fqid = "quantized_clock_"..id -- fully qualified id for i/o routing lookup
+
   if base == nil then base = 0 end
+
+  p.i = Comparator.new(fqid)
 
   p.acum = 0
 
@@ -25,10 +33,29 @@ function QuantizedClock.new(id, mclock_div, divs, base)
 
   p.divs = divs
   p.div_states = {}
-  for i, _ in ipairs(divs) do
+  p.outs = {}
+  for i, div in ipairs(divs) do
+    p.outs[i] = Out.new(fqid.."_"..div)
     p.div_states[i] = false
   end
   return p
+end
+
+
+-- ------------------------------------------------------------------------
+-- init
+
+function QuantizedClock.init(id, mclock_div, divs, base, ins_map, outs_map)
+  local q = QuantizedClock.new(id, mclock_div, divs, base)
+
+  if ins_map ~= nil and outs_map ~= nil then
+    ins_map[q.i.id] = q.i
+    for _, o in ipairs(q.outs) do
+      outs_map[o.id] = o
+    end
+  end
+
+  return q
 end
 
 

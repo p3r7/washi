@@ -1,5 +1,8 @@
 -- haleseq. stage
 
+local Comparator = include("haleseq/lib/submodule/comparator")
+local Out = include("haleseq/lib/submodule/out")
+
 include("haleseq/lib/core")
 
 
@@ -22,11 +25,13 @@ local draw_modes = {Stage.M_TIE, Stage.M_RUN, Stage.M_SKIP}
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Stage.new()
+function Stage.new(id)
   local p = setmetatable({}, Stage)
 
-  p.i = nil
-  p.o = nil
+  p.id = id
+
+  p.i = Comparator.new(id)
+  p.o = Out.new(id)
 
   p.mode = Stage.M_RUN
 

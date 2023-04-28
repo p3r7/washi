@@ -2,7 +2,10 @@
 
 local musicutil = require "musicutil"
 
-local Stage = include("haleseq/lib/stage")
+local Stage = include("haleseq/lib/submodule/stage")
+local Comparator = include("haleseq/lib/submodule/comparator")
+local In = include("haleseq/lib/submodule/in")
+local Out = include("haleseq/lib/submodule/out")
 
 local paperface = include("haleseq/lib/paperface")
 include("haleseq/lib/consts")
@@ -22,15 +25,54 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
                     hclock, vclock)
   local p = setmetatable({}, Haleseq)
 
-  p.id = id
+  p.id = id -- id for param lookup
+  local fqid = "haleseq_"..id -- fully qualified id for i/o routing lookup
+
+  -- TODO: convert to routing
+  p.hclock = hclock
+  p.vclock = vclock
 
   p.nb_steps = nb_steps
   p.nb_vsteps = nb_vsteps
 
+  -- --------------------------------
+  -- I/O
+
+  p.i_clock = Comparator.new(fqid.."_clock")
+  p.i_vclock = Comparator.new(fqid.."_vclock")
+  p.i_reset = Comparator.new(fqid.."_reset")
+  p.i_vreset = Comparator.new(fqid.."_vreset")
+  p.i_preset = In.new(fqid.."_preset")
+  p.i_hold = In.new(fqid.."_hold")
+  p.i_reverse = In.new(fqid.."_reverse")
+
   p.stages = {}
   for s=1,nb_steps do
-    p.stages[s] = Stage:new()
+    p.stages[s] = Stage:new(fqid.."_stage_"..s)
   end
+
+  -- CPO - Common Pulse Out
+  --   triggered on any change of preset (via button or trig in)
+  --   TODO: goes high and remains high while a push button is pushed
+  p.cpo = Out.new(fqid.."cpo")
+  -- AEP - All Event Pulse
+  p.aep = Out.new(fqid.."aep")
+
+  p.cv_outs = {}
+
+  -- A / B / C / D
+  for vs=1, nb_vsteps do
+    local label = output_nb_to_name(vs)
+    local llabel = string.lower(label)
+    p.cv_outs[vs] = Out.new(fqid.."_"..llabel)
+  end
+  -- ABCD
+  local mux_label = mux_output_nb_to_name(nb_vsteps)
+  local mux_llabel = string.lower(mux_label)
+  p.cv_outs[nb_vsteps+1] = Out.new(fqid.."_"..mux_llabel)
+
+
+  -- --------------------------------
 
   p.seqvals = {}
   for s=1,nb_steps do
@@ -58,9 +100,6 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
 
   p.g_knob = nil
   p.g_btn = nil
-
-  p.hclock = hclock
-  p.vclock = vclock
 
   return p
 end
@@ -420,9 +459,34 @@ function Haleseq:init_params()
   params:add_option("vclock_div_"..id, "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/2'))
 end
 
-function Haleseq.init(id, nb_steps, nb_vsteps, hclock, vclock)
+function Haleseq.init(id, nb_steps, nb_vsteps,
+                      ins_map, outs_map,
+                      hclock, vclock)
   local h = Haleseq.new(id, nb_steps, nb_vsteps, hclock, vclock)
   h:init_params()
+
+  if ins_map ~= nil and outs_map ~= nil then
+    ins_map[h.i_clock.id] = h.i_clock
+    ins_map[h.i_vclock.id] = h.i_vclock
+    ins_map[h.i_reset.id] = h.i_reset
+    ins_map[h.i_vreset.id] = h.i_vreset
+    ins_map[h.i_preset.id] = h.i_preset
+    ins_map[h.i_hold.id] = h.i_hold
+    ins_map[h.i_reverse.id] = h.i_reverse
+
+    for _, s in ipairs(h.stages) do
+      ins_map[s.i.id] = s.i
+      outs_map[s.o.id] = s.o
+    end
+
+    outs_map[h.cpo.id] = h.cpo
+    outs_map[h.aep.id] = h.aep
+
+    for _, cv in ipairs(h.cv_outs) do
+      outs_map[cv.id] = cv
+    end
+
+  end
   return h
 end
 
@@ -520,7 +584,6 @@ function Haleseq:grid_redraw(g)
   g:led(16, 5, 5) -- preset
   g:led(16, 6, 3) -- reverse
   g:led(16, 7, 3) -- clock
-  -- preset manual
 end
 
 function Haleseq:grid_key(x, y, z)
@@ -661,6 +724,21 @@ function Haleseq:redraw()
 
   x = x + SCREEN_STAGE_W * 2
 
+  paperface.trig_in(x, y, trig) -- vreset
+  y = y + SCREEN_STAGE_W
+  paperface.trig_in(x, y, trig) -- vlock
+  y = y + SCREEN_STAGE_W
+  paperface.trig_in(x, y, trig) -- reset
+  y = y + SCREEN_STAGE_W
+  paperface.trig_in(x, y, trig) -- hold
+  y = y + SCREEN_STAGE_W
+  paperface.trig_in(x, y, trig) -- preset
+  y = y + SCREEN_STAGE_W
+  paperface.trig_in(x, y, trig) -- reverse
+  y = y + SCREEN_STAGE_W
+  paperface.trig_in(x, y, trig) -- clock
+
+  x = x - SCREEN_STAGE_W
   paperface.main_in(x, y, trig)
 end
 

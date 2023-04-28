@@ -1,6 +1,7 @@
 -- haleseq. module/output
 
 local nb = include("haleseq/lib/nb/lib/nb")
+local In = include("haleseq/lib/submodule/in")
 
 include("haleseq/lib/consts")
 
@@ -18,6 +19,8 @@ function Output.new(id)
   local p = setmetatable({}, Output)
 
   p.id = id
+
+  p.i = In.new("output_"..id)
 
   p.nb_playing_note = nil
 
@@ -40,9 +43,14 @@ function Output:init_params()
   nb:add_param("nb_voice_"..llabel, "nb Voice "..label)
 end
 
-function Output.init(id)
+function Output.init(id, ins_map)
   local o = Output.new(id)
   o:init_params()
+
+  if ins_map ~= nil then
+    ins_map[o.i.id] = o.i
+  end
+
   return o
 end
 
