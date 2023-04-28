@@ -61,9 +61,9 @@ pages:set_index(tab.key(page_list, 'haleseq 1'))
 -- ------------------------------------------------------------------------
 -- patching
 
-local ins = {}
-local outs = {}
-local links = {}
+ins = {}
+outs = {}
+links = {}
 
 local function add_link(o, i)
   if links[o] == nil then
@@ -93,6 +93,32 @@ local function remove_link(o, i)
     table.remove(links, o)
   end
 end
+
+-- TODO: mechanism to not trig same input twice
+-- TODO: make it a 2-step process, e.g. for haleseq to only allow 1 highest priority operation at each "tick"
+local function propagate(out_label)
+  local target_ins = links[out_label]
+  local out = outs[out_label]
+  if out == nil or target_ins == nil then
+    return
+  end
+
+  for _, in_label in ipairs(target_ins) do
+    local target_input = ins[in_label]
+    if target_input ~= nil then
+      target_input:set(out.v)
+      local next_outs = target_input.parent.outs
+      if next_outs == nil then
+        return
+      end
+      for _, out_label in ipairs(next_outs) do
+        propagate(out_label)
+      end
+    end
+  end
+
+end
+
 
 -- local patch_matrix = {
 --   -- outputs:
@@ -230,13 +256,15 @@ function mclock_tick(t, forced)
     mclock_acum = mclock_acum + 1
   end
 
+  propagate("norns_clock")
+
   for _, h in ipairs(haleseqs) do
-    local hclock = h:get_hclock()
-    local vclock = h:get_vclock()
-    if not forced then
-      hclock:tick()
-      vclock:tick()
-    end
+    -- local hclock = h:get_hclock()
+    -- local vclock = h:get_vclock()
+    -- if not forced then
+    --   hclock:tick()
+    --   vclock:tick()
+    -- end
 
     local ticked = h:clock_tick(forced)
     local vticked = h:vclock_tick(forced)

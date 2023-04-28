@@ -25,17 +25,23 @@ function QuantizedClock.new(id, mclock_div, divs, base)
 
   if base == nil then base = 0 end
 
-  p.i = Comparator.new(fqid)
+  p.i = Comparator.new(fqid, p,
+                       function()
+                         p:tick()
+                       end
+  )
 
   p.acum = 0
 
   p.mclock_div = mclock_div
 
+  p.outs = {}
+
   p.divs = divs
   p.div_states = {}
-  p.outs = {}
+  p.div_outs = {}
   for i, div in ipairs(divs) do
-    p.outs[i] = Out.new(fqid.."_"..div)
+    p.div_outs[i] = Out.new(fqid.."_"..div, p)
     p.div_states[i] = false
   end
   return p
@@ -45,12 +51,13 @@ end
 -- ------------------------------------------------------------------------
 -- init
 
-function QuantizedClock.init(id, mclock_div, divs, base, ins_map, outs_map)
+function QuantizedClock.init(id, mclock_div, divs, ins_map, outs_map)
   local q = QuantizedClock.new(id, mclock_div, divs, base)
 
   if ins_map ~= nil and outs_map ~= nil then
     ins_map[q.i.id] = q.i
-    for _, o in ipairs(q.outs) do
+    tab.print(q.i)
+    for _, o in ipairs(q.div_outs) do
       outs_map[o.id] = o
     end
   end
@@ -87,6 +94,7 @@ function QuantizedClock:tick()
   end
 end
 
+
 -- ------------------------------------------------------------------------
 -- screen
 
@@ -101,6 +109,7 @@ function QuantizedClock.redraw(x, y, acum)
     end
   end
 end
+
 
 -- ------------------------------------------------------------------------
 return QuantizedClock

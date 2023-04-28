@@ -20,7 +20,7 @@ function Output.new(id)
 
   p.id = id
 
-  p.i = In.new("output_"..id)
+  p.i = In.new("output_"..id, p)
 
   p.nb_playing_note = nil
 

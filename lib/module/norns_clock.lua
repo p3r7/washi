@@ -18,7 +18,8 @@ NornsClock.__index = NornsClock
 function NornsClock.new()
   local p = setmetatable({}, NornsClock)
 
-  p.o = Out.new("norns_clock")
+  p.outs = {}
+  p.o = Out.new("norns_clock", p)
 
   return p
 end

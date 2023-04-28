@@ -38,25 +38,28 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   -- --------------------------------
   -- I/O
 
-  p.i_clock = Comparator.new(fqid.."_clock")
-  p.i_vclock = Comparator.new(fqid.."_vclock")
-  p.i_reset = Comparator.new(fqid.."_reset")
-  p.i_vreset = Comparator.new(fqid.."_vreset")
-  p.i_preset = In.new(fqid.."_preset")
-  p.i_hold = In.new(fqid.."_hold")
-  p.i_reverse = In.new(fqid.."_reverse")
+  p.i_clock = Comparator.new(fqid.."_clock", p)
+  p.i_vclock = Comparator.new(fqid.."_vclock", p)
+  p.i_reset = Comparator.new(fqid.."_reset", p)
+  p.i_vreset = Comparator.new(fqid.."_vreset", p)
+  p.i_preset = In.new(fqid.."_preset", p)
+  p.i_hold = In.new(fqid.."_hold", p)
+  p.i_reverse = In.new(fqid.."_reverse", p)
+
+  p.outs = {}
 
   p.stages = {}
   for s=1,nb_steps do
-    p.stages[s] = Stage:new(fqid.."_stage_"..s)
+    local stage = Stage.new(fqid.."_stage_"..s, p)
+    p.stages[s] = stage
   end
 
   -- CPO - Common Pulse Out
   --   triggered on any change of preset (via button or trig in)
   --   TODO: goes high and remains high while a push button is pushed
-  p.cpo = Out.new(fqid.."cpo")
+  p.cpo = Out.new(fqid.."_cpo", p)
   -- AEP - All Event Pulse
-  p.aep = Out.new(fqid.."aep")
+  p.aep = Out.new(fqid.."_aep", p)
 
   p.cv_outs = {}
 
@@ -64,12 +67,14 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   for vs=1, nb_vsteps do
     local label = output_nb_to_name(vs)
     local llabel = string.lower(label)
-    p.cv_outs[vs] = Out.new(fqid.."_"..llabel)
+    local o = Out.new(fqid.."_"..llabel, p)
+    p.cv_outs[vs] = o
+    table.insert(p.outs, o)
   end
   -- ABCD
   local mux_label = mux_output_nb_to_name(nb_vsteps)
   local mux_llabel = string.lower(mux_label)
-  p.cv_outs[nb_vsteps+1] = Out.new(fqid.."_"..mux_llabel)
+  p.cv_outs[nb_vsteps+1] = Out.new(fqid.."_"..mux_llabel, p)
 
 
   -- --------------------------------

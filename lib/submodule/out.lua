@@ -10,9 +10,15 @@ Out.__index = Out
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Out.new(id)
-  local p = setmetatable({}, In)
+function Out.new(id, parent)
+  local p = setmetatable({}, Out)
   p.id = id
+  if parent ~= nil then
+    p.parent = parent
+    if parent.outs ~= nil then
+      table.insert(parent.outs, p)
+    end
+  end
   p.v = 0
   return p
 end

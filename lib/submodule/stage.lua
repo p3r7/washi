@@ -25,13 +25,14 @@ local draw_modes = {Stage.M_TIE, Stage.M_RUN, Stage.M_SKIP}
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Stage.new(id)
+function Stage.new(id, parent)
   local p = setmetatable({}, Stage)
 
   p.id = id
+  p.parent = parent
 
-  p.i = Comparator.new(id)
-  p.o = Out.new(id)
+  p.i = Comparator.new(id, parent)
+  p.o = Out.new(id, parent)
 
   p.mode = Stage.M_RUN
 

@@ -12,9 +12,14 @@ Comparator.__index = Comparator
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Comparator.new(id)
+function Comparator.new(id, parent, callback)
   local p = setmetatable({}, Comparator)
+  p.kind = "comparator"
   p.id = id
+  p.parent = parent
+  if callback then
+    p.callback = callback
+  end
   p.status = 0
   p.triggered = false
   return p
@@ -28,6 +33,14 @@ function Comparator:reset()
   -- Comparators act like flip flop, they have memory
 end
 
+function Comparator:set(v)
+  self.v = v
+  if self.callback then
+    self.callback()
+  end
+end
+
+-- TODO: change that
 function Comparator:update(v, threshold)
   local prev_status = self.status
   self.triggered = false
