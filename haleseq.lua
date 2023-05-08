@@ -94,6 +94,7 @@ local function remove_link(o, i)
   end
 end
 
+-- TODO: only trig outs that are marked as "firing"
 -- TODO: mechanism to not trig same input twice
 -- TODO: make it a 2-step process, e.g. for haleseq to only allow 1 highest priority operation at each "tick"
 local function propagate(out_label)
@@ -104,9 +105,10 @@ local function propagate(out_label)
   end
 
   for _, in_label in ipairs(target_ins) do
+    -- print(out_label .. " -> " .. in_label)
     local target_input = ins[in_label]
     if target_input ~= nil then
-      target_input:set(out.v)
+      target_input:update(out.v)
       local next_outs = target_input.parent.outs
       if next_outs == nil then
         return
@@ -266,8 +268,8 @@ function mclock_tick(t, forced)
     --   vclock:tick()
     -- end
 
-    local ticked = h:clock_tick(forced)
-    local vticked = h:vclock_tick(forced)
+    -- local ticked = h:clock_tick(forced)
+    -- local vticked = h:vclock_tick(forced)
 
     -- A / B / C / D
     if ticked then
@@ -365,8 +367,8 @@ function init()
   outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
-  add_link("quantized_clock_16", "haleseq_1_clock")
-  add_link("quantized_clock_2", "haleseq_1_vlclock")
+  add_link("quantized_clock_global_16", "haleseq_1_clock")
+  add_link("quantized_clock_global_2", "haleseq_1_vclock")
 
   for vs=1, NB_VSTEPS do
     local label = output_nb_to_name(vs)

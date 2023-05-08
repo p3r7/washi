@@ -33,7 +33,7 @@ function Comparator:reset()
   -- Comparators act like flip flop, they have memory
 end
 
-function Comparator:set(v)
+function Comparator:update(v)
   self.v = v
   if self.callback then
     self.callback()
@@ -41,7 +41,7 @@ function Comparator:set(v)
 end
 
 -- TODO: change that
-function Comparator:update(v, threshold)
+function Comparator:update2(v, threshold)
   local prev_status = self.status
   self.triggered = false
 

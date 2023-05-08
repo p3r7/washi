@@ -38,8 +38,15 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   -- --------------------------------
   -- I/O
 
-  p.i_clock = Comparator.new(fqid.."_clock", p)
-  p.i_vclock = Comparator.new(fqid.."_vclock", p)
+  p.i_clock = Comparator.new(fqid.."_clock", p,
+                              function()
+                                p:clock_tick()
+                              end)
+  p.i_vclock = Comparator.new(fqid.."_vclock", p,
+                              function()
+                                p:vclock_tick()
+                              end
+  )
   p.i_reset = Comparator.new(fqid.."_reset", p)
   p.i_vreset = Comparator.new(fqid.."_vreset", p)
   p.i_preset = In.new(fqid.."_preset", p)

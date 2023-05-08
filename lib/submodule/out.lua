@@ -16,7 +16,7 @@ function Out.new(id, parent)
   if parent ~= nil then
     p.parent = parent
     if parent.outs ~= nil then
-      table.insert(parent.outs, p)
+      table.insert(parent.outs, p.id)
     end
   end
   p.v = 0

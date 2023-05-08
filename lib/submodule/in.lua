@@ -30,7 +30,7 @@ function In:reset()
   self.v = 0
 end
 
-function In:set(v)
+function In:update(v)
   self.v = v
   if self.callback then
     self.callback()
