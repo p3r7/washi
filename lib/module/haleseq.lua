@@ -25,8 +25,10 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
                     hclock, vclock)
   local p = setmetatable({}, Haleseq)
 
+  p.kind = "haleseq"
+
   p.id = id -- id for param lookup
-  local fqid = "haleseq_"..id -- fully qualified id for i/o routing lookup
+  p.fqid = p.kind.."_"..id -- fully qualified id for i/o routing lookup
 
   -- TODO: convert to routing
   p.hclock = hclock
@@ -38,35 +40,38 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   -- --------------------------------
   -- I/O
 
-  p.i_clock = Comparator.new(fqid.."_clock", p,
-                              function()
-                                p:clock_tick()
-                              end)
-  p.i_vclock = Comparator.new(fqid.."_vclock", p,
-                              function()
-                                p:vclock_tick()
-                              end
-  )
-  p.i_reset = Comparator.new(fqid.."_reset", p)
-  p.i_vreset = Comparator.new(fqid.."_vreset", p)
-  p.i_preset = In.new(fqid.."_preset", p)
-  p.i_hold = In.new(fqid.."_hold", p)
-  p.i_reverse = In.new(fqid.."_reverse", p)
-
+  p.ins = {}
   p.outs = {}
+
+  p.i_clock = Comparator.new(p.fqid.."_clock", p --,
+                              -- function()
+                                -- p:clock_tick()
+                              -- end
+  )
+  p.i_vclock = Comparator.new(p.fqid.."_vclock", p --,
+                              -- function()
+                                -- p:vclock_tick()
+                              -- end
+  )
+  p.i_reset = Comparator.new(p.fqid.."_reset", p)
+  p.i_vreset = Comparator.new(p.fqid.."_vreset", p)
+  p.i_preset = In.new(p.fqid.."_preset", p)
+  p.i_hold = In.new(p.fqid.."_hold", p)
+  p.i_reverse = In.new(p.fqid.."_reverse", p)
+
 
   p.stages = {}
   for s=1,nb_steps do
-    local stage = Stage.new(fqid.."_stage_"..s, p)
+    local stage = Stage.new(p.fqid.."_stage_"..s, p)
     p.stages[s] = stage
   end
 
   -- CPO - Common Pulse Out
   --   triggered on any change of preset (via button or trig in)
   --   TODO: goes high and remains high while a push button is pushed
-  p.cpo = Out.new(fqid.."_cpo", p)
+  p.cpo = Out.new(p.fqid.."_cpo", p)
   -- AEP - All Event Pulse
-  p.aep = Out.new(fqid.."_aep", p)
+  p.aep = Out.new(p.fqid.."_aep", p)
 
   p.cv_outs = {}
 
@@ -74,14 +79,14 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   for vs=1, nb_vsteps do
     local label = output_nb_to_name(vs)
     local llabel = string.lower(label)
-    local o = Out.new(fqid.."_"..llabel, p)
+    local o = Out.new(p.fqid.."_"..llabel, p)
     p.cv_outs[vs] = o
-    table.insert(p.outs, o)
+    -- table.insert(p.outs, o)
   end
   -- ABCD
   local mux_label = mux_output_nb_to_name(nb_vsteps)
   local mux_llabel = string.lower(mux_label)
-  p.cv_outs[nb_vsteps+1] = Out.new(fqid.."_"..mux_llabel, p)
+  p.cv_outs[nb_vsteps+1] = Out.new(p.fqid.."_"..mux_llabel, p)
 
 
   -- --------------------------------
@@ -114,6 +119,34 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   p.g_btn = nil
 
   return p
+end
+
+function Haleseq:process_ins()
+  local ticked = false
+  local vticked = false
+
+  -- TODO: compare against threshold
+  if self.i_clock.v then
+    ticked = self:clock_tick()
+  end
+  if self.i_vclock.v then
+    vticked = self:vclock_tick()
+  end
+
+  -- A / B / C / D
+  if ticked then
+    for vs=1,self.nb_vsteps do
+      self.cv_outs[vs].v = self:get_current_play_volts(vs)
+    end
+  end
+
+  -- ABCD
+  if ticked or vticked then
+    self.cv_outs[self.nb_vsteps+1].v = self:get_current_mux_play_volts()
+  end
+
+  -- TODO: stage gate out!
+
 end
 
 

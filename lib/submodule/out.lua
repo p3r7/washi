@@ -12,14 +12,19 @@ Out.__index = Out
 
 function Out.new(id, parent)
   local p = setmetatable({}, Out)
+
+  p.kind = "out"
   p.id = id
+
   if parent ~= nil then
     p.parent = parent
     if parent.outs ~= nil then
       table.insert(parent.outs, p.id)
     end
   end
+
   p.v = 0
+
   return p
 end
 

@@ -28,11 +28,14 @@ local draw_modes = {Stage.M_TIE, Stage.M_RUN, Stage.M_SKIP}
 function Stage.new(id, parent)
   local p = setmetatable({}, Stage)
 
+  p.kind = "stage"
   p.id = id
   p.parent = parent
 
   p.i = Comparator.new(id, parent)
   p.o = Out.new(id, parent)
+
+  -- table.insert(parent.outs, p.o)
 
   p.mode = Stage.M_RUN
 

@@ -20,33 +20,36 @@ QuantizedClock.__index = QuantizedClock
 function QuantizedClock.new(id, mclock_div, divs, base)
   local p = setmetatable({}, QuantizedClock)
 
+  p.kind = "quantized_clock"
+
   p.id = id -- id for param lookup
-  local fqid = "quantized_clock_"..id -- fully qualified id for i/o routing lookup
+  p.fqid = p.kind.."_"..id -- fully qualified id for i/o routing lookup
+
+  p.ins = {}
+  p.outs = {}
 
   if base == nil then base = 0 end
 
-  p.i = Comparator.new(fqid, p,
-                       function()
-                         p:tick()
-                       end
-  )
+  p.i = Comparator.new(p.fqid, p)
 
   p.acum = 0
 
   p.mclock_div = mclock_div
 
-  p.outs = {}
-
   p.divs = divs
   p.div_states = {}
   p.div_outs = {}
   for i, div in ipairs(divs) do
-    p.div_outs[i] = Out.new(fqid.."_"..div, p)
+    p.div_outs[i] = Out.new(p.fqid.."_"..div, p)
     p.div_states[i] = false
   end
   return p
 end
 
+
+function QuantizedClock:process_ins()
+  self:tick()
+end
 
 -- ------------------------------------------------------------------------
 -- init
@@ -90,7 +93,13 @@ function QuantizedClock:tick()
   self.acum = self.acum + 1
   for i, d in ipairs(self.divs) do
     local m = self.mclock_div / d
-    self.div_states[i] = (self:mod(self.acum, m) == 0)
+    local state = (self:mod(self.acum, m) == 0)
+    self.div_states[i] = state
+    if state then
+      self.div_outs[i].v = V_MAX / 2
+    else
+      self.div_outs[i].v = 0
+    end
   end
 end
 

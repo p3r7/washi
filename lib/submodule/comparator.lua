@@ -1,4 +1,9 @@
 -- haleseq. comparator
+--
+-- a `Comparator` can work:
+-- - as a regular `In` (w/ `self.raw_v`)
+-- - as a comparator/gate generator (w/ `self.v`)
+-- - as flip flops (w/ `self.triggered`)
 
 include("haleseq/lib/consts")
 
@@ -14,14 +19,33 @@ Comparator.__index = Comparator
 
 function Comparator.new(id, parent, callback)
   local p = setmetatable({}, Comparator)
+
   p.kind = "comparator"
   p.id = id
-  p.parent = parent
+
+  if parent ~= nil then
+    p.parent = parent
+    if parent.ins ~= nil then
+      table.insert(parent.ins, p.id)
+    end
+  end
+
+  -- REVIEW: not using those anymore
   if callback then
     p.callback = callback
   end
+
+  p.compute_mode = V_COMPUTE_MODE_SUM
+  p.threshold_mode = V_THRESHOLD_MODE_OWN
+  p.threshold = V_DEFAULT_THRESHOLD
+
+  p.incoming_vals = {}
+  p.raw_v = 0
+  p.v = 0
+  p.updated = false
   p.status = 0
   p.triggered = false
+
   return p
 end
 
@@ -30,43 +54,42 @@ end
 -- getter/setter
 
 function Comparator:reset()
-  -- Comparators act like flip flop, they have memory
+  self.incoming_vals = {}
 end
 
-function Comparator:update(v)
-  self.v = v
-  if self.callback then
-    self.callback()
-  end
+function Comparator:register()
+  table.insert(self.incoming_vals, v)
 end
 
--- TODO: change that
-function Comparator:update2(v, threshold)
+function Comparator:update()
   local prev_status = self.status
-  self.triggered = false
 
-  if v >= threshold then
+  if tab.count(self.incoming_vals) == 0 then
+    -- keep old v
+    self.updated = false
+    return
+  end
+
+  self.updated = true
+
+  if self.compute_mode == V_COMPUTE_MODE_SUM then
+    self.raw_v = mean(self.incoming_vals)
+  elseif self.compute_mode == V_COMPUTE_MODE_MEAN then
+    self.raw_v = sum(self.incoming_vals)
+  end
+
+  if self.raw_v >= self.threshold then
     self.status = 1
-    -- just got rising state
-    if prev_status ~= self.status then
-      self.triggered = true
-    end
-    self.triggered = true
+    self.v = V_MAX / 2
   else
     self.status = 0
+    self.v = 0
   end
-  return self.status
-end
 
-function Comparator:get()
-  return self.status
-end
+  self.triggered = (prev_status ~= self.status)
 
-function Comparator:get_as_volts()
-  if self.status then
-    return V_MAX / 2
-  else
-    return 0
+  if self.triggered and self.callback then
+    -- self.callback()
   end
 end
 

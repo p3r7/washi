@@ -18,15 +18,28 @@ Output.__index = Output
 function Output.new(id)
   local p = setmetatable({}, Output)
 
-  p.id = id
+  local label = id -- A, B, C...
+  local llabel = string.lower(label)
 
-  p.i = In.new("output_"..id, p)
+  p.id = label
+  p.kind = "output"
+  p.fqid = "output".."_"..llabel
+
+  p.ins = {}
+
+  p.i = In.new(p.fqid, p)
 
   p.nb_playing_note = nil
 
   return p
 end
 
+
+function Output:process_ins()
+  if self.i.updated then
+    self:nb_play_volts(self.i.v)
+  end
+end
 
 -- ------------------------------------------------------------------------
 -- init

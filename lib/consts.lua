@@ -15,7 +15,14 @@ PULSE_T = 0.02 --FIXME: don't use os.clock() but a lattice clock for stable gate
 -- sequenced values
 
 V_MAX = 1000
+V_DEFAULT_THRESHOLD = 200
 
+V_COMPUTE_MODE_GLOBAL = 0
+V_COMPUTE_MODE_MEAN = 1
+V_COMPUTE_MODE_SUM = 2
+
+V_THRESHOLD_MODE_GLOBAL = 0
+V_THRESHOLD_MODE_OWN = 0
 
 -- ------------------------------------------------------------------------
 -- prog / seq
