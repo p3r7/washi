@@ -497,7 +497,7 @@ function Haleseq:init_params(links)
                     end
   )
 
-  params:add_option("clock_div_"..id, "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
+  params:add_option("clock_div_"..id, "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, 'off'))
   params:set_action("clock_div_"..id,
                     function(v)
                       local clock_id = "haleseq_"..self.id.."_clock"
@@ -513,7 +513,7 @@ function Haleseq:init_params(links)
                       end
                     end
   )
-  params:add_option("vclock_div_"..id, "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/2'))
+  params:add_option("vclock_div_"..id, "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, 'off'))
   params:set_action("vclock_div_"..id,
                     function(v)
                       local clock_id = "haleseq_"..self.id.."_vclock"

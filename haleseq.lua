@@ -521,8 +521,10 @@ function init()
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
-  add_link("quantized_clock_global_16", "haleseq_1_clock")
-  add_link("quantized_clock_global_2", "haleseq_1_vclock")
+
+  -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
+  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
+  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
 
   for vs=1, NB_VSTEPS do
     local label = output_nb_to_name(vs)
