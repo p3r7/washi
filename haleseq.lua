@@ -128,12 +128,15 @@ local function exec_plan_from_input(in_label, modules, module_out_links, level)
   local curr_module = curr_in.parent
 
   -- anti-feedback mechanism (prevent infinite loops)
-  -- for l, level_mods in ipairs(modules) do
-  --   if tab.contains(level_mods, curr_module) then
-  --     dbg("!!! in '"..in_label.."' already triggered at level "..l..". cutting feedback loop.")
-  --     return modules, module_out_links
-  --   end
-  -- end
+  for l, level_mods in ipairs(modules) do
+    if l == level then
+      break
+    end
+    if tab.contains(level_mods, curr_module) then
+      dbg("!!! in '"..in_label.."' already triggered at level "..l..". cutting feedback loop.")
+      return modules, module_out_links
+    end
+  end
 
   set_insert(modules[level], curr_module)
   if module_out_links[curr_module] == nil then module_out_links[curr_module] = {} end
