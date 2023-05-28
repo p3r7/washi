@@ -111,6 +111,61 @@ local function dbgtab(t, level)
 end
 
 
+local function exec_plan_from_input(in_label, modules, module_out_links, level)
+  if modules == nil then modules = {} end
+  if module_out_links == nil then module_out_links = {} end
+  if level == nil then level = 1 end
+  if modules[level] == nil then modules[level] = {} end
+
+  dbg(in_label, level-1)
+
+  local curr_in = ins[in_label]
+  if curr_in == nil then
+    dbg("!!! in '"..in_label.."' not found", level)
+    return modules, module_out_links
+  end
+
+  local curr_module = curr_in.parent
+
+  -- anti-feedback mechanism (prevent infinite loops)
+  -- for l, level_mods in ipairs(modules) do
+  --   if tab.contains(level_mods, curr_module) then
+  --     dbg("!!! in '"..in_label.."' already triggered at level "..l..". cutting feedback loop.")
+  --     return modules, module_out_links
+  --   end
+  -- end
+
+  set_insert(modules[level], curr_module)
+  if module_out_links[curr_module] == nil then module_out_links[curr_module] = {} end
+
+  local curr_out_labels = curr_module.outs
+  if curr_out_labels == nil or tab.count(curr_out_labels) == 0 then -- is at termination module
+    -- dbg("!!! at termination branch !!!")
+    return modules, module_out_links
+  end
+  for _, curr_out_label in ipairs(curr_out_labels) do
+    local curr_out = outs[curr_out_label]
+    if curr_out == nil then
+      dbg("!!! out '"..curr_out_label.."' not found", level)
+      goto NEXT_OUT
+    end
+
+    local next_in_labels = links[curr_out_label]
+    if next_in_labels ~= nil then
+      for _, next_in_label in ipairs(next_in_labels) do
+        dbg(curr_out_label .. " -> " .. next_in_label, level-1)
+        if ins[next_in_label] ~= nil then
+          set_insert_coord(module_out_links[curr_module], {curr_out, ins[next_in_label]})
+        end
+        exec_plan_from_input(next_in_label, modules, module_out_links, level+1)
+      end
+    end
+
+    ::NEXT_OUT::
+  end
+  return modules, module_out_links
+end
+
 -- TODO: add anti-feedback (infinite loop) mechanism
 local function exec_plan(out_label, modules, module_out_links, level)
 
@@ -123,12 +178,6 @@ local function exec_plan(out_label, modules, module_out_links, level)
 
   local out = outs[out_label]
   if out == nil then
-    -- if type(out_label) == 'table' then
-    --   dbg("!!! WTF !!!", level)
-    --   tab.print(out_label)
-    -- else
-    --   dbg("!!! "..out_label.." not found", level)
-    -- end
     dbg("!!! "..out_label.." not found", level)
     return modules, module_out_links
   end
@@ -203,14 +252,15 @@ local function update_all_ins(m)
   end
 end
 
-local function fire_and_propagate(out_label, initial_v)
+local function fire_and_propagate(in_label, initial_v)
 
   if initial_v == nil then initial_v = V_MAX/2 end
 
   dbg("----------")
   dbg("PATCH LAYOUT")
   dbg("----------")
-  local fired_modules, link_map = exec_plan(out_label)
+  -- local fired_modules, link_map = exec_plan(out_label)
+  local fired_modules, link_map = exec_plan_from_input(in_label)
 
   dbg("----------")
   dbg("TRIGGERED MODULES")
@@ -504,7 +554,7 @@ function init()
   -- --------------------------------
   -- modules
 
-  norns_clock = NornsClock.init(outs)
+  norns_clock = NornsClock.init(ins, outs)
   quantized_clocks = QuantizedClock.init("global", MCLOCK_DIVS, CLOCK_DIV_DENOMS, ins, outs)
 
   for i = 1,NB_HALESEQS do
