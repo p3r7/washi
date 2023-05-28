@@ -72,10 +72,10 @@ end
 -- ------------------------------------------------------------------------
 -- getters
 
-function QuantizedClock:is_ticking(div)
-  local i = tab.key(self.divs, div)
-  return self.div_states[i]
-end
+-- function QuantizedClock:is_ticking(div)
+--   local i = tab.key(self.divs, div)
+--   return self.div_states[i]
+-- end
 
 
 -- ------------------------------------------------------------------------

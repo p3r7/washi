@@ -8,6 +8,8 @@ local In = include("haleseq/lib/submodule/in")
 local Out = include("haleseq/lib/submodule/out")
 
 local paperface = include("haleseq/lib/paperface")
+local patching = include("haleseq/lib/patching")
+
 include("haleseq/lib/consts")
 include("haleseq/lib/core")
 
@@ -21,8 +23,7 @@ Haleseq.__index = Haleseq
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Haleseq.new(id, nb_steps, nb_vsteps,
-                    hclock, vclock)
+function Haleseq.new(id, nb_steps, nb_vsteps)
   local p = setmetatable({}, Haleseq)
 
   p.kind = "haleseq"
@@ -31,8 +32,8 @@ function Haleseq.new(id, nb_steps, nb_vsteps,
   p.fqid = p.kind.."_"..id -- fully qualified id for i/o routing lookup
 
   -- TODO: convert to routing
-  p.hclock = hclock
-  p.vclock = vclock
+  -- p.hclock = hclock
+  -- p.vclock = vclock
 
   p.nb_steps = nb_steps
   p.nb_vsteps = nb_vsteps
@@ -126,11 +127,16 @@ function Haleseq:process_ins()
   local vticked = false
 
   -- TODO: compare against threshold
-  if self.i_clock.v then
+  if self.i_clock.status == 1 then
     ticked = self:clock_tick()
   end
-  if self.i_vclock.v then
+  if self.i_vclock.status == 1 then
     vticked = self:vclock_tick()
+  end
+
+  if self.i_preset.updated then
+    params:set("preset_"..self.id, round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
+    -- ticked = true
   end
 
   -- A / B / C / D
@@ -155,14 +161,6 @@ end
 
 function Haleseq:get_id()
   return self.id
-end
-
-function Haleseq:get_hclock()
-  return self.hclock
-end
-
-function Haleseq:get_vclock()
-  return self.vclock
 end
 
 function Haleseq:get_nb_vsteps()
@@ -228,7 +226,8 @@ function Haleseq:clock_tick(forced)
   local clock_is_off = (params:string("clock_div_"..self.id) == "off")
   local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
 
-  local clock_is_ticking = (not clock_is_off) and self.hclock:is_ticking(CLOCK_DIV_DENOMS[clock_div_id])
+  -- local clock_is_ticking = (not clock_is_off) and self.hclock:is_ticking(CLOCK_DIV_DENOMS[clock_div_id])
+  local clock_is_ticking = (not clock_is_off) and self.i_clock.status == 1
 
 
   if clock_is_off and not self.next_step then
@@ -319,7 +318,8 @@ function Haleseq:vclock_tick(forced)
   local vclock_is_off = (params:string("vclock_div_"..self.id) == "off")
   local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
 
-  local vclock_is_ticking = (not vclock_is_off) and self.vclock:is_ticking(CLOCK_DIV_DENOMS[vclock_div_id])
+  -- local vclock_is_ticking = (not vclock_is_off) and self.vclock:is_ticking(CLOCK_DIV_DENOMS[vclock_div_id])
+  local vclock_is_ticking = (not vclock_is_off) and self.i_vclock.status == 1
 
 
   -- --------------------------------
@@ -441,7 +441,7 @@ end
 -- ------------------------------------------------------------------------
 -- init
 
-function Haleseq:init_params()
+function Haleseq:init_params(links)
   local id = self.id
 
   params:add_group("haleseq_"..id, "haleseq #"..id, 8)
@@ -501,14 +501,43 @@ function Haleseq:init_params()
   )
 
   params:add_option("clock_div_"..id, "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/16'))
+  params:set_action("clock_div_"..id,
+                    function(v)
+                      local clock_id = "haleseq_"..self.id.."_clock"
+
+                      for o, ins in pairs(links) do
+                        if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
+                          patching.remove_link(links, o, clock_id)
+                        end
+                      end
+
+                      if CLOCK_DIVS[v] ~= 'off' then
+                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
+                      end
+                    end
+  )
   params:add_option("vclock_div_"..id, "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, '1/2'))
+  params:set_action("vclock_div_"..id,
+                    function(v)
+                      local clock_id = "haleseq_"..self.id.."_vclock"
+
+                      for o, ins in pairs(links) do
+                        if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
+                          patching.remove_link(links, o, clock_id)
+                        end
+                      end
+
+                      if CLOCK_DIVS[v] ~= 'off' then
+                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
+                      end
+                    end
+  )
 end
 
 function Haleseq.init(id, nb_steps, nb_vsteps,
-                      ins_map, outs_map,
-                      hclock, vclock)
-  local h = Haleseq.new(id, nb_steps, nb_vsteps, hclock, vclock)
-  h:init_params()
+                      ins_map, outs_map, links_table)
+  local h = Haleseq.new(id, nb_steps, nb_vsteps)
+  h:init_params(links_table)
 
   if ins_map ~= nil and outs_map ~= nil then
     ins_map[h.i_clock.id] = h.i_clock

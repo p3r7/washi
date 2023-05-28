@@ -24,6 +24,7 @@ local nb = include("haleseq/lib/nb/lib/nb")
 local inspect = include("haleseq/lib/inspect")
 
 local paperface = include("haleseq/lib/paperface")
+patching = include("haleseq/lib/patching")
 
 -- modules
 local Haleseq = include("haleseq/lib/module/haleseq")
@@ -44,7 +45,8 @@ local GRID_FPS = 15
 
 local NB_BARS = 2
 
-local NB_HALESEQS = 1
+-- local NB_HALESEQS = 1
+local NB_HALESEQS = 2
 
 local norns_clock
 local quantized_clocks
@@ -67,35 +69,18 @@ outs = {}
 links = {}
 
 local function add_link(o, i)
-  if links[o] == nil then
-    links[o] = {}
-  end
-  table.insert(links[o], i)
+  patching.add_link(links, o, i)
 end
 
 local function remove_link(o, i)
-  if links[o] == nil then
-    return
-  end
-
-  local did_something = false
-
-  -- remove eventually
-  for i_i, v in ipairs(links[o]) do
-    if v == i then
-      table.remove(links[o], i_i)
-      did_something = true
-      break
-    end
-  end
-
-  -- simplify links table
-  if did_something and tab.count(links[o]) == 0 then
-    table.remove(links, o)
-  end
+  patching.remove_link(links, o, i)
 end
 
-local DEBUG = true
+
+-- ------------------------------------------------------------------------
+-- DEBUG
+
+DEBUG = true
 
 local function dbg(v, level)
   if not DEBUG then
@@ -125,43 +110,9 @@ local function dbgtab(t, level)
   end
 end
 
--- TODO: only trig outs that are marked as "firing"
--- TODO: mechanism to not trig same input twice
--- TODO: make it a 2-step process, e.g. for haleseq to only allow 1 highest priority operation at each "tick"
-local function propagate(out_label, level)
-  local fired_ins = {}
-
-  if level == nil then level = 0 end
-
-  local target_ins = links[out_label]
-  local out = outs[out_label]
-  if out == nil or target_ins == nil then
-    return fired_ins
-  end
-
-  for _, in_label in ipairs(target_ins) do
-    dbg(out_label .. " -> " .. in_label, level)
-    local target_input = ins[in_label]
-    if target_input ~= nil then
-      target_input:register(out.v)
-      set_insert(fired_ins, target_input)
-      local next_outs = target_input.parent.outs
-      if next_outs == nil then
-        return fired_ins
-      end
-      for _, out_label in ipairs(next_outs) do
-        local next_ins = propagate(out_label, level+1)
-        sets_merge(fired_ins, next_ins)
-      end
-    else
-      dbg("!!! "..in_label.." not found", level+1)
-    end
-  end
-  return fired_ins
-end
 
 -- TODO: add anti-feedback (infinite loop) mechanism
-local function exec_plan(out_label, modules, level)
+local function exec_plan(out_label, modules, module_out_links, level)
 
   -- dbg(out_label, level)
 
@@ -205,14 +156,17 @@ local function exec_plan(out_label, modules, level)
         if modules[level+1] == nil then modules[level+1] = {} end
         set_insert(modules[level+1], target_input.parent)
         if module_out_links[target_input.parent] == nil then module_out_links[target_input.parent] = {} end
-        return modules, module_out_links
+        -- return modules, module_out_links
+        goto NEXT_LINK
       end
       for _, next_out_label in ipairs(next_out_labels) do
-        exec_plan(next_out_label, modules, level+1)
+        exec_plan(next_out_label, modules, module_out_links, level+1)
       end
     else
       dbg("!!! "..in_label.." not found", level)
     end
+
+    ::NEXT_LINK::
   end
 
   return modules, module_out_links
@@ -255,8 +209,6 @@ local function fire_and_propagate(out_label, initial_v)
 
   dbg("----------")
   dbg("PATCH LAYOUT")
-  -- dbg("----------")
-  -- local fired_ins = propagate(out_label)
   dbg("----------")
   local fired_modules, link_map = exec_plan(out_label)
 
@@ -270,9 +222,6 @@ local function fire_and_propagate(out_label, initial_v)
     for _, m in ipairs(modules) do
       -- REVIEW: should i reset all ins or only those of triggered links?
       reset_all_ins(m)
-      if m.fqid == "output_a" then
-        -- print("RESET")
-      end
     end
   end
 
@@ -282,11 +231,6 @@ local function fire_and_propagate(out_label, initial_v)
 
     for _, m in ipairs(modules) do
       dbg(m.fqid, level-1)
-
-      if m.fqid == "output_a" then
-        -- print("PROCESS")
-      end
-
       if level ~= 1 then
         update_all_ins(m)
         m:process_ins()
@@ -470,8 +414,8 @@ function mclock_tick(t, forced)
   fire_and_propagate("norns_clock")
 
   -- for _, h in ipairs(haleseqs) do
-    -- local hclock = h:get_hclock()
-    -- local vclock = h:get_vclock()
+    -- local hclock = h.hclock()
+    -- local vclock = h.vclock()
     -- if not forced then
     --   hclock:tick()
     --   vclock:tick()
@@ -564,16 +508,17 @@ function init()
   quantized_clocks = QuantizedClock.init("global", MCLOCK_DIVS, CLOCK_DIV_DENOMS, ins, outs)
 
   for i = 1,NB_HALESEQS do
-    local h = Haleseq.init(i, NB_STEPS, NB_VSTEPS, ins, outs, quantized_clocks, quantized_clocks)
+    local h = Haleseq.init(i, NB_STEPS, NB_VSTEPS, ins, outs, links)
     haleseqs[i] = h
   end
 
-  for vs=1, NB_VSTEPS do
-    local label = output_nb_to_name(vs)
+  for vs=1, NB_VSTEPS+1 do
+    -- local label = output_nb_to_name(vs)
+    local label = ""..vs
     outputs[vs] = Output.init(label, ins)
   end
-  local mux_label = mux_output_nb_to_name(NB_VSTEPS)
-  outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
+  -- local mux_label = mux_output_nb_to_name(NB_VSTEPS)
+  -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
   add_link("quantized_clock_global_16", "haleseq_1_clock")
@@ -582,11 +527,17 @@ function init()
   for vs=1, NB_VSTEPS do
     local label = output_nb_to_name(vs)
     local llabel = string.lower(label)
-    add_link("haleseq_1_"..llabel, "output_"..llabel)
+    add_link("haleseq_1_"..llabel, "output_"..vs)
   end
   local mux_label = mux_output_nb_to_name(NB_VSTEPS)
   local mux_llabel = string.lower(mux_label)
-  add_link("haleseq_1_"..mux_llabel, "output_"..mux_llabel)
+  add_link("haleseq_1_"..mux_llabel, "output_"..(NB_VSTEPS+1))
+
+
+  -- TESTS
+  -- add_link("haleseq_1_a", "haleseq_2_clock")
+  add_link("haleseq_1_a", "haleseq_2_preset")
+  -- add_link("haleseq_2_abcd", "output_5")
 
 
   -- --------------------------------

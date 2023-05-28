@@ -57,7 +57,7 @@ function Comparator:reset()
   self.incoming_vals = {}
 end
 
-function Comparator:register()
+function Comparator:register(v)
   table.insert(self.incoming_vals, v)
 end
 

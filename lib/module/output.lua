@@ -18,7 +18,7 @@ Output.__index = Output
 function Output.new(id)
   local p = setmetatable({}, Output)
 
-  local label = id -- A, B, C...
+  local label = id -- 1, 2, 3...
   local llabel = string.lower(label)
 
   p.id = label
