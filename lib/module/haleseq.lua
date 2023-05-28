@@ -122,22 +122,20 @@ function Haleseq.new(id, nb_steps, nb_vsteps)
   return p
 end
 
-function Haleseq:process_ins()
+function Haleseq:process_ins(forced)
   local ticked = false
   local vticked = false
 
-  -- TODO: compare against threshold
-  if self.i_clock.status == 1 then
-    ticked = self:clock_tick()
-  end
-  if self.i_vclock.status == 1 then
-    vticked = self:vclock_tick()
-  end
-
   if self.i_preset.updated then
     params:set("preset_"..self.id, round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
-    -- ticked = true
   end
+
+  -- if self.i_clock.status == 1 or forced then
+  ticked = self:clock_tick(forced)
+  -- end
+  -- if self.i_vclock.status == 1 then
+  vticked = self:vclock_tick(forced)
+  -- end
 
   -- A / B / C / D
   if ticked then
@@ -224,11 +222,10 @@ end
 function Haleseq:clock_tick(forced)
 
   local clock_is_off = (params:string("clock_div_"..self.id) == "off")
-  local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
+  -- local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
 
   -- local clock_is_ticking = (not clock_is_off) and self.hclock:is_ticking(CLOCK_DIV_DENOMS[clock_div_id])
   local clock_is_ticking = (not clock_is_off) and self.i_clock.status == 1
-
 
   if clock_is_off and not self.next_step then
     return false
@@ -316,7 +313,7 @@ end
 function Haleseq:vclock_tick(forced)
 
   local vclock_is_off = (params:string("vclock_div_"..self.id) == "off")
-  local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
+  -- local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
 
   -- local vclock_is_ticking = (not vclock_is_off) and self.vclock:is_ticking(CLOCK_DIV_DENOMS[vclock_div_id])
   local vclock_is_ticking = (not vclock_is_off) and self.i_vclock.status == 1
@@ -669,6 +666,7 @@ function Haleseq:grid_key(x, y, z)
         params:set("preset_"..self.id, s)
         self.last_preset_t = os.clock()
         -- mclock_tick(nil, true)
+        self:process_ins(true)
       else
         self.g_btn = nil
       end

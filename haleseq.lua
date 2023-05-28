@@ -531,13 +531,13 @@ function init()
   end
   local mux_label = mux_output_nb_to_name(NB_VSTEPS)
   local mux_llabel = string.lower(mux_label)
-  add_link("haleseq_1_"..mux_llabel, "output_"..(NB_VSTEPS+1))
+  -- add_link("haleseq_1_"..mux_llabel, "output_"..(NB_VSTEPS+1))
 
 
   -- TESTS
   -- add_link("haleseq_1_a", "haleseq_2_clock")
-  add_link("haleseq_1_a", "haleseq_2_preset")
-  -- add_link("haleseq_2_abcd", "output_5")
+  add_link("haleseq_1_abcd", "haleseq_2_preset")
+  add_link("haleseq_2_abcd", "output_5")
 
 
   -- --------------------------------
