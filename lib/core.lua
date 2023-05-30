@@ -43,7 +43,7 @@ end
 function mean(t)
   local sum = 0
   local count= 0
-  for _, v in ipairs(t) do
+  for _, v in pairs(t) do
     sum = sum + v
     count = count + 1
   end
@@ -52,7 +52,7 @@ end
 
 function sum(t)
   local sum = 0
-  for _, v in ipairs(t) do
+  for _, v in pairs(t) do
     sum = sum + v
   end
   return sum

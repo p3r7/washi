@@ -111,8 +111,9 @@ local function dbgtab(t, level)
 end
 
 
-local function exec_plan_from_input(in_label, modules, module_out_links, level)
+local function exec_plan_from_input(in_label, modules, module_triggered_ins, module_out_links, level)
   if modules == nil then modules = {} end
+  if module_triggered_ins == nil then module_triggered_ins = {} end
   if module_out_links == nil then module_out_links = {} end
   if level == nil then level = 1 end
   if modules[level] == nil then modules[level] = {} end
@@ -134,17 +135,19 @@ local function exec_plan_from_input(in_label, modules, module_out_links, level)
     end
     if tab.contains(level_mods, curr_module) then
       dbg("!!! in '"..in_label.."' already triggered at level "..l..". cutting feedback loop.")
-      return modules, module_out_links
+      return modules, module_triggered_ins, module_out_links
     end
   end
 
   set_insert(modules[level], curr_module)
+  if module_triggered_ins[curr_module] == nil then module_triggered_ins[curr_module] = {} end
+  set_insert(module_triggered_ins[curr_module], curr_in)
   if module_out_links[curr_module] == nil then module_out_links[curr_module] = {} end
 
   local curr_out_labels = curr_module.outs
   if curr_out_labels == nil or tab.count(curr_out_labels) == 0 then -- is at termination module
     -- dbg("!!! at termination branch !!!")
-    return modules, module_out_links
+    return modules, module_triggered_ins, module_out_links
   end
   for _, curr_out_label in ipairs(curr_out_labels) do
     local curr_out = outs[curr_out_label]
@@ -160,13 +163,13 @@ local function exec_plan_from_input(in_label, modules, module_out_links, level)
         if ins[next_in_label] ~= nil then
           set_insert_coord(module_out_links[curr_module], {curr_out, ins[next_in_label]})
         end
-        exec_plan_from_input(next_in_label, modules, module_out_links, level+1)
+        exec_plan_from_input(next_in_label, modules, module_triggered_ins, module_out_links, level+1)
       end
     end
 
     ::NEXT_OUT::
   end
-  return modules, module_out_links
+  return modules, module_triggered_ins, module_out_links
 end
 
 -- TODO: add anti-feedback (infinite loop) mechanism
@@ -243,6 +246,18 @@ local function reset_all_ins(m)
   end
 end
 
+local function reset_ins(m, ins_list)
+  if m.ins == nil then
+    return
+  end
+  for _, in_label in ipairs(m.ins) do
+    local i = ins[in_label]
+    if i ~= nil and tab.contains(ins_list, i) then
+      i:reset()
+    end
+  end
+end
+
 local function update_all_ins(m)
   if m.ins == nil then
     return
@@ -250,6 +265,18 @@ local function update_all_ins(m)
   for _, in_label in ipairs(m.ins) do
     local i = ins[in_label]
     if i ~= nil then
+      i:update()
+    end
+  end
+end
+
+local function update_ins(m, ins_list)
+  if m.ins == nil then
+    return
+  end
+  for _, in_label in ipairs(m.ins) do
+    local i = ins[in_label]
+    if i ~= nil and tab.contains(ins_list, i) then
       i:update()
     end
   end
@@ -263,7 +290,7 @@ local function fire_and_propagate(in_label, initial_v)
   dbg("PATCH LAYOUT")
   dbg("----------")
   -- local fired_modules, link_map = exec_plan(out_label)
-  local fired_modules, link_map = exec_plan_from_input(in_label)
+  local fired_modules, fired_ins, link_map = exec_plan_from_input(in_label)
 
   dbg("----------")
   dbg("TRIGGERED MODULES")
@@ -293,7 +320,6 @@ local function fire_and_propagate(in_label, initial_v)
 
         local from = outbound_link[1]
         local to = outbound_link[2]
-        dbg(from.id .. " -> " .. to.id, level-1)
 
         -- edge case of first module externally triggered (global norns clock)
         -- no real notion (for now) of input/output value handled by this module
@@ -307,7 +333,9 @@ local function fire_and_propagate(in_label, initial_v)
           v = from.v
         end
 
-        to:register(v)
+        dbg(from.id .. " -> " .. to.id .. ": " .. v, level-1)
+
+        to:register(from.id, v)
       end
 
       :: NEXT_MODULE ::

@@ -45,27 +45,13 @@ end
 
 function In:reset()
   self.incoming_vals = {}
-    if self.id == "output_a" then
-    -- tab.print(self.incoming_vals)
-    -- print("reset")
-  end
 end
 
-function In:register(v)
-  table.insert(self.incoming_vals, v)
-  if self.id == "output_a" then
-    -- tab.print(self.incoming_vals)
-    -- print("reg")
-  end
+function In:register(out_label, v)
+  self.incoming_vals[out_label] = v
 end
 
 function In:update()
-  if self.id == "output_a" then
-    -- print("update")
-    -- tab.print(self.incoming_vals)
-  end
-
-
   if tab.count(self.incoming_vals) == 0 then
     -- keep old v
     self.updated = false
