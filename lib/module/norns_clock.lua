@@ -1,5 +1,6 @@
 -- haleseq. module/norns clock
 
+local In = include("haleseq/lib/submodule/in")
 local Out = include("haleseq/lib/submodule/out")
 
 local paperface = include("haleseq/lib/paperface")
@@ -22,15 +23,20 @@ function NornsClock.new()
   p.id = "norns_clock"
   p.fqid = "norns_clock"
 
+  p.ins = {}
   p.outs = {}
+  p.i = In.new(p.fqid, p)
   p.o = Out.new(p.fqid, p)
 
   return p
 end
 
-function NornsClock.init(outs_map)
+function NornsClock.init(ins_map, outs_map)
   local c = NornsClock.new()
 
+  if ins_map ~= nil then
+    ins_map[c.i.id] = c.i
+  end
   if outs_map ~= nil then
     outs_map[c.o.id] = c.o
   end
