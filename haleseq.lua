@@ -234,6 +234,22 @@ end
 
 -- also each module's input value must be stored as a list (when calling `target_input:update`) that gets eval'd & cleared when calling `module:process_ins`
 
+local function clear_unlinked_ins(m)
+  if m.ins == nil then
+    return
+  end
+  for _, in_label in ipairs(m.ins) do
+    local i = ins[in_label]
+    if i ~= nil then
+      for out_label, _v in pairs(i.incoming_vals) do
+        if outs[out_label] == nil or links[out_label] == nil or not tab.contains(links[out_label], in_label) then
+          i.incoming_vals[out_label] = nil
+        end
+      end
+    end
+  end
+end
+
 local function reset_all_ins(m)
   if m.ins == nil then
     return
@@ -301,7 +317,8 @@ local function fire_and_propagate(in_label, initial_v)
   for level, modules in ipairs(fired_modules) do
     for _, m in ipairs(modules) do
       -- REVIEW: should i reset all ins or only those of triggered links?
-      reset_all_ins(m)
+      -- reset_all_ins(m)
+      clear_unlinked_ins(m)
     end
   end
 
