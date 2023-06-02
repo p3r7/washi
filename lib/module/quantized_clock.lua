@@ -17,13 +17,21 @@ QuantizedClock.__index = QuantizedClock
 -- ------------------------------------------------------------------------
 -- constructors
 
-function QuantizedClock.new(id, mclock_div, divs, base)
+function QuantizedClock.new(id, STATE,
+                            mclock_div, divs, base)
   local p = setmetatable({}, QuantizedClock)
 
   p.kind = "quantized_clock"
 
   p.id = id -- id for param lookup
   p.fqid = p.kind.."_"..id -- fully qualified id for i/o routing lookup
+
+  -- --------------------------------
+
+  p.STATE = STATE
+
+  -- --------------------------------
+  -- I/O
 
   p.ins = {}
   p.outs = {}
@@ -54,14 +62,13 @@ end
 -- ------------------------------------------------------------------------
 -- init
 
-function QuantizedClock.init(id, mclock_div, divs, ins_map, outs_map)
-  local q = QuantizedClock.new(id, mclock_div, divs, base)
+function QuantizedClock.init(id, STATE, mclock_div, divs)
+  local q = QuantizedClock.new(id, STATE, mclock_div, divs, base)
 
-  if ins_map ~= nil and outs_map ~= nil then
-    ins_map[q.i.id] = q.i
-    tab.print(q.i)
+  if STATE ~= nil then
+    STATE.ins[q.i.id] = q.i
     for _, o in ipairs(q.div_outs) do
-      outs_map[o.id] = o
+      STATE.outs[o.id] = o
     end
   end
 

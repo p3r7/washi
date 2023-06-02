@@ -23,7 +23,8 @@ Haleseq.__index = Haleseq
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Haleseq.new(id, nb_steps, nb_vsteps)
+function Haleseq.new(id, STATE,
+                     nb_steps, nb_vsteps)
   local p = setmetatable({}, Haleseq)
 
   p.kind = "haleseq"
@@ -31,12 +32,15 @@ function Haleseq.new(id, nb_steps, nb_vsteps)
   p.id = id -- id for param lookup
   p.fqid = p.kind.."_"..id -- fully qualified id for i/o routing lookup
 
-  -- TODO: convert to routing
-  -- p.hclock = hclock
-  -- p.vclock = vclock
+  -- --------------------------------
+
+  p.STATE = STATE
+
+  -- --------------------------------
 
   p.nb_steps = nb_steps
   p.nb_vsteps = nb_vsteps
+
 
   -- --------------------------------
   -- I/O
@@ -438,7 +442,7 @@ end
 -- ------------------------------------------------------------------------
 -- init
 
-function Haleseq:init_params(links)
+function Haleseq:init_params()
   local id = self.id
 
   params:add_group("haleseq_"..id, "haleseq #"..id, 8)
@@ -502,9 +506,9 @@ function Haleseq:init_params(links)
                     function(v)
                       local clock_id = "haleseq_"..self.id.."_clock"
 
-                      for o, ins in pairs(links) do
+                      for o, ins in pairs(STATE.links) do
                         if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(links, o, clock_id)
+                          patching.remove_link(STATE.links, o, clock_id)
                         end
                       end
 
@@ -531,30 +535,29 @@ function Haleseq:init_params(links)
   )
 end
 
-function Haleseq.init(id, nb_steps, nb_vsteps,
-                      ins_map, outs_map, links_table)
-  local h = Haleseq.new(id, nb_steps, nb_vsteps)
-  h:init_params(links_table)
+function Haleseq.init(id, STATE, nb_steps, nb_vsteps)
+  local h = Haleseq.new(id, STATE, nb_steps, nb_vsteps)
+  h:init_params()
 
-  if ins_map ~= nil and outs_map ~= nil then
-    ins_map[h.i_clock.id] = h.i_clock
-    ins_map[h.i_vclock.id] = h.i_vclock
-    ins_map[h.i_reset.id] = h.i_reset
-    ins_map[h.i_vreset.id] = h.i_vreset
-    ins_map[h.i_preset.id] = h.i_preset
-    ins_map[h.i_hold.id] = h.i_hold
-    ins_map[h.i_reverse.id] = h.i_reverse
+  if STATE ~= nil then
+    STATE.ins[h.i_clock.id] = h.i_clock
+    STATE.ins[h.i_vclock.id] = h.i_vclock
+    STATE.ins[h.i_reset.id] = h.i_reset
+    STATE.ins[h.i_vreset.id] = h.i_vreset
+    STATE.ins[h.i_preset.id] = h.i_preset
+    STATE.ins[h.i_hold.id] = h.i_hold
+    STATE.ins[h.i_reverse.id] = h.i_reverse
 
     for _, s in ipairs(h.stages) do
-      ins_map[s.i.id] = s.i
-      outs_map[s.o.id] = s.o
+      STATE.ins[s.i.id] = s.i
+      STATE.outs[s.o.id] = s.o
     end
 
-    outs_map[h.cpo.id] = h.cpo
-    outs_map[h.aep.id] = h.aep
+    STATE.outs[h.cpo.id] = h.cpo
+    STATE.outs[h.aep.id] = h.aep
 
     for _, cv in ipairs(h.cv_outs) do
-      outs_map[cv.id] = cv
+      STATE.outs[cv.id] = cv
     end
 
   end

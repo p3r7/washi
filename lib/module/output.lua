@@ -15,7 +15,7 @@ Output.__index = Output
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Output.new(id)
+function Output.new(id, STATE)
   local p = setmetatable({}, Output)
 
   local label = id -- 1, 2, 3...
@@ -24,6 +24,8 @@ function Output.new(id)
   p.id = label
   p.kind = "output"
   p.fqid = "output".."_"..llabel
+
+  p.STATE = STATE
 
   p.ins = {}
 
@@ -56,12 +58,12 @@ function Output:init_params()
   nb:add_param("nb_voice_"..llabel, "nb Voice "..label)
 end
 
-function Output.init(id, ins_map)
-  local o = Output.new(id)
+function Output.init(id, STATE)
+  local o = Output.new(id, STATE)
   o:init_params()
 
-  if ins_map ~= nil then
-    ins_map[o.i.id] = o.i
+  if STATE ~= nil then
+    STATE.ins[o.i.id] = o.i
   end
 
   return o

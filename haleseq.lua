@@ -68,6 +68,12 @@ ins = {}
 outs = {}
 links = {}
 
+STATE = {
+  ins = ins,
+  outs = outs,
+  links = links,
+}
+
 local function add_link(o, i)
   patching.add_link(links, o, i)
 end
@@ -293,18 +299,18 @@ function init()
   -- --------------------------------
   -- modules
 
-  norns_clock = NornsClock.init(ins, outs)
-  quantized_clocks = QuantizedClock.init("global", MCLOCK_DIVS, CLOCK_DIV_DENOMS, ins, outs)
+  norns_clock = NornsClock.init(STATE)
+  quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
 
   for i = 1,NB_HALESEQS do
-    local h = Haleseq.init(i, NB_STEPS, NB_VSTEPS, ins, outs, links)
+    local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS)
     haleseqs[i] = h
   end
 
   for vs=1, NB_VSTEPS+1 do
     -- local label = output_nb_to_name(vs)
     local label = ""..vs
-    outputs[vs] = Output.init(label, ins)
+    outputs[vs] = Output.init(label, STATE)
   end
   -- local mux_label = mux_output_nb_to_name(NB_VSTEPS)
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)

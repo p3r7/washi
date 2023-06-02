@@ -16,12 +16,14 @@ NornsClock.__index = NornsClock
 -- ------------------------------------------------------------------------
 -- constructors
 
-function NornsClock.new()
+function NornsClock.new(STATE)
   local p = setmetatable({}, NornsClock)
 
   p.kind = "norns_clock"
   p.id = "norns_clock"
   p.fqid = "norns_clock"
+
+  p.STATE = STATE
 
   p.ins = {}
   p.outs = {}
@@ -31,14 +33,12 @@ function NornsClock.new()
   return p
 end
 
-function NornsClock.init(ins_map, outs_map)
-  local c = NornsClock.new()
+function NornsClock.init(STATE)
+  local c = NornsClock.new(STATE)
 
-  if ins_map ~= nil then
-    ins_map[c.i.id] = c.i
-  end
-  if outs_map ~= nil then
-    outs_map[c.o.id] = c.o
+  if STATE ~= nil then
+    STATE.ins[c.i.id] = c.i
+    STATE.outs[c.o.id] = c.o
   end
 
   return c
