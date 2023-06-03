@@ -44,6 +44,12 @@ function NornsClock.init(STATE)
   return c
 end
 
+function NornsClock:process_ins()
+  if self.i.triggered then
+    self.o.v = V_MAX/2
+  end
+end
+
 -- ------------------------------------------------------------------------
 -- screen
 
