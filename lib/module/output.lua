@@ -50,12 +50,18 @@ function Output:init_params()
   local label = self.id -- A, B, C...
   local llabel = string.lower(label)
 
-  params:add_group("track_"..llabel, label, 1)
+  params:add_group("track_"..llabel, label, 5)
 
   -- NB: right now, 1:1 mapping between outs & nb voices
   -- might want to change that!
   -- nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
   nb:add_param("nb_voice_"..llabel, "nb Voice "..label)
+
+  local OCTAVE_RANGE_MODES = {'filter', 'fold'}
+  params:add_option("out_octave_mode_"..llabel, "Octave Fit Mode", OCTAVE_RANGE_MODES, tab.key(OCTAVE_RANGE_MODES, 'filter'))
+
+  params:add{type = "number", id = "out_octave_min_"..llabel, name = "Min Octave", min = -2, max = 8, default = 1}
+  params:add{type = "number", id = "out_octave_max_"..llabel, name = "Max Octave", min = -2, max = 8, default = 8}
 end
 
 function Output.init(id, STATE)
@@ -95,7 +101,32 @@ function Output:nb_note_on(note, vel)
 end
 
 function Output:nb_play(note, vel)
+  local llabel = string.lower(self.id)
+
   self:nb_note_off()
+
+  local octave = math.floor(note / 12 - 2)
+  if octave < params:get("out_octave_min_"..llabel) then
+    if params:string("out_octave_mode_"..llabel) == 'filter' then
+      return
+    else -- fold
+      while octave < params:get("out_octave_min_"..llabel) do
+        note = note + 12
+        octave = math.floor(note / 12 - 2)
+      end
+    end
+  end
+  if octave > params:get("out_octave_max_"..llabel) then
+    if params:string("out_octave_mode_"..llabel) == 'filter' then
+      return
+    else -- fold
+      while octave > params:get("out_octave_max_"..llabel) do
+        note = note - 12
+        octave = math.floor(note / 12 - 2)
+      end
+    end
+  end
+
   self:nb_note_on(note, vel)
 end
 
