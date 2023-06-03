@@ -1,5 +1,33 @@
 
 
+-- ------------------------------------------------------------------------
+-- deps
+
+local inspect = include("haleseq/lib/inspect")
+
+
+-- ------------------------------------------------------------------------
+-- debug
+
+DEBUG = true
+
+function dbg(v, level)
+  if not DEBUG then
+    return
+  end
+
+  if level == nil then level = 0 end
+  local indent = string.rep(" ", level*2)
+
+  local msg = inspect(v)
+
+  -- local lines = {}
+  for l in msg:gmatch("[^\r\n]+") do
+    -- table.insert(lines, l)
+    print(indent .. l)
+  end
+end
+
 
 -- ------------------------------------------------------------------------
 -- math
