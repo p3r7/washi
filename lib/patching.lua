@@ -185,6 +185,14 @@ function patching.fire_and_propagate(outs, ins, links,
 
   for level, modules in ipairs(fired_modules) do
     for _, m in ipairs(modules) do
+
+      if level == 1 then
+        local from_label = "GLOBAL"
+        local to = ins[in_label]
+        dbg(from_label .. " -> " .. to.id .. ": " .. initial_v, level-1)
+        to:register(from_label, initial_v)
+      end
+
       dbg(m.fqid, level-1)
       if level ~= 1 then
         patching.module_update_all_ins(m)
@@ -201,12 +209,7 @@ function patching.fire_and_propagate(outs, ins, links,
         -- could be dealt w/ by using a superclock, but idk if i wann go there yet
         --
         -- FIXME: better way would be to define Trigger kind of Out that resets itself at the end of loop
-        local v
-        if level == 1 then
-          v = initial_v
-        else
-          v = from.v
-        end
+        local v = from.v
 
         dbg(from.id .. " -> " .. to.id .. ": " .. v, level-1)
 
