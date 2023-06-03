@@ -237,7 +237,13 @@ function Haleseq:clock_tick()
   -- local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
 
   -- local clock_is_ticking = (not clock_is_off) and self.hclock:is_ticking(CLOCK_DIV_DENOMS[clock_div_id])
-  local clock_is_ticking = (not clock_is_off) and self.i_clock.status == 1
+  local clock_is_ticking = (not clock_is_off) and (self.i_clock.triggered and self.i_clock.status == 1)
+
+  -- if self.id == 1 then
+  --   dbgf("-------------")
+  --   dbgf("clock is ticking")
+  --   dbgf(clock_is_ticking)
+  -- end
 
   if clock_is_off and not self.next_step then
     return false
@@ -329,7 +335,7 @@ function Haleseq:vclock_tick()
   -- local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
 
   -- local vclock_is_ticking = (not vclock_is_off) and self.vclock:is_ticking(CLOCK_DIV_DENOMS[vclock_div_id])
-  local vclock_is_ticking = (not vclock_is_off) and self.i_vclock.status == 1
+  local vclock_is_ticking = (not vclock_is_off) and (self.i_vclock.triggered and self.i_vclock.status == 1)
 
 
   -- --------------------------------
@@ -478,18 +484,18 @@ function Haleseq:init_params()
   params:add_trigger("fw_"..id, "Forward")
   params:set_action("fw_"..id,
                     function(_v)
-                      clock_acum = clock_acum + 1
-                      mclock_tick(nil, true)
+                      local next_preset = mod1(params:get("preset_"..self.id) + 1, self.nb_steps)
+                      params:set("preset_"..self.id, next_preset)
                     end
   )
   params:add_trigger("bw_"..id, "Backward")
   params:set_action("bw_"..id,
                     function(_v)
-                      local reverse_prev = self.reverse
-                      self.reverse = true
-                      clock_acum = clock_acum + 1
-                      mclock_tick(nil, true)
-                      self.reverse = reverse_prev
+                      local next_preset = params:get("preset_"..self.id) - 1
+                      if next_preset == 0 then
+                        next_preset = self.nb_steps
+                      end
+                      params:set("preset_"..self.id, next_preset)
                     end
   )
   params:add_trigger("vfw_"..id, "VForward")

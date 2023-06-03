@@ -36,7 +36,8 @@ function QuantizedClock.new(id, STATE,
   p.ins = {}
   p.outs = {}
 
-  if base == nil then base = 0 end
+  -- if base == nil then base = 0 end
+  -- p.base = base
 
   p.i = Comparator.new(p.fqid, p)
 
@@ -56,7 +57,17 @@ end
 
 
 function QuantizedClock:process_ins()
-  self:tick()
+  if self.i.triggered then
+    if self.i.status == 1 then
+      self:tick()
+    else
+      -- NB: end of input trigger
+      -- we only really need to do it for highest precision divider (1/64) iif it has the same resolution as the global latice superclock
+      for _, o in ipairs(self.div_outs) do
+        o.v = 0
+      end
+    end
+  end
 end
 
 -- ------------------------------------------------------------------------
@@ -115,7 +126,7 @@ end
 -- screen
 
 function QuantizedClock.redraw(x, y, acum)
-    for i, v in ipairs(CLOCK_DIVS) do
+  for i, v in ipairs(self.divs) do
     if v ~= 'off' then
       local trig = acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i-1]) == 0
       paperface.trig_out(x, y, trig)

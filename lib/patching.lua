@@ -186,6 +186,8 @@ function patching.fire_and_propagate(outs, ins, links,
   for level, modules in ipairs(fired_modules) do
     for _, m in ipairs(modules) do
 
+      dbg(m.fqid, level-1)
+
       if level == 1 then
         local from_label = "GLOBAL"
         local to = ins[in_label]
@@ -193,11 +195,8 @@ function patching.fire_and_propagate(outs, ins, links,
         to:register(from_label, initial_v)
       end
 
-      dbg(m.fqid, level-1)
-      if level ~= 1 then
-        patching.module_update_all_ins(m)
-        m:process_ins()
-      end
+      patching.module_update_all_ins(m)
+      m:process_ins()
 
       for _, outbound_link in ipairs(link_map[m]) do
 

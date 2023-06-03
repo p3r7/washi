@@ -1,6 +1,6 @@
 -- haleseq. module/norns clock
 
-local In = include("haleseq/lib/submodule/in")
+local Comparator = include("haleseq/lib/submodule/comparator")
 local Out = include("haleseq/lib/submodule/out")
 
 local paperface = include("haleseq/lib/paperface")
@@ -27,7 +27,7 @@ function NornsClock.new(STATE)
 
   p.ins = {}
   p.outs = {}
-  p.i = In.new(p.fqid, p)
+  p.i = Comparator.new(p.fqid, p)
   p.o = Out.new(p.fqid, p)
 
   return p
@@ -46,7 +46,11 @@ end
 
 function NornsClock:process_ins()
   if self.i.triggered then
-    self.o.v = V_MAX/2
+    if self.i.status == 1 then
+      self.o.v = V_MAX/2
+    else
+      self.o.v = 0
+    end
   end
 end
 

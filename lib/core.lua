@@ -28,6 +28,12 @@ function dbg(v, level)
   end
 end
 
+function dbgf(v, level)
+  local prev_debug = DEBUG
+  DEBUG = true
+  dbg(v, level)
+  DEBUG = prev_debug
+end
 
 -- ------------------------------------------------------------------------
 -- math

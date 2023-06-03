@@ -31,7 +31,7 @@ local Haleseq = include("haleseq/lib/module/haleseq")
 local Output = include("haleseq/lib/module/output")
 local NornsClock = include("haleseq/lib/module/norns_clock")
 local QuantizedClock = include("haleseq/lib/module/quantized_clock")
-local pulse_divider = include("haleseq/lib/module/pulse_divider")
+local PulseDivider = include("haleseq/lib/module/pulse_divider")
 
 include("haleseq/lib/core")
 include("haleseq/lib/consts")
@@ -50,6 +50,7 @@ local NB_HALESEQS = 2
 
 local norns_clock
 local quantized_clocks
+local pulse_dividers = {}
 local haleseqs = {}
 local outputs = {}
 
@@ -197,6 +198,8 @@ function clock_div_opt_v(o)
   return m[o]
 end
 
+is_doing_stuff = false
+
 function mclock_tick(t, forced)
   if mclock_acum % (MCLOCK_DIVS / NB_BARS) == 0 then
     last_mclock_tick_t = os.clock()
@@ -205,8 +208,17 @@ function mclock_tick(t, forced)
     mclock_acum = mclock_acum + 1
   end
 
+  if is_doing_stuff then
+    return
+  end
+
+  is_doing_stuff = true
+
   -- propagate("norns_clock")
-  fire_and_propagate("norns_clock")
+  fire_and_propagate("norns_clock", V_MAX/2)
+  fire_and_propagate("norns_clock", 0)
+
+  is_doing_stuff = false
 
   -- for _, h in ipairs(haleseqs) do
     -- local hclock = h.hclock()
@@ -302,6 +314,8 @@ function init()
   norns_clock = NornsClock.init(STATE)
   quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
 
+  pulse_dividers[1] = PulseDivider.init(1, STATE)
+
   for i = 1,NB_HALESEQS do
     local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS)
     haleseqs[i] = h
@@ -316,6 +330,7 @@ function init()
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
+  add_link("norns_clock", "pulse_divider_1")
 
   -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
   params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
@@ -333,6 +348,8 @@ function init()
 
   -- TESTS
   -- add_link("haleseq_1_a", "haleseq_2_clock")
+  add_link("norns_clock", "pulse_divider_1")
+  -- add_link("pulse_divider_1_3", "vclock_div_2") -- TODO: FIXME
   add_link("haleseq_1_abcd", "haleseq_2_preset")
   add_link("haleseq_2_abcd", "output_5")
 
@@ -470,7 +487,7 @@ function redraw_clock_screen()
 
   x = x + SCREEN_STAGE_W * 5
 
-  pulse_divider.redraw(x, y, mclock_acum)
+  pulse_dividers[1]:redraw(x, y, mclock_acum)
 end
 
 
