@@ -126,7 +126,7 @@ function Haleseq.new(id, STATE,
   return p
 end
 
-function Haleseq:process_ins(forced)
+function Haleseq:process_ins()
   local ticked = false
   local vticked = false
 
@@ -142,10 +142,10 @@ function Haleseq:process_ins(forced)
   end
 
   -- if self.i_clock.status == 1 or forced then
-  ticked = self:clock_tick(forced)
+  ticked = self:clock_tick()
   -- end
   -- if self.i_vclock.status == 1 then
-  vticked = self:vclock_tick(forced)
+  vticked = self:vclock_tick()
   -- end
 
   -- A / B / C / D
@@ -230,8 +230,9 @@ function Haleseq:are_all_stage_skip(ignore_preset)
   return (nb_skipped == (self.nb_steps-start+1))
 end
 
-function Haleseq:clock_tick(forced)
+function Haleseq:clock_tick()
 
+  local do_quantize = (params:string("clock_quantize_"..self.id) == "on")
   local clock_is_off = (params:string("clock_div_"..self.id) == "off")
   -- local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
 
@@ -246,7 +247,7 @@ function Haleseq:clock_tick(forced)
   -- case 1: forced to go to `next_step`
 
   if self.next_step ~= nil then
-    if not (clock_is_off or clock_is_ticking) then
+    if do_quantize and not (clock_is_off or clock_is_ticking) then
       return false
     end
 
@@ -321,8 +322,9 @@ function Haleseq:clock_tick(forced)
   return true
 end
 
-function Haleseq:vclock_tick(forced)
+function Haleseq:vclock_tick()
 
+  local do_quantize = (params:string("clock_quantize_"..self.id) == "off")
   local vclock_is_off = (params:string("vclock_div_"..self.id) == "off")
   -- local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
 
@@ -452,7 +454,7 @@ end
 function Haleseq:init_params()
   local id = self.id
 
-  params:add_group("haleseq_"..id, "haleseq #"..id, 8)
+  params:add_group("haleseq_"..id, "haleseq #"..id, 9)
 
   params:add_trigger("rnd_seqs_"..id, "Randomize Seqs")
   params:set_action("rnd_seqs_"..id,
@@ -540,6 +542,8 @@ function Haleseq:init_params()
                       end
                     end
   )
+  local ON_OFF = {'on', 'off'}
+  params:add_option("clock_quantize_"..id, "Clock Quantize", ON_OFF, tab.key(ON_OFF, 'on'))
 end
 
 function Haleseq.init(id, STATE, nb_steps, nb_vsteps)
