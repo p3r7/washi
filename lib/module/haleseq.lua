@@ -132,6 +132,13 @@ function Haleseq:process_ins(forced)
 
   if self.i_preset.updated then
     params:set("preset_"..self.id, round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
+  else
+    for v, stage in ipairs(self.stages) do
+      if stage.i.triggered and stage.i.status == 1 then
+        params:set("preset_"..self.id, v)
+        break
+      end
+    end
   end
 
   -- if self.i_clock.status == 1 or forced then
@@ -663,14 +670,24 @@ end
 function Haleseq:grid_key(x, y, z)
   if x > STEPS_GRID_X_OFFSET and x <= STEPS_GRID_X_OFFSET + self.nb_steps then
     if y == G_Y_PRESS then
+      local s = x - STEPS_GRID_X_OFFSET
+      -- DEBUG = true
       if (z >= 1) then
-        local s = x - STEPS_GRID_X_OFFSET
         self.g_btn = s
-        params:set("preset_"..self.id, s)
-        self.last_preset_t = os.clock()
-        -- mclock_tick(nil, true)
-        self:process_ins(true)
+
+        -- TODO: should be a set stage input & propagate!
+        -- params:set("preset_"..self.id, s)
+        -- self.last_preset_t = os.clock()
+        -- self:process_ins(true)
+
+        -- self.stages[s].i.register("user", V_MAX/2)
+        -- or even better
+        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, V_MAX/2)
+
       else
+        -- self.stages[s].i.register("user", 0)
+        -- or even better
+        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, 0)
         self.g_btn = nil
       end
       return
