@@ -36,8 +36,8 @@ function QuantizedClock.new(id, STATE,
   p.ins = {}
   p.outs = {}
 
-  -- if base == nil then base = 0 end
-  -- p.base = base
+  if base == nil then base = 0 end
+  p.base = base
 
   p.i = Comparator.new(p.fqid, p)
 
@@ -125,15 +125,13 @@ end
 -- ------------------------------------------------------------------------
 -- screen
 
-function QuantizedClock.redraw(x, y, acum)
+function QuantizedClock:redraw(x, y, acum)
   for i, v in ipairs(self.divs) do
-    if v ~= 'off' then
-      local trig = acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i-1]) == 0
-      paperface.trig_out(x, y, trig)
-      screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
-      screen.text(v)
-      y = y + SCREEN_STAGE_W
-    end
+    local trig = acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i]) == 0
+    paperface.trig_out(x, y, trig)
+    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
+    screen.text(v)
+    y = y + SCREEN_STAGE_W
   end
 end
 

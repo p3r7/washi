@@ -483,7 +483,7 @@ function redraw_clock_screen()
 
   x = x + SCREEN_STAGE_W * 5
 
-  QuantizedClock.redraw(x, y, mclock_acum)
+  quantized_clocks:redraw(x, y, mclock_acum)
 
   x = x + SCREEN_STAGE_W * 5
 
