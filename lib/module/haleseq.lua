@@ -233,27 +233,21 @@ end
 function Haleseq:clock_tick()
 
   local do_quantize = (params:string("clock_quantize_"..self.id) == "on")
-  local clock_is_off = (params:string("clock_div_"..self.id) == "off")
-  -- local clock_div_id = params:get("clock_div_"..self.id) - 1 -- 1rst elem is "off"
+  local clock_quantize_is_off = (params:string("clock_div_"..self.id) == "off")
 
-  -- local clock_is_ticking = (not clock_is_off) and self.hclock:is_ticking(CLOCK_DIV_DENOMS[clock_div_id])
-  local clock_is_ticking = (not clock_is_off) and (self.i_clock.triggered and self.i_clock.status == 1)
+  local clock_input_triggered = (self.i_clock.triggered and self.i_clock.status == 1)
 
-  -- if self.id == 1 then
-  --   dbgf("-------------")
-  --   dbgf("clock is ticking")
-  --   dbgf(clock_is_ticking)
+  local clock_is_ticking = (not clock_quantize_is_off) and clock_input_triggered
+
+  -- if clock_quantize_is_off and not self.next_step then
+  --   return false
   -- end
-
-  if clock_is_off and not self.next_step then
-    return false
-  end
 
   -- --------------------------------
   -- case 1: forced to go to `next_step`
 
   if self.next_step ~= nil then
-    if do_quantize and not (clock_is_off or clock_is_ticking) then
+    if do_quantize and not (clock_quantize_is_off or clock_is_ticking) then
       return false
     end
 
@@ -269,7 +263,8 @@ function Haleseq:clock_tick()
     return true
   end
 
-  if clock_is_off or not clock_is_ticking then
+  -- if clock_quantize_is_off or not clock_is_ticking then
+  if not clock_input_triggered then
     return false
   end
 
@@ -332,17 +327,17 @@ function Haleseq:vclock_tick()
 
   local do_quantize = (params:string("clock_quantize_"..self.id) == "off")
   local vclock_is_off = (params:string("vclock_div_"..self.id) == "off")
-  -- local vclock_div_id = params:get("vclock_div_"..self.id) - 1 -- 1rst elem is "off"
 
-  -- local vclock_is_ticking = (not vclock_is_off) and self.vclock:is_ticking(CLOCK_DIV_DENOMS[vclock_div_id])
-  local vclock_is_ticking = (not vclock_is_off) and (self.i_vclock.triggered and self.i_vclock.status == 1)
+  local vclock_input_triggered = (self.i_vclock.triggered and self.i_vclock.status == 1)
+
+  local vclock_is_ticking = (not vclock_is_off) and vclock_input_triggered
 
 
   -- --------------------------------
   -- case 1: forced to go to `next_vstep`
 
   if self.next_vstep ~= nil then
-    if not (vclock_is_off or vclock_is_ticking) then
+    if do_quantize and not (vclock_is_off or vclock_is_ticking) then
       return false
     end
 
@@ -353,7 +348,8 @@ function Haleseq:vclock_tick()
     return true
   end
 
-  if vclock_is_off or not vclock_is_ticking then
+  -- if vclock_is_off or not vclock_is_ticking then
+  if not vclock_input_triggered then
     return false
   end
 

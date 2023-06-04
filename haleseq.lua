@@ -330,11 +330,14 @@ function init()
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
-  add_link("norns_clock", "pulse_divider_1")
+  add_link("quantized_clock_global_32", "pulse_divider_1")
 
   -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
   params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
   params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
+
+  -- add_link("pulse_divider_1_8", "haleseq_1_clock") -- TODO: FIXME
+
 
   for vs=1, NB_VSTEPS do
     local label = output_nb_to_name(vs)
@@ -348,8 +351,6 @@ function init()
 
   -- TESTS
   -- add_link("haleseq_1_a", "haleseq_2_clock")
-  add_link("norns_clock", "pulse_divider_1")
-  -- add_link("pulse_divider_1_3", "vclock_div_2") -- TODO: FIXME
   add_link("haleseq_1_abcd", "haleseq_2_preset")
   add_link("haleseq_2_abcd", "output_5")
 

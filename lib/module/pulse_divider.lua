@@ -69,8 +69,14 @@ function PulseDivider.init(id, STATE)
 end
 
 function PulseDivider:process_ins()
-  if self.i.triggered and self.i.status == 1 then
-    self:tick()
+  if self.i.triggered then
+    if self.i.status == 1 then
+      self:tick()
+    else
+      for _, o in ipairs(self.div_outs) do
+        o.v = 0
+      end
+    end
   end
 end
 
@@ -90,6 +96,12 @@ function PulseDivider:tick()
   self.acum = self.acum + 1
   for i, d in ipairs(self.divs) do
     local state = (self:mod(self.acum, d) == 0)
+    -- if d == 3 then
+    --   dbgf("--------------")
+    --   dbgf(self.acum)
+    --   dbgf(self:mod(self.acum, d))
+    --   dbgf(state)
+    -- end
     self.div_states[i] = state
     if state then
       self.div_outs[i].v = V_MAX / 2

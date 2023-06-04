@@ -64,6 +64,11 @@ end
 function Comparator:update()
   local prev_status = self.status
 
+  -- if self.id == "haleseq_1_clock" then
+  --   dbgf('----------------')
+  --   dbgf(self.incoming_vals)
+  -- end
+
   if tab.count(self.incoming_vals) == 0 then
     -- keep old v
     self.updated = false
@@ -87,6 +92,12 @@ function Comparator:update()
   end
 
   self.triggered = (prev_status ~= self.status)
+
+  -- if self.id == "haleseq_1_clock" then
+  --   dbgf('----------------')
+  --   dbgf(self.triggered)
+  -- end
+
 
   if self.triggered and self.callback then
     -- self.callback()
