@@ -5,6 +5,7 @@
 -- deps
 
 include("haleseq/lib/core")
+include("haleseq/lib/consts")
 
 
 -- ------------------------------------------------------------------------
@@ -45,6 +46,66 @@ function patching.remove_link(links, o, i)
   end
 end
 
+
+-- ------------------------------------------------------------------------
+-- EVAL - INPUT
+
+function patching.input_vals_from_real(incoming_vals)
+  local filtered_vals = {}
+  for src_out_label, v in pairs(incoming_vals) do
+    if src_out_label then
+      if src_out_label ~= "GLOBAL" then
+        filtered_vals[src_out_label] = v
+      end
+    end
+  end
+  return filtered_vals
+end
+
+function patching.input_compute_val(compute_mode, incoming_vals)
+  -- NB: this one is a special "override" v
+  local special_v = incoming_vals["GLOBAL"]
+  local in_vals = incoming_vals
+  if special_v ~= nil and special_v == 0 then
+    in_vals = patching.input_vals_from_real(incoming_vals)
+  end
+
+  if compute_mode == V_COMPUTE_MODE_SUM then
+    return mean(in_vals)
+  elseif compute_mode == V_COMPUTE_MODE_MEAN then
+    return sum(in_vals)
+  elseif compute_mode == V_COMPUTE_MODE_AND then
+    local min_v = math.min(tunpack(in_vals))
+  elseif compute_mode == V_COMPUTE_MODE_OR then
+    return math.max(tunpack(in_vals))
+  end
+end
+
+-- NB: assuming we're currently on the page of the "in"
+function patching.draw_input_links(i, outs, curr_page)
+  for from_out_label, _v in pairs(i.incoming_vals) do
+    local from_out = outs[from_out_label]
+
+    -- OUT not known or wo/ visual representation
+    if not from_out or (from_out.x == nil or from_out.y == nil) then
+      goto DRAW_NEXT_LINK
+    end
+
+    local startx = from_out.x + SCREEN_STAGE_W/2 -- + (curr_page - from_out.parent.screen) * SCREEN_W
+    local starty = from_out.y + SCREEN_STAGE_W/2 + (from_out.parent.screen - curr_page) * SCREEN_H
+    local endx = i.x + SCREEN_STAGE_W/2 -- + (curr_page - i.parent.screen) * SCREEN_W
+    local endy = i.y + SCREEN_STAGE_W/2 + (i.parent.screen - curr_page) * SCREEN_H
+    local midx = (endx + startx)/2
+    local midy = (endy + starty)/2
+
+    screen.level(5)
+    screen.move(startx, starty)
+    screen.curve(midx, starty, midx, endy, endx, endy)
+    screen.stroke()
+    ::DRAW_NEXT_LINK::
+  end
+
+end
 
 -- ------------------------------------------------------------------------
 -- EVAL - SINGLE MODULE

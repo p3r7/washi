@@ -1,5 +1,12 @@
 -- haleseq. module/quantized clock
 
+local QuantizedClock = {}
+QuantizedClock.__index = QuantizedClock
+
+
+-- ------------------------------------------------------------------------
+-- deps
+
 local Comparator = include("haleseq/lib/submodule/comparator")
 local Out = include("haleseq/lib/submodule/out")
 
@@ -9,16 +16,11 @@ include("haleseq/lib/core")
 
 
 -- ------------------------------------------------------------------------
-
-local QuantizedClock = {}
-QuantizedClock.__index = QuantizedClock
-
-
--- ------------------------------------------------------------------------
 -- constructors
 
 function QuantizedClock.new(id, STATE,
-                            mclock_div, divs, base)
+                            mclock_div, divs, base,
+                            screen_id, x, y)
   local p = setmetatable({}, QuantizedClock)
 
   p.kind = "quantized_clock"
@@ -31,30 +33,57 @@ function QuantizedClock.new(id, STATE,
   p.STATE = STATE
 
   -- --------------------------------
-  -- I/O
+  -- screen
+
+  p.screen = screen_id
+  p.x = x
+  p.y = y
+
+  -- --------------------------------
+  -- i/o
 
   p.ins = {}
   p.outs = {}
 
-  if base == nil then base = 0 end
-  p.base = base
-
-  p.i = Comparator.new(p.fqid, p)
-
-  p.acum = 0
-
-  p.mclock_div = mclock_div
+  p.i = Comparator.new(p.fqid, p, nil)
 
   p.divs = divs
   p.div_states = {}
   p.div_outs = {}
   for i, div in ipairs(divs) do
-    p.div_outs[i] = Out.new(p.fqid.."_"..div, p)
+    p.div_outs[i] = Out.new(p.fqid.."_"..div, p, x, y)
     p.div_states[i] = false
+    y = y + SCREEN_STAGE_W
   end
+
+  if base == nil then base = 0 end
+  p.base = base
+
+  p.acum = 0
+
+  p.mclock_div = mclock_div
+
   return p
 end
 
+function QuantizedClock.init(id, STATE, mclock_div, divs,
+                             screen_id, x, y)
+  local q = QuantizedClock.new(id, STATE, mclock_div, divs, nil,
+                               screen_id, x, y)
+
+  if STATE ~= nil then
+    STATE.ins[q.i.id] = q.i
+    for _, o in ipairs(q.div_outs) do
+      STATE.outs[o.id] = o
+    end
+  end
+
+  return q
+end
+
+
+-- ------------------------------------------------------------------------
+-- internal logic
 
 function QuantizedClock:process_ins()
   if self.i.triggered then
@@ -69,35 +98,6 @@ function QuantizedClock:process_ins()
     end
   end
 end
-
--- ------------------------------------------------------------------------
--- init
-
-function QuantizedClock.init(id, STATE, mclock_div, divs)
-  local q = QuantizedClock.new(id, STATE, mclock_div, divs, base)
-
-  if STATE ~= nil then
-    STATE.ins[q.i.id] = q.i
-    for _, o in ipairs(q.div_outs) do
-      STATE.outs[o.id] = o
-    end
-  end
-
-  return q
-end
-
-
--- ------------------------------------------------------------------------
--- getters
-
--- function QuantizedClock:is_ticking(div)
---   local i = tab.key(self.divs, div)
---   return self.div_states[i]
--- end
-
-
--- ------------------------------------------------------------------------
--- clock
 
 function QuantizedClock:mod(v, m)
   if self.base == 1 then
@@ -114,9 +114,9 @@ function QuantizedClock:tick()
     local state = (self:mod(self.acum, m) == 0)
     self.div_states[i] = state
     if state then
-      self.div_outs[i].v = V_MAX / 2
+      self.div_outs[i]:update(V_MAX / 2)
     else
-      self.div_outs[i].v = 0
+      self.div_outs[i]:update(0)
     end
   end
 end
@@ -127,11 +127,16 @@ end
 
 function QuantizedClock:redraw(x, y, acum)
   for i, v in ipairs(self.divs) do
-    local trig = acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i]) == 0
-    paperface.trig_out(x, y, trig)
-    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
+
+    local o = self.div_outs[i]
+
+    -- local trig = acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i]) == 0
+
+    local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
+    paperface.trig_out(o.x, o.y, trig)
+    screen.move(o.x + SCREEN_STAGE_W + 2, o.y + SCREEN_STAGE_W - 2)
     screen.text(v)
-    y = y + SCREEN_STAGE_W
+    -- y = y + SCREEN_STAGE_W
   end
 end
 

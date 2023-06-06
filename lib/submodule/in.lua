@@ -1,5 +1,11 @@
 -- haleseq. in
 
+
+-- ------------------------------------------------------------------------
+-- deps
+
+local patching = include("haleseq/lib/patching")
+
 include("haleseq/lib/consts")
 
 
@@ -12,7 +18,8 @@ In.__index = In
 -- ------------------------------------------------------------------------
 -- constructors
 
-function In.new(id, parent, callback)
+function In.new(id, parent, callback,
+               x, y)
   local p = setmetatable({}, In)
 
   p.kind = "in"
@@ -30,11 +37,17 @@ function In.new(id, parent, callback)
     p.callback = callback
   end
 
+  p.x = x
+  p.y = y
+
   p.compute_mode = V_COMPUTE_MODE_SUM
 
   p.incoming_vals = {}
   p.v = 0
-  p.updated = false
+  p.changed = false
+
+  p.last_updated_t = 0
+  p.last_changed_t = 0
 
   return p
 end
@@ -52,21 +65,23 @@ function In:register(out_label, v)
 end
 
 function In:update()
+  local now = os.clock()
+  local old_v = self.v
+
+  self.last_updated_t = now
+
   if tab.count(self.incoming_vals) == 0 then
     -- keep old v
-    self.updated = false
+    self.changed = false
     return
   end
 
-  local old_v = self.v
+  self.v = patching.input_compute_val(self.compute_mode, self.incoming_vals)
 
-  if self.compute_mode == V_COMPUTE_MODE_SUM then
-    self.v = mean(self.incoming_vals)
-  elseif self.compute_mode == V_COMPUTE_MODE_MEAN then
-    self.v = sum(self.incoming_vals)
+  self.changed = (old_v ~= self.v)
+  if self.changed then
+    self.last_changed_t = now
   end
-
-  self.updated = (old_v ~= self.v)
 
   if self.callback then
     -- self.callback()

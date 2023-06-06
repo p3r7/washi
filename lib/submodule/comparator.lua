@@ -5,6 +5,12 @@
 -- - as a comparator/gate generator (w/ `self.v`)
 -- - as flip flops (w/ `self.triggered`)
 
+
+-- ------------------------------------------------------------------------
+-- deps
+
+local patching = include("haleseq/lib/patching")
+
 include("haleseq/lib/consts")
 
 
@@ -17,7 +23,8 @@ Comparator.__index = Comparator
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Comparator.new(id, parent, callback)
+function Comparator.new(id, parent, callback,
+                       x, y)
   local p = setmetatable({}, Comparator)
 
   p.kind = "comparator"
@@ -35,6 +42,9 @@ function Comparator.new(id, parent, callback)
     p.callback = callback
   end
 
+  p.x = x
+  p.y = y
+
   p.compute_mode = V_COMPUTE_MODE_SUM
   p.threshold_mode = V_THRESHOLD_MODE_OWN
   p.threshold = V_DEFAULT_THRESHOLD
@@ -42,9 +52,13 @@ function Comparator.new(id, parent, callback)
   p.incoming_vals = {}
   p.raw_v = 0
   p.v = 0
-  p.updated = false
+  p.changed = false
   p.status = 0
   p.triggered = false
+
+  p.last_triggered_t = 0
+  p.last_up_t = 0
+  p.last_down_t = 0
 
   return p
 end
@@ -63,6 +77,7 @@ end
 
 function Comparator:update()
   local prev_status = self.status
+  local now = os.clock()
 
   -- if self.id == "haleseq_1_clock" then
   --   dbgf('----------------')
@@ -71,17 +86,15 @@ function Comparator:update()
 
   if tab.count(self.incoming_vals) == 0 then
     -- keep old v
-    self.updated = false
+    self.changed = false
     return
   end
 
-  self.updated = true
+  local old_raw_v = self.raw_v
+  self.raw_v = patching.input_compute_val(self.compute_mode, self.incoming_vals)
 
-  if self.compute_mode == V_COMPUTE_MODE_SUM then
-    self.raw_v = mean(self.incoming_vals)
-  elseif self.compute_mode == V_COMPUTE_MODE_MEAN then
-    self.raw_v = sum(self.incoming_vals)
-  end
+  -- self.changed = true
+  self.changed = (old_v ~= self.v)
 
   if self.raw_v >= self.threshold then
     self.status = 1
@@ -92,6 +105,14 @@ function Comparator:update()
   end
 
   self.triggered = (prev_status ~= self.status)
+  if self.triggered then
+    self.last_triggered_t = now
+    if self.status == 1 then
+      self.last_up_t = now
+    else
+      self.last_down_t = now
+    end
+  end
 
   -- if self.id == "haleseq_1_clock" then
   --   dbgf('----------------')

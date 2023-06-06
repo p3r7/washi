@@ -38,7 +38,7 @@ end
 
 
 function Output:process_ins()
-  if self.i.updated then
+  if self.i.changed then -- FIXME: make retrigger on TIE but not SKIP
     self:nb_play_volts(self.i.v)
   end
 end
@@ -60,7 +60,7 @@ function Output:init_params()
   local OCTAVE_RANGE_MODES = {'filter', 'fold'}
   params:add_option("out_octave_mode_"..llabel, "Octave Fit Mode", OCTAVE_RANGE_MODES, tab.key(OCTAVE_RANGE_MODES, 'filter'))
 
-  params:add{type = "number", id = "out_octave_min_"..llabel, name = "Min Octave", min = -2, max = 8, default = 1}
+  params:add{type = "number", id = "out_octave_min_"..llabel, name = "Min Octave", min = -2, max = 8, default = -2}
   params:add{type = "number", id = "out_octave_max_"..llabel, name = "Max Octave", min = -2, max = 8, default = 8}
 end
 

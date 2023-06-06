@@ -24,7 +24,8 @@ Haleseq.__index = Haleseq
 -- constructors
 
 function Haleseq.new(id, STATE,
-                     nb_steps, nb_vsteps)
+                     nb_steps, nb_vsteps,
+                     screen_id, x, y)
   local p = setmetatable({}, Haleseq)
 
   p.kind = "haleseq"
@@ -35,6 +36,13 @@ function Haleseq.new(id, STATE,
   -- --------------------------------
 
   p.STATE = STATE
+
+  -- --------------------------------
+  -- screen
+
+  p.screen = screen_id
+  p.x = x
+  p.y = y
 
   -- --------------------------------
 
@@ -48,33 +56,46 @@ function Haleseq.new(id, STATE,
   p.ins = {}
   p.outs = {}
 
-  p.i_clock = Comparator.new(p.fqid.."_clock", p --,
-                              -- function()
-                                -- p:clock_tick()
-                              -- end
-  )
-  p.i_vclock = Comparator.new(p.fqid.."_vclock", p --,
-                              -- function()
-                                -- p:vclock_tick()
-                              -- end
-  )
-  p.i_reset = Comparator.new(p.fqid.."_reset", p)
-  p.i_vreset = Comparator.new(p.fqid.."_vreset", p)
-  p.i_preset = In.new(p.fqid.."_preset", p)
-  p.i_hold = In.new(p.fqid.."_hold", p)
-  p.i_reverse = In.new(p.fqid.."_reverse", p)
+  p.i_clock = Comparator.new(p.fqid.."_clock", p, nil,
+                             SCREEN_W - SCREEN_STAGE_W,
+                             SCREEN_H - SCREEN_STAGE_W)
+  p.i_vclock = Comparator.new(p.fqid.."_vclock", p, nil,
+                             SCREEN_W - SCREEN_STAGE_W,
+                             SCREEN_STAGE_W)
+  p.i_reset = Comparator.new(p.fqid.."_reset", p, nil,
+                             SCREEN_W - SCREEN_STAGE_W,
+                             2 * SCREEN_STAGE_W)
+  p.i_vreset = Comparator.new(p.fqid.."_vreset", p, nil,
+                             SCREEN_W - SCREEN_STAGE_W,
+                             0)
+  p.i_preset_reset = Comparator.new(p.fqid.."_preset_reset", p, nil,
+                                    SCREEN_W - SCREEN_STAGE_W,
+                                    4 * SCREEN_STAGE_W)
+  p.i_hold = In.new(p.fqid.."_hold", p, nil,
+                    SCREEN_W - SCREEN_STAGE_W,
+                    3 * SCREEN_STAGE_W)
+  p.i_reverse = In.new(p.fqid.."_reverse", p, nil,
+                       SCREEN_W - SCREEN_STAGE_W,
+                       5 * SCREEN_STAGE_W)
 
+  p.i_preset = In.new(p.fqid.."_preset", p, nil,
+                      SCREEN_W - 2 * SCREEN_STAGE_W,
+                      SCREEN_H - SCREEN_STAGE_W)
+
+
+  local stage_start_x = (SCREEN_W - (p.nb_steps * SCREEN_STAGE_W)) / 2
 
   p.stages = {}
   for s=1,nb_steps do
-    local stage = Stage.new(p.fqid.."_stage_"..s, p)
+    local stage = Stage.new(p.fqid.."_stage_"..s, p, stage_start_x, SCREEN_STAGE_Y_OFFSET)
     p.stages[s] = stage
   end
 
   -- CPO - Common Pulse Out
   --   triggered on any change of preset (via button or trig in)
   --   TODO: goes high and remains high while a push button is pushed
-  p.cpo = Out.new(p.fqid.."_cpo", p)
+  p.cpo = Out.new(p.fqid.."_cpo", p,
+                  stage_start_x + p.nb_steps * SCREEN_STAGE_W, 0)
   -- AEP - All Event Pulse
   p.aep = Out.new(p.fqid.."_aep", p)
 
@@ -84,14 +105,16 @@ function Haleseq.new(id, STATE,
   for vs=1, nb_vsteps do
     local label = output_nb_to_name(vs)
     local llabel = string.lower(label)
-    local o = Out.new(p.fqid.."_"..llabel, p)
+    local o = Out.new(p.fqid.."_"..llabel, p,
+                      stage_start_x + p.nb_steps * SCREEN_STAGE_W, SCREEN_STAGE_W*vs)
     p.cv_outs[vs] = o
     -- table.insert(p.outs, o)
   end
   -- ABCD
   local mux_label = mux_output_nb_to_name(nb_vsteps)
   local mux_llabel = string.lower(mux_label)
-  p.cv_outs[nb_vsteps+1] = Out.new(p.fqid.."_"..mux_llabel, p)
+  p.cv_outs[nb_vsteps+1] = Out.new(p.fqid.."_"..mux_llabel, p,
+                                   stage_start_x + p.nb_steps * SCREEN_STAGE_W, SCREEN_STAGE_W*(nb_vsteps+1))
 
 
   -- --------------------------------
@@ -126,16 +149,148 @@ function Haleseq.new(id, STATE,
   return p
 end
 
+
+function Haleseq:init_params()
+  local fqid = self.fqid
+  local id = self.id
+
+  params:add_group(fqid, "haleseq #"..id, 9)
+
+  params:add_trigger(fqid.."_rnd_seqs", "Randomize Seqs")
+  params:set_action(fqid.."_rnd_seqs",
+                    function(_v)
+                      if params:string("rnd_seq_mode") == 'Scale' then
+                        self:randomize_seqvals_scale(params:string("rnd_seq_root"))
+                      else
+                        self:randomize_seqvals_blip_bloop()
+                      end
+                    end
+  )
+
+  params:add{type = "number", id = fqid.."_preset", name = "Preset", min = 1, max = NB_STEPS, default = 1}
+  params:set_action(fqid.."_preset",
+                    function(_v)
+                      self.last_preset_t = os.clock()
+                      self:reset_preset()
+                    end
+  )
+
+  params:add_trigger("fw_"..id, "Forward")
+  params:set_action("fw_"..id,
+                    function(_v)
+                      local next_preset = mod1(params:get(self.fqid.."_preset") + 1, self.nb_steps)
+                      params:set(self.fqid.."_preset", next_preset)
+                    end
+  )
+  params:add_trigger("bw_"..id, "Backward")
+  params:set_action("bw_"..id,
+                    function(_v)
+                      local next_preset = params:get(self.fqid.."_preset") - 1
+                      if next_preset == 0 then
+                        next_preset = self.nb_steps
+                      end
+                      params:set(self.fqid.."_preset", next_preset)
+                    end
+  )
+  params:add_trigger("vfw_"..id, "VForward")
+  params:set_action("vfw_"..id,
+                    function(_v)
+                      vclock_acum = vclock_acum + 1
+                      mclock_tick(nil, true)
+                    end
+  )
+  params:add_trigger("vbw_"..id, "VBackward")
+  params:set_action("vbw_"..id,
+                    function(_v)
+                      local vreverse_prev = self.vreverse
+                      self.vreverse = true
+                      vclock_acum = vclock_acum + 1
+                      mclock_tick(nil, true)
+                      self.vreverse = vreverse_prev
+                    end
+  )
+
+  params:add_option("clock_div_"..id, "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, 'off'))
+  params:set_action("clock_div_"..id,
+                    function(v)
+                      local clock_id = "haleseq_"..self.id.."_clock"
+
+                      for o, ins in pairs(STATE.links) do
+                        if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
+                          patching.remove_link(STATE.links, o, clock_id)
+                        end
+                      end
+
+                      if CLOCK_DIVS[v] ~= 'off' then
+                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
+                      end
+                    end
+  )
+  params:add_option("vclock_div_"..id, "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, 'off'))
+  params:set_action("vclock_div_"..id,
+                    function(v)
+                      local clock_id = "haleseq_"..self.id.."_vclock"
+
+                      for o, ins in pairs(links) do
+                        if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
+                          patching.remove_link(links, o, clock_id)
+                        end
+                      end
+
+                      if CLOCK_DIVS[v] ~= 'off' then
+                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
+                      end
+                    end
+  )
+  local ON_OFF = {'on', 'off'}
+  params:add_option("clock_quantize_"..id, "Clock Quantize", ON_OFF, tab.key(ON_OFF, 'on'))
+end
+
+function Haleseq.init(id, STATE, nb_steps, nb_vsteps,
+                           screen_id, x, y)
+  local h = Haleseq.new(id, STATE, nb_steps, nb_vsteps,
+                        screen_id, x, y)
+  h:init_params()
+
+  if STATE ~= nil then
+    STATE.ins[h.i_clock.id] = h.i_clock
+    STATE.ins[h.i_vclock.id] = h.i_vclock
+    STATE.ins[h.i_reset.id] = h.i_reset
+    STATE.ins[h.i_vreset.id] = h.i_vreset
+    STATE.ins[h.i_preset.id] = h.i_preset
+    STATE.ins[h.i_hold.id] = h.i_hold
+    STATE.ins[h.i_reverse.id] = h.i_reverse
+
+    for _, s in ipairs(h.stages) do
+      STATE.ins[s.i.id] = s.i
+      STATE.outs[s.o.id] = s.o
+    end
+
+    STATE.outs[h.cpo.id] = h.cpo
+    STATE.outs[h.aep.id] = h.aep
+
+    for _, cv in ipairs(h.cv_outs) do
+      STATE.outs[cv.id] = cv
+    end
+
+  end
+  return h
+end
+
+
+-- ------------------------------------------------------------------------
+-- internal logic
+
 function Haleseq:process_ins()
   local ticked = false
   local vticked = false
 
-  if self.i_preset.updated then
-    params:set("preset_"..self.id, round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
+  if self.i_preset.changed then
+    params:set(self.fqid.."_preset", round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
   else
     for v, stage in ipairs(self.stages) do
       if stage.i.triggered and stage.i.status == 1 then
-        params:set("preset_"..self.id, v)
+        params:set(self.fqid.."_preset", v)
         break
       end
     end
@@ -151,13 +306,13 @@ function Haleseq:process_ins()
   -- A / B / C / D
   if ticked then
     for vs=1,self.nb_vsteps do
-      self.cv_outs[vs].v = self:get_current_play_volts(vs)
+      self.cv_outs[vs]:update(self:get_current_play_volts(vs))
     end
   end
 
   -- ABCD
   if ticked or vticked then
-    self.cv_outs[self.nb_vsteps+1].v = self:get_current_mux_play_volts()
+    self.cv_outs[self.nb_vsteps+1]:update(self:get_current_mux_play_volts())
   end
 
   -- TODO: stage gate out!
@@ -211,13 +366,13 @@ function Haleseq:vreset()
 end
 
 function Haleseq:reset_preset()
-  self.next_step = params:get("preset_"..self.id)
+  self.next_step = params:get(self.fqid.."_preset")
 end
 
 function Haleseq:are_all_stage_skip(ignore_preset)
   local nb_skipped = 0
 
-  local start = params:get("preset_"..self.id)
+  local start = params:get(self.fqid.."_preset")
   if ignore_preset then
     start = 1
   end
@@ -294,7 +449,7 @@ function Haleseq:clock_tick()
 
   -- ... skip until at preset ...
   if not self.is_resetting then
-    while self.step < params:get("preset_"..self.id) do
+    while self.step < params:get(self.fqid.."_preset") do
       self.step = mod1(self.step + sign, self.nb_steps)
     end
   end
@@ -303,13 +458,13 @@ function Haleseq:clock_tick()
   while self.stages[self.step]:get_mode() == Stage.M_SKIP do
     self.step = mod1(self.step + sign, self.nb_steps)
   end
-  if self.step >= params:get("preset_"..self.id) then
+  if self.step >= params:get(self.fqid.."_preset") then
     self.is_resetting = false
   end
 
   -- ... skip (again) until at preset ...
   if not self.is_resetting then
-    while self.step < params:get("preset_"..self.id) do
+    while self.step < params:get(self.fqid.."_preset") do
       self.step = mod1(self.step + sign, self.nb_steps)
     end
   end
@@ -451,134 +606,6 @@ end
 
 
 -- ------------------------------------------------------------------------
--- init
-
-function Haleseq:init_params()
-  local id = self.id
-
-  params:add_group("haleseq_"..id, "haleseq #"..id, 9)
-
-  params:add_trigger("rnd_seqs_"..id, "Randomize Seqs")
-  params:set_action("rnd_seqs_"..id,
-                    function(_v)
-                      if params:string("rnd_seq_mode") == 'Scale' then
-                        self:randomize_seqvals_scale(params:string("rnd_seq_root"))
-                      else
-                        self:randomize_seqvals_blip_bloop()
-                      end
-                    end
-  )
-
-  params:add{type = "number", id = "preset_"..id, name = "Preset", min = 1, max = NB_STEPS, default = 1}
-  params:set_action("preset_"..id,
-                    function(_v)
-                      self.last_preset_t = os.clock()
-                      self:reset_preset()
-                    end
-  )
-
-  params:add_trigger("fw_"..id, "Forward")
-  params:set_action("fw_"..id,
-                    function(_v)
-                      local next_preset = mod1(params:get("preset_"..self.id) + 1, self.nb_steps)
-                      params:set("preset_"..self.id, next_preset)
-                    end
-  )
-  params:add_trigger("bw_"..id, "Backward")
-  params:set_action("bw_"..id,
-                    function(_v)
-                      local next_preset = params:get("preset_"..self.id) - 1
-                      if next_preset == 0 then
-                        next_preset = self.nb_steps
-                      end
-                      params:set("preset_"..self.id, next_preset)
-                    end
-  )
-  params:add_trigger("vfw_"..id, "VForward")
-  params:set_action("vfw_"..id,
-                    function(_v)
-                      vclock_acum = vclock_acum + 1
-                      mclock_tick(nil, true)
-                    end
-  )
-  params:add_trigger("vbw_"..id, "VBackward")
-  params:set_action("vbw_"..id,
-                    function(_v)
-                      local vreverse_prev = self.vreverse
-                      self.vreverse = true
-                      vclock_acum = vclock_acum + 1
-                      mclock_tick(nil, true)
-                      self.vreverse = vreverse_prev
-                    end
-  )
-
-  params:add_option("clock_div_"..id, "Clock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, 'off'))
-  params:set_action("clock_div_"..id,
-                    function(v)
-                      local clock_id = "haleseq_"..self.id.."_clock"
-
-                      for o, ins in pairs(STATE.links) do
-                        if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(STATE.links, o, clock_id)
-                        end
-                      end
-
-                      if CLOCK_DIVS[v] ~= 'off' then
-                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
-                      end
-                    end
-  )
-  params:add_option("vclock_div_"..id, "VClock Div", CLOCK_DIVS, tab.key(CLOCK_DIVS, 'off'))
-  params:set_action("vclock_div_"..id,
-                    function(v)
-                      local clock_id = "haleseq_"..self.id.."_vclock"
-
-                      for o, ins in pairs(links) do
-                        if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(links, o, clock_id)
-                        end
-                      end
-
-                      if CLOCK_DIVS[v] ~= 'off' then
-                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
-                      end
-                    end
-  )
-  local ON_OFF = {'on', 'off'}
-  params:add_option("clock_quantize_"..id, "Clock Quantize", ON_OFF, tab.key(ON_OFF, 'on'))
-end
-
-function Haleseq.init(id, STATE, nb_steps, nb_vsteps)
-  local h = Haleseq.new(id, STATE, nb_steps, nb_vsteps)
-  h:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[h.i_clock.id] = h.i_clock
-    STATE.ins[h.i_vclock.id] = h.i_vclock
-    STATE.ins[h.i_reset.id] = h.i_reset
-    STATE.ins[h.i_vreset.id] = h.i_vreset
-    STATE.ins[h.i_preset.id] = h.i_preset
-    STATE.ins[h.i_hold.id] = h.i_hold
-    STATE.ins[h.i_reverse.id] = h.i_reverse
-
-    for _, s in ipairs(h.stages) do
-      STATE.ins[s.i.id] = s.i
-      STATE.outs[s.o.id] = s.o
-    end
-
-    STATE.outs[h.cpo.id] = h.cpo
-    STATE.outs[h.aep.id] = h.aep
-
-    for _, cv in ipairs(h.cv_outs) do
-      STATE.outs[cv.id] = cv
-    end
-
-  end
-  return h
-end
-
-
--- ------------------------------------------------------------------------
 -- knobs
 
 function Haleseq:knob(n, d)
@@ -635,7 +662,7 @@ function Haleseq:grid_redraw(g)
     --                -- <pad>
     l = 1
     local mode = self.stages[s]:get_mode()
-    if (params:get("preset_"..self.id) == s) then
+    if (params:get(self.fqid.."_preset") == s) then
       l = 8
     elseif mode == Stage.M_RUN then
       l = 2
@@ -682,7 +709,7 @@ function Haleseq:grid_key(x, y, z)
         self.g_btn = s
 
         -- TODO: should be a set stage input & propagate!
-        -- params:set("preset_"..self.id, s)
+        -- params:set(self.fqid.."_preset", s)
         -- self.last_preset_t = os.clock()
         -- self:process_ins(true)
 
@@ -759,7 +786,7 @@ function Haleseq:redraw_stage(x, y, s)
 
   -- trig in
   y2 = y + (SCREEN_PRESET_IN_Y - 1) * SCREEN_STAGE_W
-  if params:get("preset_"..self.id) == s then
+  if params:get(self.fqid.."_preset") == s then
     if (self.g_btn == s) then
       paperface.trig_in(x, y2, true)
     else
@@ -773,7 +800,7 @@ function Haleseq:redraw_stage(x, y, s)
   y2 = y + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
   for vs=1,self.nb_vsteps do
     -- l = SCREEN_LEVEL_LABEL
-    -- if params:get("preset_"..self.id) == s then
+    -- if params:get(self.fqid.."_preset") == s then
     --   l = SCREEN_LEVEL_LABEL_SPE
     -- end
     -- paperface.rect_label(x, y2, l)
@@ -816,28 +843,33 @@ function Haleseq:redraw()
     y = y + SCREEN_STAGE_W
   end
 
-  -- preset gate out
+  -- CPO (preset change gate out)
   local y = SCREEN_STAGE_Y_OFFSET
   paperface.trig_out(x, y, math.abs(os.clock() - self.last_preset_t) < PULSE_T, SCREEN_LEVEL_LABEL_SPE)
 
   x = x + SCREEN_STAGE_W * 2
 
+  trig = false
   paperface.trig_in(x, y, trig) -- vreset
   y = y + SCREEN_STAGE_W
-  paperface.trig_in(x, y, trig) -- vlock
+  trig = (math.abs(os.clock() - self.i_vclock.last_up_t) < PULSE_T)
+  paperface.trig_in(x, y, trig) -- vclock
   y = y + SCREEN_STAGE_W
+  trig = false
   paperface.trig_in(x, y, trig) -- reset
   y = y + SCREEN_STAGE_W
   paperface.trig_in(x, y, trig) -- hold
   y = y + SCREEN_STAGE_W
-  paperface.trig_in(x, y, trig) -- preset
+  paperface.trig_in(x, y, trig) -- preset (reset)
   y = y + SCREEN_STAGE_W
   paperface.trig_in(x, y, trig) -- reverse
   y = y + SCREEN_STAGE_W
+  trig = (math.abs(os.clock() - self.i_clock.last_up_t) < PULSE_T)
   paperface.trig_in(x, y, trig) -- clock
 
   x = x - SCREEN_STAGE_W
-  paperface.main_in(x, y, trig)
+  trig = (math.abs(os.clock() - self.i_preset.last_changed_t) < PULSE_T)
+  paperface.main_in(x, y, trig) -- preset (VC)
 end
 
 

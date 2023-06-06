@@ -286,8 +286,8 @@ function init()
   params:set_action("rnd_seqs",
                     function(_v)
                       for _, h in ipairs(haleseqs) do
-                        local id = h:get_id()
-                        params:set("rnd_seqs_"..id, 1)
+                        local fqid = h.fqid
+                        params:set(fqid.."_rnd_seqs", 1)
                       end
                     end
   )
@@ -311,17 +311,20 @@ function init()
   -- --------------------------------
   -- modules
 
-  norns_clock = NornsClock.init(STATE)
-  quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS)
+  norns_clock = NornsClock.init(STATE,
+                                tab.key(page_list, "clock"), SCREEN_STAGE_W, SCREEN_STAGE_Y_OFFSET)
+  quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS,
+                                         tab.key(page_list, "clock"), SCREEN_STAGE_W*6, SCREEN_STAGE_Y_OFFSET)
 
-  pulse_dividers[1] = PulseDivider.init(1, STATE)
+  pulse_dividers[1] = PulseDivider.init(1, STATE, nil,
+                                        tab.key(page_list, "clock"), SCREEN_STAGE_W*10, SCREEN_STAGE_Y_OFFSET)
 
-  for i = 1,NB_HALESEQS do
-    local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS)
+  for i=1,NB_HALESEQS do
+    local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS, tab.key(page_list, 'haleseq '..i), 0, 0)
     haleseqs[i] = h
   end
 
-  for vs=1, NB_VSTEPS+1 do
+  for vs=1,NB_VSTEPS+1 do
     -- local label = output_nb_to_name(vs)
     local label = ""..vs
     outputs[vs] = Output.init(label, STATE)
@@ -330,13 +333,14 @@ function init()
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
-  add_link("quantized_clock_global_32", "pulse_divider_1")
+  -- add_link("quantized_clock_global_8", "pulse_divider_1") -- NB: as defautl param now
 
   -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
   params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
-  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
+  -- params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
 
-  -- add_link("pulse_divider_1_8", "haleseq_1_clock") -- TODO: FIXME
+  add_link("pulse_divider_1_3", "haleseq_1_vclock")
+  add_link("pulse_divider_1_5", "haleseq_2_vclock")
 
 
   for vs=1, NB_VSTEPS do
@@ -353,6 +357,8 @@ function init()
   -- add_link("haleseq_1_a", "haleseq_2_clock")
   add_link("haleseq_1_abcd", "haleseq_2_preset")
   add_link("haleseq_2_abcd", "output_5")
+
+  add_link("haleseq_1_abcd", "pulse_divider_1_clock_div")
 
 
   -- --------------------------------
@@ -431,6 +437,15 @@ end
 -- controls
 
 function enc(n, d)
+  local curr_page = page_list[pages.index]
+
+  if curr_page == "clock" then
+    if n == 2 then
+      local sign = math.floor(d/math.abs(d))
+      params:set("pulse_divider_1_clock_div", params:get("pulse_divider_1_clock_div") + sign)
+      return
+    end
+  end
 
   local h = get_current_haleseq()
   if h ~= nil then
@@ -477,18 +492,18 @@ end
 -- screen
 
 function redraw_clock_screen()
-  local x = SCREEN_STAGE_W
-  local y = SCREEN_STAGE_Y_OFFSET
+  -- local x = SCREEN_STAGE_W
+  -- local y = SCREEN_STAGE_Y_OFFSET
 
-  norns_clock.redraw(x, y, mclock_acum)
+  norns_clock.redraw(norns_clock.x, norns_clock.y, mclock_acum)
 
-  x = x + SCREEN_STAGE_W * 5
+  -- x = x + SCREEN_STAGE_W * 5
 
-  quantized_clocks:redraw(x, y, mclock_acum)
+  quantized_clocks:redraw(quantized_clocks.x, quantized_clocks.y, mclock_acum)
 
-  x = x + SCREEN_STAGE_W * 5
+  -- x = x + SCREEN_STAGE_W * 5
 
-  pulse_dividers[1]:redraw(x, y, mclock_acum)
+  pulse_dividers[1]:redraw(pulse_dividers[1].x, pulse_dividers[1].y)
 end
 
 
@@ -515,6 +530,26 @@ function redraw()
     if h ~= nil then
       h:redraw()
     end
+  end
+
+  for _, i in pairs(ins) do
+    if i.x == nil or i.y == nil then
+      -- print(i.id)
+      goto NEXT_IN_LINK
+    end
+
+    if i.kind == 'comparator' then
+      local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
+      if triggered then
+        patching.draw_input_links(i, outs, pages.index)
+      end
+    elseif i.kind == 'in' then
+      local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+      if triggered then
+        patching.draw_input_links(i, outs, pages.index)
+      end
+    end
+    ::NEXT_IN_LINK::
   end
 
   screen.update()

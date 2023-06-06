@@ -96,6 +96,19 @@ end
 -- ------------------------------------------------------------------------
 -- tables
 
+function tvals(t)
+  local t2 = {}
+  for _, v in pairs(t) do
+    table.insert(t2, v)
+  end
+  return t2
+end
+
+-- like `table.unpack` but supports maps
+function tunpack(t)
+  return table.unpack(tvals(t))
+end
+
 function tab_contains_coord(t, c)
   for _, c2 in ipairs(t) do
     if c[1] == c2[1] and c[2] == c2[2] then

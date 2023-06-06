@@ -4,6 +4,7 @@ local Comparator = include("haleseq/lib/submodule/comparator")
 local Out = include("haleseq/lib/submodule/out")
 
 include("haleseq/lib/core")
+include("haleseq/lib/consts")
 
 
 -- ------------------------------------------------------------------------
@@ -25,15 +26,21 @@ local draw_modes = {Stage.M_TIE, Stage.M_RUN, Stage.M_SKIP}
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Stage.new(id, parent)
+function Stage.new(id, parent,
+                  x, _y)
   local p = setmetatable({}, Stage)
 
   p.kind = "stage"
   p.id = id
   p.parent = parent
 
-  p.i = Comparator.new(id, parent)
-  p.o = Out.new(id, parent)
+  p.x = x
+  p.y = y
+
+  p.i = Comparator.new(id, parent, nil,
+                       x, 0)
+  p.o = Out.new(id, parent,
+                x, SCREEN_H - SCREEN_STAGE_W)
 
   -- table.insert(parent.outs, p.o)
 
