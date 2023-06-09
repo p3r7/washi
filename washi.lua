@@ -115,7 +115,6 @@ local function rnd_patch()
     end
   end
 
-
   for i, h in ipairs(haleseqs) do
     local has_in_preset_cv_patched = false
 
@@ -407,6 +406,8 @@ function init()
   -- --------------------------------
   -- modules
 
+  params:add_separator("modules", "modules")
+
   norns_clock = NornsClock.init(STATE,
                                 tab.key(page_list, 'clock'), 2, 1)
   quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS,
@@ -420,6 +421,8 @@ function init()
                            tab.key(page_list, 'haleseq '..i), 0, 0)
     haleseqs[i] = h
   end
+
+  params:add_separator("outputs", "outputs")
 
   for vs=1,NB_VSTEPS+1 do
     -- local label = output_nb_to_name(vs)

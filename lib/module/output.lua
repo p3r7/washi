@@ -53,21 +53,20 @@ function Output.new(id, STATE,
 end
 
 function Output:init_params()
-  local label = self.id -- A, B, C...
-  local llabel = string.lower(label)
+  local label = self.id
 
-  params:add_group("track_"..llabel, label, 5)
+  params:add_group("track_"..label, "Output #"..label, 5)
 
   -- NB: right now, 1:1 mapping between outs & nb voices
   -- might want to change that!
   -- nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
-  nb:add_param("nb_voice_"..llabel, "nb Voice "..label)
+  nb:add_param("nb_voice_"..label, "nb Voice "..label)
 
   local OCTAVE_RANGE_MODES = {'filter', 'fold'}
-  params:add_option("out_octave_mode_"..llabel, "Octave Fit Mode", OCTAVE_RANGE_MODES, tab.key(OCTAVE_RANGE_MODES, 'filter'))
+  params:add_option("out_octave_mode_"..label, "Octave Fit Mode", OCTAVE_RANGE_MODES, tab.key(OCTAVE_RANGE_MODES, 'filter'))
 
-  params:add{type = "number", id = "out_octave_min_"..llabel, name = "Min Octave", min = -2, max = 8, default = -2}
-  params:add{type = "number", id = "out_octave_max_"..llabel, name = "Max Octave", min = -2, max = 8, default = 8}
+  params:add{type = "number", id = "out_octave_min_"..label, name = "Min Octave", min = -2, max = 8, default = -2}
+  params:add{type = "number", id = "out_octave_max_"..label, name = "Max Octave", min = -2, max = 8, default = 8}
 end
 
 function Output.init(id, STATE,
@@ -94,8 +93,8 @@ function Output:process_ins()
 end
 
 function Output:get_nb_player()
-  local llabel = string.lower(self.id)
-  return params:lookup_param("nb_voice_"..llabel):get_player()
+  local label = self.id
+  return params:lookup_param("nb_voice_"..label):get_player()
 end
 
 function Output:nb_note_off()
