@@ -4,8 +4,8 @@
 -- ------------------------------------------------------------------------
 -- deps
 
-include("haleseq/lib/core")
-include("haleseq/lib/consts")
+include("washi/lib/core")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------

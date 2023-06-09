@@ -1,10 +1,10 @@
 -- washi. stage
 
-local Comparator = include("haleseq/lib/submodule/comparator")
-local Out = include("haleseq/lib/submodule/out")
+local Comparator = include("washi/lib/submodule/comparator")
+local Out = include("washi/lib/submodule/out")
 
-include("haleseq/lib/core")
-include("haleseq/lib/consts")
+include("washi/lib/core")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------

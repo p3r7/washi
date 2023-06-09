@@ -7,12 +7,12 @@ QuantizedClock.__index = QuantizedClock
 -- ------------------------------------------------------------------------
 -- deps
 
-local Comparator = include("haleseq/lib/submodule/comparator")
-local Out = include("haleseq/lib/submodule/out")
+local Comparator = include("washi/lib/submodule/comparator")
+local Out = include("washi/lib/submodule/out")
 
-local paperface = include("haleseq/lib/paperface")
-include("haleseq/lib/consts")
-include("haleseq/lib/core")
+local paperface = include("washi/lib/paperface")
+include("washi/lib/consts")
+include("washi/lib/core")
 
 
 -- ------------------------------------------------------------------------

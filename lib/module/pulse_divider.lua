@@ -9,13 +9,13 @@ PulseDivider.__index = PulseDivider
 -- ------------------------------------------------------------------------
 -- deps
 
-local Comparator = include("haleseq/lib/submodule/comparator")
-local In = include("haleseq/lib/submodule/in")
-local Out = include("haleseq/lib/submodule/out")
+local Comparator = include("washi/lib/submodule/comparator")
+local In = include("washi/lib/submodule/in")
+local Out = include("washi/lib/submodule/out")
 
-local patching = include("haleseq/lib/patching")
-local paperface = include("haleseq/lib/paperface")
-include("haleseq/lib/consts")
+local patching = include("washi/lib/patching")
+local paperface = include("washi/lib/paperface")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------

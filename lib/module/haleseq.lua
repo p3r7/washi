@@ -2,16 +2,16 @@
 
 local musicutil = require "musicutil"
 
-local Stage = include("haleseq/lib/submodule/stage")
-local Comparator = include("haleseq/lib/submodule/comparator")
-local In = include("haleseq/lib/submodule/in")
-local Out = include("haleseq/lib/submodule/out")
+local Stage = include("washi/lib/submodule/stage")
+local Comparator = include("washi/lib/submodule/comparator")
+local In = include("washi/lib/submodule/in")
+local Out = include("washi/lib/submodule/out")
 
-local paperface = include("haleseq/lib/paperface")
-local patching = include("haleseq/lib/patching")
+local paperface = include("washi/lib/paperface")
+local patching = include("washi/lib/patching")
 
-include("haleseq/lib/consts")
-include("haleseq/lib/core")
+include("washi/lib/consts")
+include("washi/lib/core")
 
 
 -- ------------------------------------------------------------------------

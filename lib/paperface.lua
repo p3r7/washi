@@ -8,8 +8,8 @@ local paperface = {}
 
 -- ------------------------------------------------------------------------
 
-local Stage = include("haleseq/lib/submodule/stage")
-include("haleseq/lib/consts")
+local Stage = include("washi/lib/submodule/stage")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------

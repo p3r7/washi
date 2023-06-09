@@ -7,12 +7,12 @@ Output.__index = Output
 -- ------------------------------------------------------------------------
 -- deps
 
-local nb = include("haleseq/lib/nb/lib/nb")
-local In = include("haleseq/lib/submodule/in")
+local nb = include("washi/lib/nb/lib/nb")
+local In = include("washi/lib/submodule/in")
 
-local paperface = include("haleseq/lib/paperface")
+local paperface = include("washi/lib/paperface")
 
-include("haleseq/lib/consts")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------

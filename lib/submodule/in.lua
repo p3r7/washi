@@ -4,9 +4,9 @@
 -- ------------------------------------------------------------------------
 -- deps
 
-local patching = include("haleseq/lib/patching")
+local patching = include("washi/lib/patching")
 
-include("haleseq/lib/consts")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------

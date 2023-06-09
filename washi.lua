@@ -20,21 +20,21 @@ local lattice = require "lattice"
 local musicutil = require "musicutil"
 local UI = require "ui"
 
-local nb = include("haleseq/lib/nb/lib/nb")
-local inspect = include("haleseq/lib/inspect")
+local nb = include("washi/lib/nb/lib/nb")
+local inspect = include("washi/lib/inspect")
 
-local paperface = include("haleseq/lib/paperface")
-local patching = include("haleseq/lib/patching")
+local paperface = include("washi/lib/paperface")
+local patching = include("washi/lib/patching")
 
 -- modules
-local Haleseq = include("haleseq/lib/module/haleseq")
-local Output = include("haleseq/lib/module/output")
-local NornsClock = include("haleseq/lib/module/norns_clock")
-local QuantizedClock = include("haleseq/lib/module/quantized_clock")
-local PulseDivider = include("haleseq/lib/module/pulse_divider")
+local Haleseq = include("washi/lib/module/haleseq")
+local Output = include("washi/lib/module/output")
+local NornsClock = include("washi/lib/module/norns_clock")
+local QuantizedClock = include("washi/lib/module/quantized_clock")
+local PulseDivider = include("washi/lib/module/pulse_divider")
 
-include("haleseq/lib/core")
-include("haleseq/lib/consts")
+include("washi/lib/core")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------
