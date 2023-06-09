@@ -24,7 +24,7 @@ local nb = include("haleseq/lib/nb/lib/nb")
 local inspect = include("haleseq/lib/inspect")
 
 local paperface = include("haleseq/lib/paperface")
-patching = include("haleseq/lib/patching")
+local patching = include("haleseq/lib/patching")
 
 -- modules
 local Haleseq = include("haleseq/lib/module/haleseq")
@@ -73,6 +73,7 @@ STATE = {
   ins = ins,
   outs = outs,
   links = links,
+  selected_out = nil,
 }
 
 local function add_link(o, i)
@@ -312,12 +313,12 @@ function init()
   -- modules
 
   norns_clock = NornsClock.init(STATE,
-                                tab.key(page_list, "clock"), SCREEN_STAGE_W, SCREEN_STAGE_Y_OFFSET)
+                                tab.key(page_list, "clock"), 2, 1)
   quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS,
-                                         tab.key(page_list, "clock"), SCREEN_STAGE_W*6, SCREEN_STAGE_Y_OFFSET)
+                                         tab.key(page_list, "clock"), 4, 1)
 
   pulse_dividers[1] = PulseDivider.init(1, STATE, nil,
-                                        tab.key(page_list, "clock"), SCREEN_STAGE_W*10, SCREEN_STAGE_Y_OFFSET)
+                                        tab.key(page_list, "clock"), 8, 1)
 
   for i=1,NB_HALESEQS do
     local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS, tab.key(page_list, 'haleseq '..i), 0, 0)
@@ -333,7 +334,6 @@ function init()
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
   add_link("norns_clock", "quantized_clock_global")
-  -- add_link("quantized_clock_global_8", "pulse_divider_1") -- NB: as defautl param now
 
   -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
   params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
@@ -492,20 +492,62 @@ end
 -- screen
 
 function redraw_clock_screen()
-  -- local x = SCREEN_STAGE_W
-  -- local y = SCREEN_STAGE_Y_OFFSET
 
-  norns_clock.redraw(norns_clock.x, norns_clock.y, mclock_acum)
+  -- NB: `norns_clock` & `quantized_clocks` act a single module
+  -- here we're faking the display of the' link bewteen the 2 as a clock multiplier while it's in fact implemented as a clock divider
+  -- hence why we're manually drawing the links and showing the trigger ins independently of the real inputs' ins.
+  quantized_clocks:redraw()
+  norns_clock:redraw(quantized_clocks.mclock_mult_trig)
+  if quantized_clocks.mclock_mult_trig then
+    paperface.draw_link(norns_clock.x, norns_clock.y, 1, quantized_clocks.x, quantized_clocks.y, 1, 1)
+  end
 
-  -- x = x + SCREEN_STAGE_W * 5
-
-  quantized_clocks:redraw(quantized_clocks.x, quantized_clocks.y, mclock_acum)
-
-  -- x = x + SCREEN_STAGE_W * 5
-
-  pulse_dividers[1]:redraw(pulse_dividers[1].x, pulse_dividers[1].y)
+  pulse_dividers[1]:redraw()
 end
 
+local function ins_from_labels(in_labels)
+  local res = {}
+  for _, in_label in ipairs(in_labels) do
+    local i = ins[in_label]
+    if i ~= nil then
+      table.insert(res, i)
+    end
+  end
+  return res
+end
+
+local function redraw_links(ins_list)
+  for _, i in pairs(ins_list) do
+    if i.x == nil or i.y == nil then
+      goto NEXT_IN_LINK
+    end
+
+    paperface.draw_input_links(i, outs, pages.index)
+
+    ::NEXT_IN_LINK::
+  end
+end
+
+local function redraw_active_links(ins_list)
+  for _, i in pairs(ins_list) do
+    if i.x == nil or i.y == nil then
+      goto NEXT_IN_ACTIVE_LINK
+    end
+
+    if i.kind == 'comparator' then
+      local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
+      if triggered then
+        paperface.draw_input_links(i, outs, pages.index)
+      end
+    elseif i.kind == 'in' then
+      local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+      if triggered then
+        paperface.draw_input_links(i, outs, pages.index)
+      end
+    end
+    ::NEXT_IN_ACTIVE_LINK::
+  end
+end
 
 function redraw()
   screen.clear()
@@ -532,24 +574,10 @@ function redraw()
     end
   end
 
-  for _, i in pairs(ins) do
-    if i.x == nil or i.y == nil then
-      -- print(i.id)
-      goto NEXT_IN_LINK
-    end
-
-    if i.kind == 'comparator' then
-      local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
-      if triggered then
-        patching.draw_input_links(i, outs, pages.index)
-      end
-    elseif i.kind == 'in' then
-      local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
-      if triggered then
-        patching.draw_input_links(i, outs, pages.index)
-      end
-    end
-    ::NEXT_IN_LINK::
+  if STATE.selected_out == nil then
+    redraw_active_links(ins)
+  else
+    redraw_links(links[ins_from_labels(links[STATE.selected_out])])
   end
 
   screen.update()

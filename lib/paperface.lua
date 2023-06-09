@@ -1,13 +1,27 @@
 -- haleseq. paperface
+--
+-- norns' screen represent a panel, comprised of 7 rows & 17 columns
+-- each cell of the grid is 9x9 pixels (`SCREEN_STAGE_W`)
+
+local paperface = {}
+
+
+-- ------------------------------------------------------------------------
 
 local Stage = include("haleseq/lib/submodule/stage")
 include("haleseq/lib/consts")
 
 
 -- ------------------------------------------------------------------------
+-- panel grid
 
-local paperface = {}
+function paperface.grid_to_screen_x(v)
+  return (v-1) * SCREEN_STAGE_W
+end
 
+function paperface.grid_to_screen_y(v)
+  return paperface.grid_to_screen_x(v) + SCREEN_STAGE_Y_OFFSET
+end
 
 -- ------------------------------------------------------------------------
 -- screen - switches
@@ -240,6 +254,41 @@ function paperface.trig_in(x, y, trig, filled)
   if trig then
     paperface.banana(x, y, trig)
   end
+end
+
+
+-- ------------------------------------------------------------------------
+-- CABLES
+
+function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page)
+  local startx = paperface.grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
+  local starty = paperface.grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
+  local endx = paperface.grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
+  local endy = paperface.grid_to_screen_y(iy) + SCREEN_STAGE_W/2 + (i_page - curr_page) * SCREEN_H
+  local midx = (endx + startx)/2
+  local midy = (endy + starty)/2
+
+  screen.level(5)
+  screen.move(startx, starty)
+  screen.curve(midx, starty, midx, endy, endx, endy)
+  screen.stroke()
+end
+
+function paperface.draw_input_links(i, outs, curr_page)
+  for from_out_label, _v in pairs(i.incoming_vals) do
+    local from_out = outs[from_out_label]
+
+    -- OUT not known or wo/ visual representation
+    if not from_out or (from_out.x == nil or from_out.y == nil) then
+      goto DRAW_NEXT_LINK
+    end
+
+    paperface.draw_link(from_out.x, from_out.y, from_out.parent.screen,
+                        i.x, i.y, i.parent.screen,
+                        curr_page)
+    ::DRAW_NEXT_LINK::
+  end
+
 end
 
 

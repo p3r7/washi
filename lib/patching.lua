@@ -81,31 +81,6 @@ function patching.input_compute_val(compute_mode, incoming_vals)
   end
 end
 
--- NB: assuming we're currently on the page of the "in"
-function patching.draw_input_links(i, outs, curr_page)
-  for from_out_label, _v in pairs(i.incoming_vals) do
-    local from_out = outs[from_out_label]
-
-    -- OUT not known or wo/ visual representation
-    if not from_out or (from_out.x == nil or from_out.y == nil) then
-      goto DRAW_NEXT_LINK
-    end
-
-    local startx = from_out.x + SCREEN_STAGE_W/2 -- + (curr_page - from_out.parent.screen) * SCREEN_W
-    local starty = from_out.y + SCREEN_STAGE_W/2 + (from_out.parent.screen - curr_page) * SCREEN_H
-    local endx = i.x + SCREEN_STAGE_W/2 -- + (curr_page - i.parent.screen) * SCREEN_W
-    local endy = i.y + SCREEN_STAGE_W/2 + (i.parent.screen - curr_page) * SCREEN_H
-    local midx = (endx + startx)/2
-    local midy = (endy + starty)/2
-
-    screen.level(5)
-    screen.move(startx, starty)
-    screen.curve(midx, starty, midx, endy, endx, endy)
-    screen.stroke()
-    ::DRAW_NEXT_LINK::
-  end
-
-end
 
 -- ------------------------------------------------------------------------
 -- EVAL - SINGLE MODULE

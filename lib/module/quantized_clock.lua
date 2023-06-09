@@ -51,9 +51,9 @@ function QuantizedClock.new(id, STATE,
   p.div_states = {}
   p.div_outs = {}
   for i, div in ipairs(divs) do
-    p.div_outs[i] = Out.new(p.fqid.."_"..div, p, x, y)
+    p.div_outs[i] = Out.new(p.fqid.."_"..div, p, x+1, y)
     p.div_states[i] = false
-    y = y + SCREEN_STAGE_W
+    y = y + 1
   end
 
   if base == nil then base = 0 end
@@ -62,6 +62,7 @@ function QuantizedClock.new(id, STATE,
   p.acum = 0
 
   p.mclock_div = mclock_div
+  p.mclock_mult_trig = false
 
   return p
 end
@@ -125,18 +126,27 @@ end
 -- ------------------------------------------------------------------------
 -- screen
 
-function QuantizedClock:redraw(x, y, acum)
+function QuantizedClock:redraw()
   for i, v in ipairs(self.divs) do
 
     local o = self.div_outs[i]
 
-    -- local trig = acum % (MCLOCK_DIVS / CLOCK_DIV_DENOMS[i]) == 0
+    local x = paperface.grid_to_screen_x(o.x)
+    local y = paperface.grid_to_screen_y(o.y)
 
     local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
-    paperface.trig_out(o.x, o.y, trig)
-    screen.move(o.x + SCREEN_STAGE_W + 2, o.y + SCREEN_STAGE_W - 2)
+    paperface.trig_out(x, y, trig)
+    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
     screen.text(v)
-    -- y = y + SCREEN_STAGE_W
+
+    -- NB: dummy input linked to norns clock
+    -- quantized clock is implemented as a standard pulse divider
+    -- but it presents itself as a pulse multiplier
+    if v == (self.mclock_div / 8) then
+      self.mclock_mult_trig = trig
+      paperface.trig_in(paperface.grid_to_screen_x(self.x), paperface.grid_to_screen_y(self.y), trig)
+    end
+
   end
 end
 

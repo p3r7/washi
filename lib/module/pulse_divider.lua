@@ -13,6 +13,7 @@ local Comparator = include("haleseq/lib/submodule/comparator")
 local In = include("haleseq/lib/submodule/in")
 local Out = include("haleseq/lib/submodule/out")
 
+local patching = include("haleseq/lib/patching")
 local paperface = include("haleseq/lib/paperface")
 include("haleseq/lib/consts")
 
@@ -54,9 +55,9 @@ function PulseDivider.new(id, STATE, divs,
   p.i = Comparator.new(p.fqid, p, nil, x, y)
 
   -- VC for input for quantized_clock
-  p.i_clock_select = In.new(p.fqid..'_clock_div', p, nil, x, y + SCREEN_STAGE_W)
+  p.i_clock_select = In.new(p.fqid..'_clock_div', p, nil, x, y + 1)
 
-  x = x + SCREEN_STAGE_W
+  x = x + 1
 
   if divs == nil then divs = CGS_PULSE_DIVS end
   p.divs = divs
@@ -65,7 +66,7 @@ function PulseDivider.new(id, STATE, divs,
   for i, div in ipairs(p.divs) do
     p.div_outs[i] = Out.new(p.fqid.."_"..div, p, x, y)
     p.div_states[i] = false
-    y = y + SCREEN_STAGE_W
+    y = y + 1
   end
 
   p.acum = 0
@@ -177,13 +178,13 @@ end
 -- ------------------------------------------------------------------------
 -- screen
 
-function PulseDivider:redraw(x, y)
+function PulseDivider:redraw()
 
   local triggered = (math.abs(os.clock() - self.i.last_up_t) < NANA_TRIG_DRAW_T)
-  paperface.trig_in(self.i.x, self.i.y, triggered)
+  paperface.trig_in(paperface.grid_to_screen_x(self.i.x), paperface.grid_to_screen_y(self.i.y), triggered)
 
   triggered = (math.abs(os.clock() - self.i_clock_select.last_changed_t) < NANA_TRIG_DRAW_T)
-  paperface.main_in(self.i_clock_select.x, self.i_clock_select.y, triggered)
+  paperface.main_in(paperface.grid_to_screen_x(self.i_clock_select.x), paperface.grid_to_screen_y(self.i_clock_select.y), triggered)
 
   -- if triggered then
   --   patching.draw_input_links(self.i, self.STATE.outs, self.screen)
@@ -195,10 +196,13 @@ function PulseDivider:redraw(x, y)
 
     local o = self.div_outs[i]
 
+    local x = paperface.grid_to_screen_x(o.x)
+    local y = paperface.grid_to_screen_y(o.y)
+
     local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
 
-    paperface.trig_out(o.x, o.y, trig)
-    screen.move(o.x + SCREEN_STAGE_W + 2, o.y + SCREEN_STAGE_W - 2)
+    paperface.trig_out(x, y, trig)
+    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
     screen.text("/"..v)
     -- y = y + SCREEN_STAGE_W
   end

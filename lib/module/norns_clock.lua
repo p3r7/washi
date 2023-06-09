@@ -78,12 +78,22 @@ end
 -- ------------------------------------------------------------------------
 -- screen
 
-function NornsClock.redraw(x, y, acum)
+function NornsClock:redraw(mult_trig)
     -- local trig = (math.abs(os.clock() - last_mclock_tick_t) < PULSE_T)
-  local trig = acum % (MCLOCK_DIVS / 4) == 0
-  paperface.trig_out(x, y, trig)
-  screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
-  screen.text(params:get("clock_tempo") .. " BPM ")
+
+  local x = paperface.grid_to_screen_x(self.x)
+  local y = paperface.grid_to_screen_y(self.y)
+
+  -- local trig = acum % (MCLOCK_DIVS / 8) == 0
+  paperface.trig_out(x, y, mult_trig)
+
+  screen.move(x, y + 2 * SCREEN_STAGE_W - 2)
+  screen.text(params:get("clock_tempo"))
+  screen.move(x, y + 3 * SCREEN_STAGE_W - 2)
+  screen.text("BPM")
+
+
+  -- screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
 end
 
 -- ------------------------------------------------------------------------

@@ -27,7 +27,7 @@ local draw_modes = {Stage.M_TIE, Stage.M_RUN, Stage.M_SKIP}
 -- constructors
 
 function Stage.new(id, parent,
-                  x, _y)
+                  x, y)
   local p = setmetatable({}, Stage)
 
   p.kind = "stage"
@@ -38,9 +38,9 @@ function Stage.new(id, parent,
   p.y = y
 
   p.i = Comparator.new(id, parent, nil,
-                       x, 0)
+                       x, 7)
   p.o = Out.new(id, parent,
-                x, SCREEN_H - SCREEN_STAGE_W)
+                x, 1)
 
   -- table.insert(parent.outs, p.o)
 
