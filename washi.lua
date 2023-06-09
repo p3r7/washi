@@ -271,6 +271,47 @@ function get_first_nb_voice_midi_param_option_id(voice_id)
   end
 end
 
+local PATCH_CONF_EXT = ".washipatch"
+
+params.action_read = function(filename, name, pset_number)
+  local conf = dofile(filename..PATCH_CONF_EXT)
+
+  for i, hc in ipairs(conf.haleseqs) do
+    if haleseqs[i] ~= nil then
+      haleseqs[i].seqvals = hc
+    end
+  end
+
+  links = conf.links
+end
+
+params.action_write = function(filename, name, pset_number)
+  local conf = {}
+
+  conf.version = "0.1"
+
+  conf.haleseqs = {}
+  for i, h in ipairs(haleseqs) do
+	conf.haleseqs[i] = h.seqvals
+  end
+
+  conf.links = links
+
+  local confStr = inspect(conf)
+  local f, err = io.open(filename..PATCH_CONF_EXT, "wb")
+  if err then
+    print("FAILED TO WRITE "..filename..PATCH_CONF_EXT)
+    return
+  end
+  f:write("return "..confStr)
+  io.close(f)
+end
+
+params.action_delete = function(filename, name, pset_number)
+  os.execute("rm -f" .. filename .. PATCH_CONF_EXT)
+end
+
+
 function init()
   screen.aa(0)
   screen.line_width(1)
