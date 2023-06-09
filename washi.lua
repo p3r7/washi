@@ -90,6 +90,76 @@ local function fire_and_propagate(in_label, initial_v)
                                      in_label, initial_v)
 end
 
+local function rnd_cv_out_llabel_for_haleseq(h)
+  local out_label = ""
+  if rnd() < 0.5 then
+    out_label = mux_output_nb_to_name(h.nb_vsteps)
+  else
+    out_label = output_nb_to_name(math.random(h.nb_vsteps))
+  end
+  return string.lower(out_label)
+end
+
+local function rnd_patch()
+  tempty(STATE.links)
+
+  add_link("norns_clock", "quantized_clock_global")
+
+  for _, pd in ipairs(pulse_dividers) do
+    params:set(pd.fqid.."_clock_div", math.random(#CLOCK_DIV_DENOMS))
+
+    if rnd() < 0.1 then
+      local haleseq_id = math.random(tab.count(haleseqs))
+      local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
+      add_link("haleseq_"..haleseq_id.."_"..out_llabel, "pulse_divider_1_clock_div")
+    end
+  end
+
+
+  for i, h in ipairs(haleseqs) do
+    local has_in_preset_cv_patched = false
+
+    if i > 1 then
+      if rnd() < 0.2 then
+        -- patch from haleseq_1 to the others' preset
+        local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[1])
+
+        add_link("haleseq_1_"..out_llabel, "haleseq_"..i.."_preset")
+        has_in_preset_cv_patched = true
+      end
+    end
+
+    -- clock
+    if not has_in_preset_cv_patched or rnd() < 0.1 then
+      params:set("clock_div_"..h.id, math.random(#CLOCK_DIVS-1)+1)
+    else
+      params:set("clock_div_"..h.id, tab.key(CLOCK_DIVS, 'off'))
+
+      local pd_id = math.random(tab.count(pulse_dividers))
+      local pd = pulse_dividers[pd_id]
+      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], "haleseq_"..i.."_clock")
+    end
+
+    -- vclock
+    if rnd() < 0.5 then
+      params:set("vclock_div_"..h.id, math.random(#CLOCK_DIVS-1)+1)
+    else
+      params:set("vclock_div_"..h.id, tab.key(CLOCK_DIVS, 'off'))
+
+      local pd_id = math.random(tab.count(pulse_dividers))
+      local pd = pulse_dividers[pd_id]
+      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], "haleseq_"..i.."_vclock")
+    end
+  end
+
+  for i, _output in ipairs(outputs) do
+    local haleseq_id = math.random(tab.count(haleseqs))
+    local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
+    add_link("haleseq_"..haleseq_id.."_"..out_llabel, "output_"..i)
+  end
+
+  -- DEBUG = true
+end
 
 -- ------------------------------------------------------------------------
 -- state
@@ -216,44 +286,11 @@ function mclock_tick(t, forced)
 
   is_doing_stuff = true
 
-  -- propagate("norns_clock")
   fire_and_propagate("norns_clock", V_MAX/2)
   fire_and_propagate("norns_clock", 0)
 
   is_doing_stuff = false
-
-  -- for _, h in ipairs(haleseqs) do
-    -- local hclock = h.hclock()
-    -- local vclock = h.vclock()
-    -- if not forced then
-    --   hclock:tick()
-    --   vclock:tick()
-    -- end
-
-    -- local ticked = h:clock_tick(forced)
-    -- local vticked = h:vclock_tick(forced)
-
-    -- A / B / C / D
-  --   if ticked then
-  --     for vs=1,h:get_nb_vsteps() do
-  --       local volts = h:get_current_play_volts(vs)
-  --       local voiceId = vs
-  --       local o = outputs[voiceId]
-  --       o:nb_play_volts(volts)
-  --     end
-  --   end
-  --   -- ABCD
-  --   if ticked or vticked then
-  --     local volts = h:get_current_mux_play_volts()
-  --     local voiceId = h:get_nb_vsteps() + 1
-  --     local o = outputs[voiceId]
-  --     o:nb_play_volts(volts)
-  --   end
-  -- end
-
 end
-
-
 
 
 -- ------------------------------------------------------------------------
@@ -324,6 +361,22 @@ function init()
 
   -- --------------------------------
   -- global params
+
+  params:add_trigger("rnd_all", "Randomize All")
+  params:set_action("rnd_all",
+                    function(_v)
+                      params:set("rnd_seq_root", math.random(#musicutil.NOTE_NAMES))
+                      params:set("rnd_seqs", 1)
+                      rnd_patch()
+                    end
+  )
+
+  params:add_trigger("rnd_patch", "Randomize Patch")
+  params:set_action("rnd_patch",
+                    function(_v)
+                      rnd_patch()
+                    end
+  )
 
   params:add_trigger("rnd_seqs", "Randomize Seqs")
   params:set_action("rnd_seqs",
@@ -408,7 +461,7 @@ function init()
   add_link("haleseq_1_abcd", "haleseq_2_preset")
   add_link("haleseq_2_abcd", "output_5")
 
-  add_link("haleseq_1_abcd", "pulse_divider_1_clock_div")
+  add_link("haleseq_2_abcd", "pulse_divider_1_clock_div")
 
 
   -- --------------------------------
@@ -485,6 +538,24 @@ end
 
 -- ------------------------------------------------------------------------
 -- controls
+
+local k1 = false
+local k3 = false
+
+function key(n, v)
+
+  -- single modifiers
+  if n == 1 then
+    k1 = (v == 1)
+  end
+  if n == 3 then
+    k3 = (v == 1)
+  end
+
+  if k1 and k3 then
+    params:set("rnd_all", 1)
+  end
+end
 
 function enc(n, d)
   local curr_page = page_list[pages.index]

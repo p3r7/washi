@@ -1,6 +1,7 @@
 -- washi. module/haleseq
 
 local musicutil = require "musicutil"
+local inspect = include("washi/lib/inspect")
 
 local Stage = include("washi/lib/submodule/stage")
 local Comparator = include("washi/lib/submodule/comparator")
@@ -214,15 +215,14 @@ function Haleseq:init_params()
   params:set_action("clock_div_"..id,
                     function(v)
                       local clock_id = "haleseq_"..self.id.."_clock"
-
-                      for o, ins in pairs(STATE.links) do
+                      for o, ins in pairs(self.STATE.links) do
                         if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(STATE.links, o, clock_id)
+                          patching.remove_link(self.STATE.links, o, clock_id)
                         end
                       end
 
                       if CLOCK_DIVS[v] ~= 'off' then
-                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
+                        patching.add_link(self.STATE.links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
                       end
                     end
   )
@@ -231,14 +231,14 @@ function Haleseq:init_params()
                     function(v)
                       local clock_id = "haleseq_"..self.id.."_vclock"
 
-                      for o, ins in pairs(links) do
+                      for o, ins in pairs(self.STATE.links) do
                         if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(links, o, clock_id)
+                          patching.remove_link(self.STATE.links, o, clock_id)
                         end
                       end
 
                       if CLOCK_DIVS[v] ~= 'off' then
-                        patching.add_link(links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
+                        patching.add_link(self.STATE.links, "quantized_clock_global_"..CLOCK_DIV_DENOMS[v-1], clock_id)
                       end
                     end
   )
