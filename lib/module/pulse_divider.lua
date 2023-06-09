@@ -1,4 +1,4 @@
--- haleseq. module/pulse divider
+-- washi. module/pulse divider
 --
 -- CGS pulse divider
 

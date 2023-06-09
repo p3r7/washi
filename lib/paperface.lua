@@ -1,4 +1,4 @@
--- haleseq. paperface
+-- washi. paperface
 --
 -- norns' screen represent a panel, comprised of 7 rows & 17 columns
 -- each cell of the grid is 9x9 pixels (`SCREEN_STAGE_W`)
@@ -258,7 +258,7 @@ end
 
 
 -- ------------------------------------------------------------------------
--- CABLES
+-- PATCH
 
 function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page)
   local startx = paperface.grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
@@ -288,9 +288,40 @@ function paperface.draw_input_links(i, outs, curr_page)
                         curr_page)
     ::DRAW_NEXT_LINK::
   end
-
 end
 
+function paperface.redraw_links(outs, ins, curr_page)
+  for _, i in pairs(ins) do
+    if i.x == nil or i.y == nil then
+      goto NEXT_IN_LINK
+    end
+
+    paperface.draw_input_links(i, outs, curr_page)
+
+    ::NEXT_IN_LINK::
+  end
+end
+
+function paperface.redraw_active_links(outs, ins, curr_page)
+  for _, i in pairs(ins) do
+    if i.x == nil or i.y == nil then
+      goto NEXT_IN_ACTIVE_LINK
+    end
+
+    if i.kind == 'comparator' then
+      local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
+      if triggered then
+        paperface.draw_input_links(i, outs, curr_page)
+      end
+    elseif i.kind == 'in' then
+      local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+      if triggered then
+        paperface.draw_input_links(i, outs, curr_page)
+      end
+    end
+    ::NEXT_IN_ACTIVE_LINK::
+  end
+end
 
 -- ------------------------------------------------------------------------
 

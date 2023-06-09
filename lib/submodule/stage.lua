@@ -1,4 +1,4 @@
--- haleseq. stage
+-- washi. stage
 
 local Comparator = include("haleseq/lib/submodule/comparator")
 local Out = include("haleseq/lib/submodule/out")

@@ -1,4 +1,4 @@
--- haleseq. comparator
+-- washi. comparator
 --
 -- a `Comparator` can work:
 -- - as a regular `In` (w/ `self.raw_v`)

@@ -1,4 +1,4 @@
--- haleseq. patching
+-- washi. patching
 
 
 -- ------------------------------------------------------------------------
@@ -46,6 +46,20 @@ function patching.remove_link(links, o, i)
   end
 end
 
+
+-- ------------------------------------------------------------------------
+-- LOOKUP
+
+function patching.ins_from_labels(ins, in_labels)
+  local res = {}
+  for _, in_label in ipairs(in_labels) do
+    local i = ins[in_label]
+    if i ~= nil then
+      table.insert(res, i)
+    end
+  end
+  return res
+end
 
 -- ------------------------------------------------------------------------
 -- EVAL - INPUT

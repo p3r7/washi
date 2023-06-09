@@ -1,4 +1,4 @@
--- haleseq. module/haleseq
+-- washi. module/haleseq
 
 local musicutil = require "musicutil"
 

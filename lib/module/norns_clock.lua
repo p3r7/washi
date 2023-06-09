@@ -1,4 +1,4 @@
--- haleseq. module/norns clock
+-- washi. module/norns clock
 
 local NornsClock = {}
 NornsClock.__index = NornsClock

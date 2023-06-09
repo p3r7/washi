@@ -1,9 +1,9 @@
--- haleseq.
+-- washi.
 -- @eigen
 --
---      8 stage       complex
 --
---     sequencing    programmer
+--
+--
 --
 --    ▼ instructions below ▼
 --
@@ -514,64 +514,12 @@ function redraw_clock_screen()
   pulse_dividers[1]:redraw()
 end
 
-local function ins_from_labels(in_labels)
-  local res = {}
-  for _, in_label in ipairs(in_labels) do
-    local i = ins[in_label]
-    if i ~= nil then
-      table.insert(res, i)
-    end
-  end
-  return res
-end
-
-local function redraw_links(ins_list)
-  for _, i in pairs(ins_list) do
-    if i.x == nil or i.y == nil then
-      goto NEXT_IN_LINK
-    end
-
-    paperface.draw_input_links(i, outs, pages.index)
-
-    ::NEXT_IN_LINK::
-  end
-end
-
-local function redraw_active_links(ins_list)
-  for _, i in pairs(ins_list) do
-    if i.x == nil or i.y == nil then
-      goto NEXT_IN_ACTIVE_LINK
-    end
-
-    if i.kind == 'comparator' then
-      local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
-      if triggered then
-        paperface.draw_input_links(i, outs, pages.index)
-      end
-    elseif i.kind == 'in' then
-      local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
-      if triggered then
-        paperface.draw_input_links(i, outs, pages.index)
-      end
-    end
-    ::NEXT_IN_ACTIVE_LINK::
-  end
-end
-
 function redraw()
   screen.clear()
 
   pages:redraw()
 
   screen.level(15)
-
-  -- clock(s)
-  -- screen.move(0, 8)
-  -- screen.text(params:get("clock_tempo") .. " BPM ")
-  -- screen.move(0, 18)
-  -- screen.text(params:string("clock_div"))
-  -- screen.move(0, 28)
-  -- screen.text(params:string("vclock_div"))
 
   local curr_page = page_list[pages.index]
   if curr_page == 'clock' then
@@ -588,9 +536,9 @@ function redraw()
   end
 
   if STATE.selected_out == nil then
-    redraw_active_links(ins)
+    paperface.redraw_active_links(outs, ins, pages.index)
   else
-    redraw_links(links[ins_from_labels(links[STATE.selected_out])])
+    paperface.redraw_links(outs, links[patching.ins_from_labels(ins, links[STATE.selected_out])], pages.index)
   end
 
   screen.update()

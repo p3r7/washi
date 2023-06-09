@@ -1,4 +1,4 @@
--- haleseq. module/quantized clock
+-- washi. module/quantized clock
 
 local QuantizedClock = {}
 QuantizedClock.__index = QuantizedClock

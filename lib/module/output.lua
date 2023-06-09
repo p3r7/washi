@@ -1,4 +1,4 @@
--- haleseq. module/output
+-- washi. module/output
 
 local Output = {}
 Output.__index = Output
