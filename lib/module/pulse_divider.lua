@@ -54,7 +54,7 @@ function PulseDivider.new(id, STATE, divs,
 
   p.i = Comparator.new(p.fqid, p, nil, x, y)
 
-  -- VC for input for quantized_clock
+  -- VC switch of input for quantized_clock
   p.i_clock_select = In.new(p.fqid..'_clock_div', p, nil, x, y + 1)
 
   x = x + 1
@@ -186,14 +186,7 @@ function PulseDivider:redraw()
   triggered = (math.abs(os.clock() - self.i_clock_select.last_changed_t) < NANA_TRIG_DRAW_T)
   paperface.main_in(paperface.grid_to_screen_x(self.i_clock_select.x), paperface.grid_to_screen_y(self.i_clock_select.y), triggered)
 
-  -- if triggered then
-  --   patching.draw_input_links(self.i, self.STATE.outs, self.screen)
-  -- end
-
-  -- x = x + SCREEN_STAGE_W
-
   for i, v in ipairs(self.divs) do
-
     local o = self.div_outs[i]
 
     local x = paperface.grid_to_screen_x(o.x)
@@ -204,7 +197,6 @@ function PulseDivider:redraw()
     paperface.trig_out(x, y, trig)
     screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
     screen.text("/"..v)
-    -- y = y + SCREEN_STAGE_W
   end
 end
 

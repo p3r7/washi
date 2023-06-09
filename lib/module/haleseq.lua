@@ -83,8 +83,6 @@ function Haleseq.new(id, STATE,
                       7)
 
 
-  -- local stage_start_x = (SCREEN_W - (p.nb_steps * SCREEN_STAGE_W)) / 2
-  -- stage_start_x = stage_start_x - SCREEN_STAGE_W
   local stage_start_x = SCREEN_STAGE_X_NB - 2 - p.nb_steps - 1
 
 
@@ -112,7 +110,6 @@ function Haleseq.new(id, STATE,
     local o = Out.new(p.fqid.."_"..llabel, p,
                       stage_start_x + p.nb_steps, vs+1)
     p.cv_outs[vs] = o
-    -- table.insert(p.outs, o)
   end
   -- ABCD
   local mux_label = mux_output_nb_to_name(nb_vsteps)
@@ -796,12 +793,10 @@ local SCREEN_STAGE_MODE_Y = 6
 local SCREEN_PRESET_IN_Y = 7
 
 function Haleseq:redraw_stage(s, stage)
-  -- local y2
 
   local x = paperface.grid_to_screen_x(stage.x)
 
   -- trig out
-  -- y2 = y + (SCREEN_STAGE_OUT_Y - 1) * SCREEN_STAGE_W
   local at = (self.step == s)
   local trig = at and (math.abs(os.clock() - self.last_step_t) < PULSE_T)
    paperface.trig_out(x, paperface.grid_to_screen_y(stage.o.y), trig)
@@ -810,7 +805,6 @@ function Haleseq:redraw_stage(s, stage)
   end
 
   -- trig in
-  -- y2 = y + (SCREEN_PRESET_IN_Y - 1) * SCREEN_STAGE_W
   if params:get(self.fqid.."_preset") == s then
     if (self.g_btn == s) then
       paperface.trig_in(x, paperface.grid_to_screen_y(stage.i.y), true)
@@ -821,8 +815,7 @@ function Haleseq:redraw_stage(s, stage)
     paperface.trig_in(x, paperface.grid_to_screen_y(stage.i.y), (self.g_btn == s))
   end
 
-  -- vals
-  -- y = y + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
+  -- vals (knobs)
   for vs=1,self.nb_vsteps do
     local y = paperface.grid_to_screen_y(stage.y+vs)
     paperface.rect_label(x, y)
@@ -835,7 +828,6 @@ function Haleseq:redraw_stage(s, stage)
       end
     end
     paperface.knob(x, y, self.seqvals[s][vs], l)
-    -- y2 = y2 + SCREEN_STAGE_W
   end
 
   -- mode
@@ -846,27 +838,11 @@ end
 
 function Haleseq:redraw()
   -- seq
-
-
-  -- local x = (SCREEN_W - (self.nb_steps * SCREEN_STAGE_W)) / 2
-  -- x = x - SCREEN_STAGE_W
-  -- local x = SCREEN_STAGE_X_NB - 2 - self.nb_steps - 1
-
-  dbg("@@@@@@@@")
   for s, stage in ipairs(self.stages) do
     self:redraw_stage(s, stage)
-
-    -- DEBUG=true
-    dbg(stage.x)
-
-    -- x = x + SCREEN_STAGE_W
-    -- x = x + 1
   end
-  dbg("@@@@@@@@")
-  -- DEBUG=false
 
   -- vseq
-  -- local y = SCREEN_STAGE_Y_OFFSET + (SCREEN_STAGE_KNOB_Y - 1) * SCREEN_STAGE_W
   for vs=1,self.nb_vsteps do
     local o = self.cv_outs[vs]
     local at = (self.vstep == vs)
@@ -879,7 +855,6 @@ function Haleseq:redraw()
     if not trig and at then
       paperface.banana(x, y, false)
     end
-    -- y = y + SCREEN_STAGE_W
   end
   local trig_mux = (math.abs(os.clock() - self.cv_outs[self.nb_vsteps+1].last_changed_t) < PULSE_T)
   local mux_o = self.cv_outs[self.nb_vsteps+1]
@@ -887,36 +862,24 @@ function Haleseq:redraw()
 
   -- CPO - Common Pulse Out
   -- (preset change gate out)
-  -- local y = SCREEN_STAGE_Y_OFFSET
   paperface.trig_out(paperface.grid_to_screen_x(self.cpo.x), paperface.grid_to_screen_y(self.cpo.y), math.abs(os.clock() - self.last_preset_t) < PULSE_T, SCREEN_LEVEL_LABEL_SPE)
 
-  -- x = x + SCREEN_STAGE_W
   -- AEP - All Event Pulse
   local trig_aep = (math.abs(os.clock() - self.aep.last_changed_t) < PULSE_T)
   paperface.trig_out(paperface.grid_to_screen_x(self.aep.x), paperface.grid_to_screen_y(self.aep.y), trig_aep, SCREEN_LEVEL_LABEL_SPE)
 
-
-  -- x = x + SCREEN_STAGE_W * 2
-
   trig = false
   paperface.trig_in(paperface.grid_to_screen_x(self.i_vreset.x), paperface.grid_to_screen_y(self.i_vreset.y), trig) -- vreset
-  -- y = y + SCREEN_STAGE_W
   trig = (math.abs(os.clock() - self.i_vclock.last_up_t) < PULSE_T)
   paperface.trig_in(paperface.grid_to_screen_x(self.i_vclock.x), paperface.grid_to_screen_y(self.i_vclock.y), trig) -- vclock
-  -- y = y + SCREEN_STAGE_W
   trig = false
   paperface.trig_in(paperface.grid_to_screen_x(self.i_reset.x), paperface.grid_to_screen_y(self.i_reset.y), trig) -- reset
-  -- y = y + SCREEN_STAGE_W
   paperface.trig_in(paperface.grid_to_screen_x(self.i_hold.x), paperface.grid_to_screen_y(self.i_hold.y), trig) -- hold
-  -- y = y + SCREEN_STAGE_W
   paperface.trig_in(paperface.grid_to_screen_x(self.i_preset_reset.x), paperface.grid_to_screen_y(self.i_preset_reset.y), trig) -- preset (reset)
-  -- y = y + SCREEN_STAGE_W
   paperface.trig_in(paperface.grid_to_screen_x(self.i_reverse.x), paperface.grid_to_screen_y(self.i_reverse.y), trig) -- reverse
-  -- y = y + SCREEN_STAGE_W
   trig = (math.abs(os.clock() - self.i_clock.last_up_t) < PULSE_T)
   paperface.trig_in(paperface.grid_to_screen_x(self.i_clock.x), paperface.grid_to_screen_y(self.i_clock.y), trig) -- clock
 
-  -- x = x - SCREEN_STAGE_W
   trig = (math.abs(os.clock() - self.i_preset.last_changed_t) < PULSE_T)
   paperface.main_in(paperface.grid_to_screen_x(self.i_preset.x), paperface.grid_to_screen_y(self.i_preset.y), trig) -- preset (VC)
 end
