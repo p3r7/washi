@@ -1,21 +1,25 @@
 -- haleseq. module/output
 
-local nb = include("haleseq/lib/nb/lib/nb")
-local In = include("haleseq/lib/submodule/in")
-
-include("haleseq/lib/consts")
-
-
--- ------------------------------------------------------------------------
-
 local Output = {}
 Output.__index = Output
 
 
 -- ------------------------------------------------------------------------
+-- deps
+
+local nb = include("haleseq/lib/nb/lib/nb")
+local In = include("haleseq/lib/submodule/in")
+
+local paperface = include("haleseq/lib/paperface")
+
+include("haleseq/lib/consts")
+
+
+-- ------------------------------------------------------------------------
 -- constructors
 
-function Output.new(id, STATE)
+function Output.new(id, STATE,
+                   page_id, x, y)
   local p = setmetatable({}, Output)
 
   local label = id -- 1, 2, 3...
@@ -25,26 +29,28 @@ function Output.new(id, STATE)
   p.kind = "output"
   p.fqid = "output".."_"..llabel
 
+  -- --------------------------------
+
   p.STATE = STATE
+
+  -- --------------------------------
+  -- screen
+
+  p.screen = page_id
+  p.x = x
+  p.y = y
+
+  -- --------------------------------
+  -- i/o
 
   p.ins = {}
 
-  p.i = In.new(p.fqid, p)
+  p.i = In.new(p.fqid, p, nil, x, y)
 
   p.nb_playing_note = nil
 
   return p
 end
-
-
-function Output:process_ins()
-  if self.i.changed then -- FIXME: make retrigger on TIE but not SKIP
-    self:nb_play_volts(self.i.v)
-  end
-end
-
--- ------------------------------------------------------------------------
--- init
 
 function Output:init_params()
   local label = self.id -- A, B, C...
@@ -64,8 +70,10 @@ function Output:init_params()
   params:add{type = "number", id = "out_octave_max_"..llabel, name = "Max Octave", min = -2, max = 8, default = 8}
 end
 
-function Output.init(id, STATE)
-  local o = Output.new(id, STATE)
+function Output.init(id, STATE,
+                    page_id, x, y)
+  local o = Output.new(id, STATE,
+                       page_id, x, y)
   o:init_params()
 
   if STATE ~= nil then
@@ -77,7 +85,13 @@ end
 
 
 -- ------------------------------------------------------------------------
--- playback
+-- internal logic
+
+function Output:process_ins()
+  if self.i.changed then -- FIXME: make retrigger on TIE but not SKIP
+    self:nb_play_volts(self.i.v)
+  end
+end
 
 function Output:get_nb_player()
   local llabel = string.lower(self.id)
@@ -135,6 +149,14 @@ function Output:nb_play_volts(volts, vel)
   self:nb_play(note, vel)
 end
 
+
+-- ------------------------------------------------------------------------
+-- screen
+
+function Output:redraw()
+  local trig = (math.abs(os.clock() - self.i.last_changed_t) < LINK_TRIG_DRAW_T)
+  paperface.main_in(paperface.grid_to_screen_x(self.i.x), paperface.grid_to_screen_y(self.i.y), trig)
+end
 
 -- ------------------------------------------------------------------------
 

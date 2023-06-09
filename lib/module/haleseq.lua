@@ -85,7 +85,6 @@ function Haleseq.new(id, STATE,
 
   local stage_start_x = SCREEN_STAGE_X_NB - 2 - p.nb_steps - 1
 
-
   p.stages = {}
   for s=1,nb_steps do
     local stage = Stage.new(p.fqid.."_stage_"..s, p, stage_start_x+s-1, 1)

@@ -58,6 +58,7 @@ local page_list = {'clock'}
 for h=1, NB_HALESEQS do
   table.insert(page_list, 'haleseq '..h)
 end
+table.insert(page_list, 'outputs')
 local pages = UI.Pages.new(1, #page_list)
 pages:set_index(tab.key(page_list, 'haleseq 1'))
 
@@ -313,22 +314,30 @@ function init()
   -- modules
 
   norns_clock = NornsClock.init(STATE,
-                                tab.key(page_list, "clock"), 2, 1)
+                                tab.key(page_list, 'clock'), 2, 1)
   quantized_clocks = QuantizedClock.init("global", STATE, MCLOCK_DIVS, CLOCK_DIV_DENOMS,
-                                         tab.key(page_list, "clock"), 4, 1)
+                                         tab.key(page_list, 'clock'), 4, 1)
 
   pulse_dividers[1] = PulseDivider.init(1, STATE, nil,
-                                        tab.key(page_list, "clock"), 8, 1)
+                                        tab.key(page_list, 'clock'), 8, 1)
 
   for i=1,NB_HALESEQS do
-    local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS, tab.key(page_list, 'haleseq '..i), 0, 0)
+    local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS,
+                           tab.key(page_list, 'haleseq '..i), 0, 0)
     haleseqs[i] = h
   end
 
   for vs=1,NB_VSTEPS+1 do
     -- local label = output_nb_to_name(vs)
     local label = ""..vs
-    outputs[vs] = Output.init(label, STATE)
+    local ox = 2
+    local oy = (vs-1)*3 + 1
+    while oy > SCREEN_STAGE_Y_NB do
+      oy = oy - SCREEN_STAGE_Y_NB
+      ox = ox + 3
+    end
+    outputs[vs] = Output.init(label, STATE,
+                              tab.key(page_list, 'outputs'), ox, oy)
   end
   -- local mux_label = mux_output_nb_to_name(NB_VSTEPS)
   -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
@@ -565,8 +574,12 @@ function redraw()
   -- screen.text(params:string("vclock_div"))
 
   local curr_page = page_list[pages.index]
-  if curr_page == "clock" then
+  if curr_page == 'clock' then
     redraw_clock_screen()
+  elseif curr_page == 'outputs' then
+    for _, o in ipairs(outputs) do
+      o:redraw()
+    end
   else
     local h = get_current_haleseq()
     if h ~= nil then

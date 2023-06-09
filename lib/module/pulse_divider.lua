@@ -28,7 +28,7 @@ local CGS_PULSE_DIVS = {2, 3, 4, 5, 6, 7, 8}
 -- constructors
 
 function PulseDivider.new(id, STATE, divs,
-                         screen_id, x, y)
+                         page_id, x, y)
   local p = setmetatable({}, PulseDivider)
 
   p.kind = "pulse_divider"
@@ -42,7 +42,7 @@ function PulseDivider.new(id, STATE, divs,
   -- --------------------------------
   -- screen
 
-  p.screen = screen_id
+  p.screen = page_id
   p.x = x
   p.y = y
 
@@ -109,9 +109,9 @@ function PulseDivider:init_params()
 end
 
 function PulseDivider.init(id, STATE, divs,
-                           screen_id, x, y)
+                           page_id, x, y)
   local q = PulseDivider.new(id, STATE, divs,
-                             screen_id, x, y)
+                             page_id, x, y)
 
   q:init_params()
 
