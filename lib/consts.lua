@@ -15,6 +15,15 @@ LINK_TRIG_DRAW_T = 0.04
 
 
 -- ------------------------------------------------------------------------
+-- LFO / RVG / SSG
+
+LFO_COMPUTATIONS_PER_S = 30
+
+LFO_MIN_RATE = 1
+LFO_MAX_RATE = 15
+
+
+-- ------------------------------------------------------------------------
 -- sequenced values
 
 V_MAX = 1000
@@ -28,6 +37,7 @@ V_COMPUTE_MODE_OR = 4
 
 V_THRESHOLD_MODE_GLOBAL = 0
 V_THRESHOLD_MODE_OWN = 0
+
 
 -- ------------------------------------------------------------------------
 -- prog / seq

@@ -30,6 +30,7 @@ local patching = include("washi/lib/patching")
 local NornsClock = include("washi/lib/module/norns_clock")
 local QuantizedClock = include("washi/lib/module/quantized_clock")
 local PulseDivider = include("washi/lib/module/pulse_divider")
+local Rvg = include("washi/lib/module/rvg")
 local Haleseq = include("washi/lib/module/haleseq")
 local Output = include("washi/lib/module/output")
 
@@ -51,10 +52,11 @@ local NB_HALESEQS = 2
 local norns_clock
 local quantized_clocks
 local pulse_dividers = {}
+local rvgs = {}
 local haleseqs = {}
 local outputs = {}
 
-local page_list = {'clock'}
+local page_list = {'clock', 'mod'}
 for h=1, NB_HALESEQS do
   table.insert(page_list, 'haleseq '..h)
 end
@@ -455,6 +457,9 @@ function init()
   pulse_dividers[1] = PulseDivider.init(1, STATE, nil,
                                         tab.key(page_list, 'clock'), 8, 1)
 
+  rvgs[1] = Rvg.init(1, STATE,
+                     tab.key(page_list, 'mod'), 2, 1)
+
   for i=1,NB_HALESEQS do
     local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS,
                            tab.key(page_list, 'haleseq '..i), 0, 0)
@@ -522,6 +527,11 @@ function cleanup()
   all_notes_off()
   clock.cancel(redraw_clock)
   clock.cancel(grid_redraw_clock)
+
+  for _, rvg in ipairs(rvgs) do
+    rvg:cleanup()
+  end
+
   s_lattice:destroy()
 end
 
@@ -667,6 +677,10 @@ function redraw()
   local curr_page = page_list[pages.index]
   if curr_page == 'clock' then
     redraw_clock_screen()
+  elseif curr_page == 'mod' then
+    for _, rvg in ipairs(rvgs) do
+      rvg:redraw()
+    end
   elseif curr_page == 'outputs' then
     for _, o in ipairs(outputs) do
       o:redraw()
