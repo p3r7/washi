@@ -722,21 +722,10 @@ function Haleseq:grid_key(x, y, z)
       -- DEBUG = true
       if (z >= 1) then
         self.g_btn = s
-
-        -- TODO: should be a set stage input & propagate!
-        -- params:set(self.fqid.."_preset", s)
-        -- self.last_preset_t = os.clock()
-        -- self:process_ins(true)
-
-        -- self.stages[s].i.register("user", V_MAX/2)
-        -- or even better
         patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, V_MAX/2)
-
       else
-        -- self.stages[s].i.register("user", 0)
-        -- or even better
-        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, 0)
         self.g_btn = nil
+        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, 0)
       end
       return
     end
