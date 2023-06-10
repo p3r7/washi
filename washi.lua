@@ -27,11 +27,11 @@ local paperface = include("washi/lib/paperface")
 local patching = include("washi/lib/patching")
 
 -- modules
-local Haleseq = include("washi/lib/module/haleseq")
-local Output = include("washi/lib/module/output")
 local NornsClock = include("washi/lib/module/norns_clock")
 local QuantizedClock = include("washi/lib/module/quantized_clock")
 local PulseDivider = include("washi/lib/module/pulse_divider")
+local Haleseq = include("washi/lib/module/haleseq")
+local Output = include("washi/lib/module/output")
 
 include("washi/lib/core")
 include("washi/lib/consts")
@@ -90,14 +90,17 @@ local function fire_and_propagate(in_label, initial_v)
                                      in_label, initial_v)
 end
 
+local function rnd_std_cv_out_llabel_for_haleseq(h)
+  return string.lower(output_nb_to_name(math.random(h.nb_vsteps)))
+end
+
 local function rnd_cv_out_llabel_for_haleseq(h)
   local out_label = ""
   if rnd() < 0.5 then
-    out_label = mux_output_nb_to_name(h.nb_vsteps)
+    return string.lower(mux_output_nb_to_name(h.nb_vsteps))
   else
-    out_label = output_nb_to_name(math.random(h.nb_vsteps))
+    return output_nb_to_name(math.random(h.nb_vsteps))
   end
-  return string.lower(out_label)
 end
 
 local function rnd_patch()
@@ -108,7 +111,7 @@ local function rnd_patch()
   for _, pd in ipairs(pulse_dividers) do
     params:set(pd.fqid.."_clock_div", math.random(#CLOCK_DIV_DENOMS))
 
-    if rnd() < 0.1 then
+    if rnd() < 0.25 then
       local haleseq_id = math.random(tab.count(haleseqs))
       local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
       add_link("haleseq_"..haleseq_id.."_"..out_llabel, "pulse_divider_1_clock_div")
@@ -151,13 +154,26 @@ local function rnd_patch()
     end
   end
 
+  local assigned_outs = {}
   for i, _output in ipairs(outputs) do
-    local haleseq_id = math.random(tab.count(haleseqs))
-    local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
-    add_link("haleseq_"..haleseq_id.."_"..out_llabel, "output_"..i)
+    if i <= 2 then
+      add_link("haleseq_"..i.."_abcd", "output_"..i)
+    else
+      local haleseq_id = math.random(tab.count(haleseqs))
+      local cv_llabel = rnd_std_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
+      local out_label = "haleseq_"..haleseq_id.."_"..cv_llabel
+      while tab.contains(assigned_outs, out_label) do
+        haleseq_id = math.random(tab.count(haleseqs))
+        cv_llabel = rnd_std_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
+        out_label = "haleseq_"..haleseq_id.."_"..cv_llabel
+      end
+
+      table.insert(assigned_outs, out_label)
+      add_link(out_label, "output_"..i)
+    end
   end
 
-  -- DEBUG = true
+  DEBUG = true
 end
 
 -- ------------------------------------------------------------------------
@@ -348,6 +364,29 @@ params.action_delete = function(filename, name, pset_number)
 end
 
 
+local function init_patch()
+  add_link("norns_clock", "quantized_clock_global")
+
+  -- add_link("haleseq_2_abcd", "pulse_divider_1_clock_div")
+  add_link("pulse_divider_1_3", "haleseq_2_vclock")
+
+  -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
+  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
+  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
+  add_link("pulse_divider_1_7", "haleseq_1_vclock")
+
+  add_link("pulse_divider_1_3", "haleseq_2_vclock")
+
+  add_link("haleseq_1_a", "haleseq_2_clock")
+  -- add_link("haleseq_1_abcd", "haleseq_2_preset")
+
+  add_link("haleseq_1_abcd", "output_1")
+  add_link("haleseq_2_abcd", "output_2")
+  add_link("haleseq_1_a", "output_3")
+  add_link("haleseq_2_a", "output_4")
+  add_link("haleseq_2_b", "output_5")
+end
+
 function init()
   screen.aa(0)
   screen.line_width(1)
@@ -436,36 +475,8 @@ function init()
     outputs[vs] = Output.init(label, STATE,
                               tab.key(page_list, 'outputs'), ox, oy)
   end
-  -- local mux_label = mux_output_nb_to_name(NB_VSTEPS)
-  -- outputs[NB_VSTEPS+1] = Output.init(mux_label, ins)
 
-  add_link("norns_clock", "quantized_clock_global")
-
-  -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
-  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
-  -- params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
-
-  add_link("pulse_divider_1_3", "haleseq_1_vclock")
-  add_link("pulse_divider_1_5", "haleseq_2_vclock")
-
-
-  for vs=1, NB_VSTEPS do
-    local label = output_nb_to_name(vs)
-    local llabel = string.lower(label)
-    add_link("haleseq_1_"..llabel, "output_"..vs)
-  end
-  local mux_label = mux_output_nb_to_name(NB_VSTEPS)
-  local mux_llabel = string.lower(mux_label)
-  -- add_link("haleseq_1_"..mux_llabel, "output_"..(NB_VSTEPS+1))
-
-
-  -- TESTS
-  -- add_link("haleseq_1_a", "haleseq_2_clock")
-  add_link("haleseq_1_abcd", "haleseq_2_preset")
-  add_link("haleseq_2_abcd", "output_5")
-
-  add_link("haleseq_2_abcd", "pulse_divider_1_clock_div")
-
+  init_patch()
 
   -- --------------------------------
 
