@@ -580,11 +580,28 @@ function enc(n, d)
 
       -- retrig note to get a preview
       if (math.abs(os.clock() - last_enc_note_play_t) >= PULSE_T) then
-        local voiceId = h:knob_vs()
+        local vs = h:knob_vs()
         local volts = h:knob_volts()
 
-        local o = outputs[voiceId]
-        o:nb_play_volts(volts)
+        local target_in_labels = links[h.cv_outs[vs].id]
+        if target_in_labels ~= nil then
+          for _, in_label in ipairs(target_in_labels) do
+            if util.string_starts(in_label, "output_") then
+              local o = ins[in_label].parent
+              o:nb_play_volts(volts)
+            end
+          end
+        end
+
+        local target_in_labels_mux = links[h.cv_outs[h.nb_vsteps+1].id]
+        if target_in_labels_mux ~= nil then
+          for _, in_label in ipairs(target_in_labels_mux) do
+            if util.string_starts(in_label, "output_") then
+              local o = ins[in_label].parent
+              o:nb_play_volts(volts)
+            end
+          end
+        end
 
         last_enc_note_play_t = os.clock()
       end
