@@ -146,6 +146,7 @@ function Haleseq.new(id, STATE,
 
   p.g_knob = nil
   p.g_btn = nil
+  p.scope_on = false
 
   return p
 end
@@ -749,6 +750,18 @@ function Haleseq:grid_key(x, y, z)
     end
   end
 
+  if x == STEPS_GRID_X_OFFSET + self.nb_steps + 1
+    and (y >= G_Y_KNOB and y < G_Y_KNOB + NB_STEPS) then
+    local vs = y - G_Y_KNOB
+
+    self.scope_on = (z >= 1)
+    if self.scope_on then
+      self.STATE.scope:assoc(self.cv_outs[vs])
+    else
+      self.STATE.scope:clear()
+    end
+  end
+
   if x == 16 and y == 2 and z >= 1 then
     self:vreset()
     return
@@ -870,6 +883,11 @@ function Haleseq:redraw()
 
   trig = (math.abs(os.clock() - self.i_preset.last_changed_t) < PULSE_T)
   paperface.main_in(paperface.grid_to_screen_x(self.i_preset.x), paperface.grid_to_screen_y(self.i_preset.y), trig) -- preset (VC)
+
+  if self.scope_on then
+    self.STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)
+  end
+
 end
 
 

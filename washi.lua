@@ -25,6 +25,7 @@ local inspect = include("washi/lib/inspect")
 
 local paperface = include("washi/lib/paperface")
 local patching = include("washi/lib/patching")
+local Scope = include("washi/lib/scope")
 
 -- modules
 local NornsClock = include("washi/lib/module/norns_clock")
@@ -40,9 +41,6 @@ include("washi/lib/consts")
 
 -- ------------------------------------------------------------------------
 -- conf
-
-local FPS = 15
-local GRID_FPS = 15
 
 local NB_BARS = 2
 
@@ -77,6 +75,7 @@ STATE = {
   outs = outs,
   links = links,
   selected_out = nil,
+  scope = nil
 }
 
 local function add_link(o, i)
@@ -397,6 +396,9 @@ function init()
 
   grid_connect_maybe()
 
+  local scope = Scope.new('popup', STATE)
+  STATE.scope = scope
+
   -- stages[5].o = 2
 
   -- --------------------------------
@@ -525,9 +527,11 @@ end
 
 function cleanup()
   all_notes_off()
+
   clock.cancel(redraw_clock)
   clock.cancel(grid_redraw_clock)
 
+  STATE.scope:cleanup()
   for _, rvg in ipairs(rvgs) do
     rvg:cleanup()
   end
