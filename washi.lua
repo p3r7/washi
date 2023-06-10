@@ -648,6 +648,7 @@ function enc(n, d)
 
   if n == 1 then
     -- params:set("clock_tempo", params:get("clock_tempo") + d)
+    STATE.scope:clear()
     pages:set_index_delta(d, false)
     return
   end
@@ -694,6 +695,10 @@ function redraw()
     if h ~= nil then
       h:redraw()
     end
+  end
+
+  if STATE.scope:is_on() then
+    STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)
   end
 
   if STATE.selected_out == nil then

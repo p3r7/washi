@@ -49,6 +49,7 @@ end
 -- internal logic
 
 function Scope:clear()
+  self.nana = nil
   local nb_samples = self.buffer:length()
   for i=1,nb_samples do
     self.buffer:pop()
@@ -58,6 +59,10 @@ end
 function Scope:assoc(b)
   self:clear()
   self.nana = b
+end
+
+function Scope:is_on()
+  return (self.nana ~= nil)
 end
 
 function Scope:clock()
@@ -103,8 +108,8 @@ function Scope:redraw(x, y, w, h)
     end
   end
   screen.stroke()
-
 end
+
 
 -- ------------------------------------------------------------------------
 

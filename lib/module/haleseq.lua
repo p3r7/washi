@@ -146,7 +146,6 @@ function Haleseq.new(id, STATE,
 
   p.g_knob = nil
   p.g_btn = nil
-  p.scope_on = false
 
   return p
 end
@@ -753,9 +752,7 @@ function Haleseq:grid_key(x, y, z)
   if x == STEPS_GRID_X_OFFSET + self.nb_steps + 1
     and (y >= G_Y_KNOB and y < G_Y_KNOB + NB_STEPS) then
     local vs = y - G_Y_KNOB
-
-    self.scope_on = (z >= 1)
-    if self.scope_on then
+    if (z >= 1) then
       self.STATE.scope:assoc(self.cv_outs[vs])
     else
       self.STATE.scope:clear()
