@@ -141,7 +141,8 @@ function PulseDivider:process_ins()
       self:tick()
     else
       for _, o in ipairs(self.div_outs) do
-        o.v = 0
+        -- o.v = 0
+        o:update(0)
       end
     end
   end
