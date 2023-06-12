@@ -36,7 +36,7 @@ function Output.new(id, STATE,
   -- --------------------------------
   -- screen
 
-  p.screen = page_id
+  p.page = page_id
   p.x = x
   p.y = y
 
@@ -150,11 +150,19 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- grid
+
+function Output:grid_redraw(g)
+  paperface.module_grid_redraw(self, g)
+end
+
+
+-- ------------------------------------------------------------------------
 -- screen
 
 function Output:redraw()
   local trig = (math.abs(os.clock() - self.i.last_changed_t) < LINK_TRIG_DRAW_T)
-  paperface.main_in(paperface.grid_to_screen_x(self.i.x), paperface.grid_to_screen_y(self.i.y), trig)
+  paperface.main_in(paperface.panel_grid_to_screen_x(self.i.x), paperface.panel_grid_to_screen_y(self.i.y), trig)
 end
 
 -- ------------------------------------------------------------------------

@@ -20,7 +20,7 @@ include("washi/lib/core")
 
 function QuantizedClock.new(id, STATE,
                             mclock_div, divs, base,
-                            screen_id, x, y)
+                            page_id, x, y)
   local p = setmetatable({}, QuantizedClock)
 
   p.kind = "quantized_clock"
@@ -35,7 +35,7 @@ function QuantizedClock.new(id, STATE,
   -- --------------------------------
   -- screen
 
-  p.screen = screen_id
+  p.page = page_id
   p.x = x
   p.y = y
 
@@ -68,9 +68,9 @@ function QuantizedClock.new(id, STATE,
 end
 
 function QuantizedClock.init(id, STATE, mclock_div, divs,
-                             screen_id, x, y)
+                             page_id, x, y)
   local q = QuantizedClock.new(id, STATE, mclock_div, divs, nil,
-                               screen_id, x, y)
+                               page_id, x, y)
 
   if STATE ~= nil then
     STATE.ins[q.i.id] = q.i
@@ -124,6 +124,28 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- grid
+
+function QuantizedClock:grid_redraw(g)
+  -- dummy input
+  for i, v in ipairs(self.divs) do
+    if v == (self.mclock_div / 8) then
+      local l = 3
+      if self.mclock_mult_trig then
+        l = 10
+      end
+      local x = paperface.panel_to_grid_x(self.x)
+      local y = paperface.panel_to_grid_y(self.y)
+
+      g:led(x, y, l)
+    end
+  end
+
+  paperface.module_grid_redraw(self, g)
+end
+
+
+-- ------------------------------------------------------------------------
 -- screen
 
 function QuantizedClock:redraw()
@@ -131,8 +153,8 @@ function QuantizedClock:redraw()
 
     local o = self.div_outs[i]
 
-    local x = paperface.grid_to_screen_x(o.x)
-    local y = paperface.grid_to_screen_y(o.y)
+    local x = paperface.panel_grid_to_screen_x(o.x)
+    local y = paperface.panel_grid_to_screen_y(o.y)
 
     local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
     paperface.trig_out(x, y, trig)
@@ -144,7 +166,7 @@ function QuantizedClock:redraw()
     -- but it presents itself as a pulse multiplier
     if v == (self.mclock_div / 8) then
       self.mclock_mult_trig = trig
-      paperface.trig_in(paperface.grid_to_screen_x(self.x), paperface.grid_to_screen_y(self.y), trig)
+      paperface.trig_in(paperface.panel_grid_to_screen_x(self.x), paperface.panel_grid_to_screen_y(self.y), trig)
     end
 
   end

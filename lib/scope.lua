@@ -102,9 +102,9 @@ function Scope:redraw(x, y, w, h)
     local v = self.buffer:peek(i)
     local pixel_v = util.linlin(0, V_MAX, 0, h, v)
     if math.abs(prev_pixel_v-pixel_v) > 2  then
-      screen.line(x+w-i, y+pixel_v)
+      screen.line(x+w-i, y+h-pixel_v)
     else
-      screen.pixel(x+w-i, y+pixel_v)
+      screen.pixel(x+w-i, y+h-pixel_v)
     end
   end
   screen.stroke()

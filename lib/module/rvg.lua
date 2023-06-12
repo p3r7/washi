@@ -37,7 +37,7 @@ function Rvg.new(id, STATE,
   -- --------------------------------
   -- screen
 
-  p.screen = page_id
+  p.page = page_id
   p.x = x
   p.y = y
 
@@ -65,8 +65,8 @@ function Rvg.new(id, STATE,
 end
 
 function Rvg.init(id, STATE, page_id, x, y)
-  local q = Rvg.new(id, STATE, divs,
-                             page_id, x, y)
+  local q = Rvg.new(id, STATE,
+                    page_id, x, y)
 
   -- q:init_params()
 
@@ -136,21 +136,29 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- grid
+
+function Rvg:grid_redraw(g)
+  paperface.module_grid_redraw(self, g)
+end
+
+
+-- ------------------------------------------------------------------------
 -- screen
 
 function Rvg:redraw()
   local trig = (math.abs(os.clock() - self.i_trig.last_up_t) < NANA_TRIG_DRAW_T)
-  paperface.trig_in(paperface.grid_to_screen_x(self.i_trig.x), paperface.grid_to_screen_y(self.i_trig.y), trig)
+  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_trig.x), paperface.panel_grid_to_screen_y(self.i_trig.y), trig)
 
   trig = (math.abs(os.clock() - self.i_rate.last_changed_t) < NANA_TRIG_DRAW_T)
-  paperface.main_in(paperface.grid_to_screen_x(self.i_rate.x), paperface.grid_to_screen_y(self.i_rate.y), trig)
+  paperface.main_in(paperface.panel_grid_to_screen_x(self.i_rate.x), paperface.panel_grid_to_screen_y(self.i_rate.y), trig)
 
   trig = ( (math.abs(os.clock() - self.o_smooth.last_changed_t) < NANA_TRIG_DRAW_T))
-  paperface.trig_out(paperface.grid_to_screen_x(self.o_smooth.x), paperface.grid_to_screen_y(self.o_smooth.y), trig)
+  paperface.trig_out(paperface.panel_grid_to_screen_x(self.o_smooth.x), paperface.panel_grid_to_screen_y(self.o_smooth.y), trig)
   trig = ( (math.abs(os.clock() - self.o_stepped.last_changed_t) < NANA_TRIG_DRAW_T))
-  paperface.trig_out(paperface.grid_to_screen_x(self.o_stepped.x), paperface.grid_to_screen_y(self.o_stepped.y), trig)
+  paperface.trig_out(paperface.panel_grid_to_screen_x(self.o_stepped.x), paperface.panel_grid_to_screen_y(self.o_stepped.y), trig)
   trig = ( (math.abs(os.clock() - self.o_pulse.last_changed_t) < NANA_TRIG_DRAW_T))
-  paperface.trig_out(paperface.grid_to_screen_x(self.o_pulse.x), paperface.grid_to_screen_y(self.o_pulse.y), trig)
+  paperface.trig_out(paperface.panel_grid_to_screen_x(self.o_pulse.x), paperface.panel_grid_to_screen_y(self.o_pulse.y), trig)
 
 end
 

@@ -18,7 +18,7 @@ include("washi/lib/consts")
 -- constructors
 
 function NornsClock.new(STATE,
-                       screen_id, x, y)
+                       page_id, x, y)
   local p = setmetatable({}, NornsClock)
 
   p.kind = "norns_clock"
@@ -40,7 +40,7 @@ function NornsClock.new(STATE,
   -- --------------------------------
   -- screen
 
-  p.screen = screen_id
+  p.page = page_id
   p.x = x
   p.y = y
 
@@ -48,9 +48,9 @@ function NornsClock.new(STATE,
 end
 
 function NornsClock.init(STATE,
-                        screen_id, x, y)
+                        page_id, x, y)
   local c = NornsClock.new(STATE,
-                           screen_id, x, y)
+                           page_id, x, y)
 
   if STATE ~= nil then
     STATE.ins[c.i.id] = c.i
@@ -76,13 +76,30 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- grid
+
+function NornsClock:grid_redraw(g, mult_trig)
+  -- dummy output
+  local l = 3
+  if mult_trig then
+    l = 10
+  end
+
+  local x = paperface.panel_to_grid_x(self.x)
+  local y = paperface.panel_to_grid_y(self.y)
+
+  g:led(x, y, l)
+end
+
+
+-- ------------------------------------------------------------------------
 -- screen
 
 function NornsClock:redraw(mult_trig)
     -- local trig = (math.abs(os.clock() - last_mclock_tick_t) < PULSE_T)
 
-  local x = paperface.grid_to_screen_x(self.x)
-  local y = paperface.grid_to_screen_y(self.y)
+  local x = paperface.panel_grid_to_screen_x(self.x)
+  local y = paperface.panel_grid_to_screen_y(self.y)
 
   -- local trig = acum % (MCLOCK_DIVS / 8) == 0
   paperface.trig_out(x, y, mult_trig)

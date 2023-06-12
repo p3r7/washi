@@ -42,8 +42,6 @@ include("washi/lib/consts")
 -- ------------------------------------------------------------------------
 -- conf
 
-local NB_BARS = 2
-
 -- local NB_HALESEQS = 1
 local NB_HALESEQS = 2
 
@@ -69,13 +67,15 @@ pages:set_index(tab.key(page_list, 'haleseq 1'))
 ins = {}
 outs = {}
 links = {}
+coords_to_nana = {}
 
 STATE = {
   ins = ins,
   outs = outs,
   links = links,
   selected_out = nil,
-  scope = nil
+  scope = nil,
+  coords_to_nana = coords_to_nana,
 }
 
 local function add_link(o, i)
@@ -549,15 +549,43 @@ local G_Y_KNOB = 2
 function grid_redraw()
   g:all(0)
 
-  local h = get_current_haleseq()
-  if h ~= nil then
-    h:grid_redraw(g)
+  local curr_page = page_list[pages.index]
+
+  if curr_page == 'clock' then
+    norns_clock:grid_redraw(g, quantized_clocks.mclock_mult_trig)
+    quantized_clocks:grid_redraw(g)
+    pulse_dividers[1]:grid_redraw(g)
+  elseif curr_page == 'mod' then
+    rvgs[1]:grid_redraw(g)
+  elseif curr_page == 'outputs' then
+    for _, o in ipairs(outputs) do
+      o:grid_redraw(g)
+    end
+  else
+    local h = get_current_haleseq()
+    if h ~= nil then
+      h:grid_redraw(g)
+    end
   end
 
   g:refresh()
 end
 
 function grid_key(x, y, z)
+  local curr_page = pages.index
+  local screen_coord = curr_page.."."..paperface.grid_x_to_panel_x(x).."."..paperface.grid_y_to_panel_y(y)
+
+  local nana = STATE.coords_to_nana[screen_coord]
+  if nana ~= nil then
+    if (z >= 1) then
+      STATE.scope:assoc(nana)
+    else
+      STATE.scope:clear()
+    end
+    -- return
+  end
+
+
   local h = get_current_haleseq()
   if h ~= nil then
     h:grid_key(x, y, z)

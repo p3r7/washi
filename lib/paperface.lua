@@ -15,12 +15,78 @@ include("washi/lib/consts")
 -- ------------------------------------------------------------------------
 -- panel grid
 
-function paperface.grid_to_screen_x(v)
+function paperface.panel_to_grid_x(v)
+  return GRID_W - SCREEN_STAGE_X_NB + v
+end
+
+function paperface.panel_to_grid_y(v)
+  return GRID_H - SCREEN_STAGE_Y_NB + v
+end
+
+function paperface.grid_x_to_panel_x(v)
+  return v - (GRID_W - SCREEN_STAGE_X_NB)
+end
+
+function paperface.grid_y_to_panel_y(v)
+  return v - (GRID_H - SCREEN_STAGE_Y_NB)
+end
+
+function paperface.panel_grid_to_screen_x(v)
   return (v-1) * SCREEN_STAGE_W
 end
 
-function paperface.grid_to_screen_y(v)
-  return paperface.grid_to_screen_x(v) + SCREEN_STAGE_Y_OFFSET
+function paperface.panel_grid_to_screen_y(v)
+  return paperface.panel_grid_to_screen_x(v) + SCREEN_STAGE_Y_OFFSET
+end
+
+
+-- ------------------------------------------------------------------------
+-- grid
+
+function paperface.module_grid_redraw(m, g)
+  if m.ins ~= nil then
+    for _, i_label in ipairs(m.ins) do
+      local i = m.STATE.ins[i_label]
+      if i ~= nil and i.x ~= nil and i.y ~= nil then
+        local x = paperface.panel_to_grid_x(i.x)
+        local y = paperface.panel_to_grid_y(i.y)
+        local l = 3
+
+        if i.kind == 'comparator' then
+          local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
+          if triggered then
+            l = 10
+          end
+        elseif i.kind == 'in' then
+          local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+          if triggered then
+            l = 10
+          end
+        end
+
+        g:led(x, y, l)
+        -- else
+        --   tab.print(i)
+      end
+    end
+  end
+
+  if m.outs ~= nil then
+    for _, o_label in pairs(m.outs) do
+      local o = m.STATE.outs[o_label]
+      if o ~= nil and o.x ~= nil and o.y ~= nil then
+        local x = paperface.panel_to_grid_x(o.x)
+        local y = paperface.panel_to_grid_y(o.y)
+        local l = 3
+        if (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T) then
+          l = 10
+        end
+        g:led(x, y, l)
+      end
+    end
+  end
+
+
 end
 
 -- ------------------------------------------------------------------------
@@ -261,10 +327,10 @@ end
 -- PATCH
 
 function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page)
-  local startx = paperface.grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
-  local starty = paperface.grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
-  local endx = paperface.grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
-  local endy = paperface.grid_to_screen_y(iy) + SCREEN_STAGE_W/2 + (i_page - curr_page) * SCREEN_H
+  local startx = paperface.panel_grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
+  local starty = paperface.panel_grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
+  local endx = paperface.panel_grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
+  local endy = paperface.panel_grid_to_screen_y(iy) + SCREEN_STAGE_W/2 + (i_page - curr_page) * SCREEN_H
   local midx = (endx + startx)/2
   local midy = (endy + starty)/2
 
@@ -283,8 +349,8 @@ function paperface.draw_input_links(i, outs, curr_page)
       goto DRAW_NEXT_LINK
     end
 
-    paperface.draw_link(from_out.x, from_out.y, from_out.parent.screen,
-                        i.x, i.y, i.parent.screen,
+    paperface.draw_link(from_out.x, from_out.y, from_out.parent.page,
+                        i.x, i.y, i.parent.page,
                         curr_page)
     ::DRAW_NEXT_LINK::
   end

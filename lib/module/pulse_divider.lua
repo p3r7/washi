@@ -42,7 +42,7 @@ function PulseDivider.new(id, STATE, divs,
   -- --------------------------------
   -- screen
 
-  p.screen = page_id
+  p.page = page_id
   p.x = x
   p.y = y
 
@@ -177,21 +177,29 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- grid
+
+function PulseDivider:grid_redraw(g)
+  paperface.module_grid_redraw(self, g)
+end
+
+
+-- ------------------------------------------------------------------------
 -- screen
 
 function PulseDivider:redraw()
 
   local triggered = (math.abs(os.clock() - self.i.last_up_t) < NANA_TRIG_DRAW_T)
-  paperface.trig_in(paperface.grid_to_screen_x(self.i.x), paperface.grid_to_screen_y(self.i.y), triggered)
+  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i.x), paperface.panel_grid_to_screen_y(self.i.y), triggered)
 
   triggered = (math.abs(os.clock() - self.i_clock_select.last_changed_t) < NANA_TRIG_DRAW_T)
-  paperface.main_in(paperface.grid_to_screen_x(self.i_clock_select.x), paperface.grid_to_screen_y(self.i_clock_select.y), triggered)
+  paperface.main_in(paperface.panel_grid_to_screen_x(self.i_clock_select.x), paperface.panel_grid_to_screen_y(self.i_clock_select.y), triggered)
 
   for i, v in ipairs(self.divs) do
     local o = self.div_outs[i]
 
-    local x = paperface.grid_to_screen_x(o.x)
-    local y = paperface.grid_to_screen_y(o.y)
+    local x = paperface.panel_grid_to_screen_x(o.x)
+    local y = paperface.panel_grid_to_screen_y(o.y)
 
     local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
 

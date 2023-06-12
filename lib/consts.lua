@@ -11,6 +11,7 @@ GRID_FPS = 15
 -- clock
 
 MCLOCK_DIVS = 64
+NB_BARS = 2
 
 CLOCK_DIV_DENOMS = {1, 2, 4, 8, 16, 32, 64}
 CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
@@ -63,13 +64,24 @@ SCREEN_H = 64
 -- ------------------------------------------------------------------------
 -- screen - paperface
 
-SCREEN_STAGE_W = 9
-SCREEN_STAGE_X_NB = 14
-SCREEN_STAGE_Y_NB = 7
-
 -- local SCREEN_STAGE_W = 15
 -- local SCREEN_STAGE_Y_OFFSET = 12
 SCREEN_STAGE_Y_OFFSET = 1
 
 SCREEN_LEVEL_LABEL = 1
 SCREEN_LEVEL_LABEL_SPE = 5
+
+
+-- ------------------------------------------------------------------------
+-- panel grid
+
+SCREEN_STAGE_W = 9
+SCREEN_STAGE_X_NB = 14
+SCREEN_STAGE_Y_NB = 7
+
+
+-- ------------------------------------------------------------------------
+-- grid
+
+GRID_W = 16
+GRID_H = 8

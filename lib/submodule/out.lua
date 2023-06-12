@@ -26,6 +26,10 @@ function Out.new(id, parent,
 
   p.x = x
   p.y = y
+  if parent.page ~= nil and x ~= nil and y ~= nil then
+    local coords = parent.page .. "." .. x .. "." .. y
+    parent.STATE.coords_to_nana[coords] = p
+  end
 
   p.v = 0
 
