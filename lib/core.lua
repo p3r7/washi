@@ -99,9 +99,19 @@ end
 -- remove all element of table without changing its memory pointer
 function tempty(t)
   for k, v in pairs(t) do
-    t[k]=nil
+    t[k] = nil
   end
 end
+
+-- replace table value w/ other without changing its memory pointer
+function treplace(t, newt)
+  tempty(t)
+  for k, v in pairs(newt) do
+    t[k] = v
+  end
+end
+
+
 
 function tvals(t)
   local t2 = {}

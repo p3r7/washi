@@ -331,11 +331,11 @@ params.action_read = function(filename, name, pset_number)
 
   for i, hc in ipairs(conf.haleseqs) do
     if haleseqs[i] ~= nil then
-      haleseqs[i].seqvals = hc
+      treplace(haleseqs[i].seqvals, hc)
     end
   end
 
-  links = conf.links
+  treplace(links, conf.links)
 end
 
 params.action_write = function(filename, name, pset_number)
