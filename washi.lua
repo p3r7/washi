@@ -576,7 +576,7 @@ function grid_key(x, y, z)
   local screen_coord = curr_page.."."..paperface.grid_x_to_panel_x(x).."."..paperface.grid_y_to_panel_y(y)
 
   local nana = STATE.coords_to_nana[screen_coord]
-  if nana ~= nil then
+  if nana ~= nil and nana.kind == 'out' then
     if (z >= 1) then
       STATE.scope:assoc(nana)
     else
