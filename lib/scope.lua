@@ -1,6 +1,8 @@
 -- washi. scope
 --
 -- an oscilloscope
+--
+-- REVIEW: maybe use the `graph` lib?
 
 
 local Scope = {}
@@ -89,6 +91,8 @@ function Scope:redraw(x, y, w, h)
   local nb_samples = self.buffer:length()
   local nb_vals_to_show = math.min(nb_samples, w)
 
+  screen.aa(0)
+
   screen.level(0)
   screen.rect(x, y, w, h)
   screen.fill()
@@ -100,11 +104,11 @@ function Scope:redraw(x, y, w, h)
   local prev_pixel_v = 0
   for i=1,nb_vals_to_show do
     local v = self.buffer:peek(i)
-    local pixel_v = util.linlin(0, V_MAX, 0, h, v)
+    local pixel_v = util.linlin(0, V_MAX, 0, h-2, v)
     if math.abs(prev_pixel_v-pixel_v) > 2  then
-      screen.line(x+w-i, y+h-pixel_v)
+      screen.line(x+w-i, y+h-2-pixel_v)
     else
-      screen.pixel(x+w-i, y+h-pixel_v)
+      screen.pixel(x+w-i, y+h-2-pixel_v)
     end
   end
   screen.stroke()
