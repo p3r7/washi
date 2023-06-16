@@ -85,8 +85,6 @@ function paperface.module_grid_redraw(m, g)
       end
     end
   end
-
-
 end
 
 -- ------------------------------------------------------------------------
@@ -323,8 +321,40 @@ function paperface.trig_in(x, y, trig, filled)
 end
 
 
+function paperface.module_redraw(m)
+  if m.ins ~= nil then
+    for _, i_label in ipairs(m.ins) do
+      local i = m.STATE.ins[i_label]
+      if i ~= nil and i.x ~= nil and i.y ~= nil then
+        local x = paperface.panel_grid_to_screen_x(i.x)
+        local y = paperface.panel_grid_to_screen_y(i.y)
+        if i.kind == 'comparator' then
+          local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
+          paperface.trig_in(x, y, triggered)
+        elseif i.kind == 'in' then
+          local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+          paperface.main_in(x, y, triggered)
+        end
+      end
+    end
+  end
+
+  if m.outs ~= nil then
+    for _, o_label in pairs(m.outs) do
+      local o = m.STATE.outs[o_label]
+      if o ~= nil and o.x ~= nil and o.y ~= nil then
+        local x = paperface.panel_grid_to_screen_x(o.x)
+        local y = paperface.panel_grid_to_screen_y(o.y)
+        local triggered = (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
+        paperface.trig_out(x, y, triggered)
+      end
+    end
+  end
+end
+
+
 -- ------------------------------------------------------------------------
--- PATCH
+-- patch
 
 function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page)
   local startx = paperface.panel_grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W

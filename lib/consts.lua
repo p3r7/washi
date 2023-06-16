@@ -27,8 +27,9 @@ LINK_TRIG_DRAW_T = 0.04
 
 LFO_COMPUTATIONS_PER_S = 30
 
-LFO_MIN_RATE = 1
-LFO_MAX_RATE = 15
+LFO_MIN_RATE = 0.001
+LFO_MAX_RATE = 5.0
+LFO_DEFAULT_RATE = 0.5
 
 
 -- ------------------------------------------------------------------------

@@ -32,6 +32,7 @@ local NornsClock = include("washi/lib/module/norns_clock")
 local QuantizedClock = include("washi/lib/module/quantized_clock")
 local PulseDivider = include("washi/lib/module/pulse_divider")
 local Rvg = include("washi/lib/module/rvg")
+local Lfos = include("washi/lib/module/lfos")
 local Haleseq = include("washi/lib/module/haleseq")
 local Output = include("washi/lib/module/output")
 
@@ -49,6 +50,7 @@ local norns_clock
 local quantized_clocks
 local pulse_dividers = {}
 local rvgs = {}
+local lfos = {}
 local haleseqs = {}
 local outputs = {}
 
@@ -378,8 +380,12 @@ local function init_patch()
 
   add_link("pulse_divider_1_3", "haleseq_2_vclock")
 
-  add_link("haleseq_1_a", "haleseq_2_clock")
-  -- add_link("haleseq_1_abcd", "haleseq_2_preset")
+  -- add_link("haleseq_1_a", "haleseq_2_clock")
+  add_link("haleseq_1_abcd", "haleseq_2_preset")
+
+  -- add_link("haleseq_1_abcd", "lfos_1_rate")
+  -- add_link("haleseq_2_a", "lfos_1_shape")
+  -- add_link("lfos_1_1", "haleseq_2_preset")
 
   add_link("haleseq_1_abcd", "output_1")
   add_link("haleseq_2_abcd", "output_2")
@@ -461,6 +467,9 @@ function init()
 
   rvgs[1] = Rvg.init(1, STATE,
                      tab.key(page_list, 'mod'), 2, 1)
+  lfos[1] = Lfos.init(1, STATE,
+                      {45, 90, 135, 180, 225, 270}, {},
+                     tab.key(page_list, 'mod'), 5, 1)
 
   for i=1,NB_HALESEQS do
     local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS,
@@ -535,6 +544,9 @@ function cleanup()
   for _, rvg in ipairs(rvgs) do
     rvg:cleanup()
   end
+  for _, lfo in ipairs(lfos) do
+    lfo:cleanup()
+  end
 
   s_lattice:destroy()
 end
@@ -557,6 +569,7 @@ function grid_redraw()
     pulse_dividers[1]:grid_redraw(g)
   elseif curr_page == 'mod' then
     rvgs[1]:grid_redraw(g)
+    lfos[1]:grid_redraw(g)
   elseif curr_page == 'outputs' then
     for _, o in ipairs(outputs) do
       o:grid_redraw(g)
@@ -711,9 +724,8 @@ function redraw()
   if curr_page == 'clock' then
     redraw_clock_screen()
   elseif curr_page == 'mod' then
-    for _, rvg in ipairs(rvgs) do
-      rvg:redraw()
-    end
+    rvgs[1]:redraw()
+    lfos[1]:redraw()
   elseif curr_page == 'outputs' then
     for _, o in ipairs(outputs) do
       o:redraw()

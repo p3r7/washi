@@ -55,12 +55,12 @@ end
 function Output:init_params()
   local label = self.id
 
-  params:add_group("track_"..label, "Output #"..label, 5)
+  params:add_group("track_"..label, "Output #"..label, 6)
 
   -- NB: right now, 1:1 mapping between outs & nb voices
-  -- might want to change that!
-  -- nb:add_param("track_out_nb_voice_"..llabel, "nb Voice "..label)
   nb:add_param("nb_voice_"..label, "nb Voice "..label)
+
+  params:add{type = "number", id = self.fqid .. "_trig_dur", name = "Trig Dur", min = 1, max = 25, default = 10}
 
   local OCTAVE_RANGE_MODES = {'filter', 'fold'}
   params:add_option("out_octave_mode_"..label, "Octave Fit Mode", OCTAVE_RANGE_MODES, tab.key(OCTAVE_RANGE_MODES, 'filter'))
@@ -113,6 +113,14 @@ function Output:nb_note_on(note, vel)
   nb_playing_note = note
 end
 
+function Output:nb_note(note, vel, beat_div)
+  if vel == nil then vel = 1.0 end
+
+  local player = self:get_nb_player()
+  player:play_note(note, vel, beat_div)
+  nb_playing_note = note
+end
+
 function Output:nb_play(note, vel)
   local llabel = string.lower(self.id)
 
@@ -140,7 +148,8 @@ function Output:nb_play(note, vel)
     end
   end
 
-  self:nb_note_on(note, vel)
+  -- self:nb_note_on(note, vel)
+  self:nb_note(note, vel, params:get(self.fqid .. "_trig_dur")/100)
 end
 
 function Output:nb_play_volts(volts, vel)
