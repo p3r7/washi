@@ -1,9 +1,9 @@
--- washi. module/LFOs
+-- washi. module/lfo bank
 --
--- LFOs
+-- Lfo Bank
 
-local Lfos = {}
-Lfos.__index = Lfos
+local LfoBank = {}
+LfoBank.__index = LfoBank
 
 
 -- ------------------------------------------------------------------------
@@ -26,7 +26,7 @@ include("washi/lib/core")
 -- ------------------------------------------------------------------------
 -- impl - wave shape
 
-local t_reso = 1000 -- nb sambles / cycle
+local t_reso = 10000 -- nb sambles / cycle
 
 local specs = {}
 specs.WAVE_SHAPE = ControlSpec.UNIPOLAR
@@ -73,7 +73,7 @@ local function format_attack(param)
   return return_string
 end
 
-function Lfos:lookup_wave(x, shape_cv)
+function LfoBank:lookup_wave(x, shape_cv)
   x = util.round(x)
 
   local index_f = shape_cv * (#self.wave_lut - 1) + 1
@@ -120,12 +120,12 @@ end
 -- ------------------------------------------------------------------------
 -- constructors
 
-function Lfos.new(id, STATE,
+function LfoBank.new(id, STATE,
                   phase_shifts, ratios,
                   page_id, x, y)
-  local p = setmetatable({}, Lfos)
+  local p = setmetatable({}, LfoBank)
 
-  p.kind = "lfos"
+  p.kind = "lfo_bank"
   p.id = id
   p.fqid = p.kind .. "_" .. id
 
@@ -162,17 +162,20 @@ function Lfos.new(id, STATE,
   if ratios == nil then
     p.ratios = {}
   else
-    p.ratios = phase_shifts
+    p.ratios = ratios
   end
 
-  p.wave_outs[1] = Out.new(p.fqid.."_1", p, x+1, y)
   for i, phase in ipairs(phase_shifts) do
-    p.wave_outs[i+1] = Out.new(p.fqid.."_"..i+1, p, x+1, y+i)
+    p.wave_outs[i] = Out.new(p.fqid.."_"..i, p, x+1, y+i-1)
   end
 
   -- --------------------------------
 
-  p.accum = 0
+  p.accums = {}
+  for i, phase in ipairs(phase_shifts) do
+    p.accums[i] = 0
+  end
+
   p.clock = clock.run(function()
       p:clock()
   end)
@@ -182,21 +185,21 @@ function Lfos.new(id, STATE,
   return p
 end
 
-function Lfos:init_params()
+function LfoBank:init_params()
   local id = self.id
   local fqid = self.fqid
 
-  params:add_group(fqid, "LFOs #"..id, 2)
+  params:add_group(fqid, "Lfo Bank #"..id, 2)
 
     params:add{type = "control", id = fqid.."_rate", name = "Freq", controlspec = specs.LFO_FREQ, formatter = Formatters.format_freq}
     params:add{type = "control", id = fqid.."_shape", name = "Shape", controlspec = specs.WAVE_SHAPE, formatter = format_wave_shape}
 
 end
 
-function Lfos.init(id, STATE,
+function LfoBank.init(id, STATE,
                    phase_shifts, ratios,
                    page_id, x, y)
-  local q = Lfos.new(id, STATE,
+  local q = LfoBank.new(id, STATE,
                      phase_shifts, ratios,
                      page_id, x, y)
 
@@ -214,7 +217,7 @@ function Lfos.init(id, STATE,
   return q
 end
 
-function Lfos:cleanup()
+function LfoBank:cleanup()
   clock.cancel(self.clock)
 end
 
@@ -222,7 +225,7 @@ end
 -- ------------------------------------------------------------------------
 -- internal logic
 
-function Lfos:clock()
+function LfoBank:clock()
   local step_s = 1 / LFO_COMPUTATIONS_PER_S
 
   while true do
@@ -231,26 +234,33 @@ function Lfos:clock()
     -- internal clock
     local speed = params:get(self.fqid.."_rate")
     local step = (speed / step_s) * t_reso / 600
-    self.accum = mod_wave_index(self.accum + step)
 
     for i, o in ipairs(self.wave_outs) do
+      local ratio = 1
+      if self.ratios[i] ~= nil then
+        ratio = self.ratios[i]
+      end
+
       local phase = 0
       if self.phase_shifts[i] ~= nil then
         phase = self.phase_shifts[i]
       end
-      local v_norm = self:lookup_wave(mod_wave_index(self.accum, phase), params:get(self.fqid.."_shape"))
+
+      self.accums[i] = mod_wave_index(self.accums[i] + step * ratio)
+
+      local v_norm = self:lookup_wave(mod_wave_index(self.accums[i], phase), params:get(self.fqid.."_shape"))
       local v = round(util.linlin(-1, 1, 0, V_MAX, v_norm))
       o:update(v)
     end
 
     -- NB: self-triggering to send out vals
-    -- REVIEW: might be better to have a single clock for all RVGs & LFOs doing that?
+    -- REVIEW: might be better to have a single clock for all RVGs & LfoBank doing that?
     -- even maybe an event queue, dropping events that are too old
     patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, V_MAX/2)
   end
 end
 
-function Lfos:process_ins()
+function LfoBank:process_ins()
   if self.i_rate.changed then
     params:set(self.fqid.."_rate", round(util.linlin(0, V_MAX, LFO_MIN_RATE, LFO_MAX_RATE, self.i_rate.v)))
   end
@@ -263,7 +273,7 @@ end
 -- ------------------------------------------------------------------------
 -- grid
 
-function Lfos:grid_redraw(g)
+function LfoBank:grid_redraw(g)
   paperface.module_grid_redraw(self, g)
 end
 
@@ -271,10 +281,10 @@ end
 -- ------------------------------------------------------------------------
 -- screen
 
-function Lfos:redraw()
+function LfoBank:redraw()
   paperface.module_redraw(self)
 end
 
 -- ------------------------------------------------------------------------
 
-return Lfos
+return LfoBank

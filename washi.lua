@@ -32,7 +32,7 @@ local NornsClock = include("washi/lib/module/norns_clock")
 local QuantizedClock = include("washi/lib/module/quantized_clock")
 local PulseDivider = include("washi/lib/module/pulse_divider")
 local Rvg = include("washi/lib/module/rvg")
-local Lfos = include("washi/lib/module/lfos")
+local LfoBank = include("washi/lib/module/lfo_bank")
 local Haleseq = include("washi/lib/module/haleseq")
 local Output = include("washi/lib/module/output")
 
@@ -463,13 +463,18 @@ function init()
                                          tab.key(page_list, 'clock'), 4, 1)
 
   pulse_dividers[1] = PulseDivider.init(1, STATE, nil,
-                                        tab.key(page_list, 'clock'), 8, 1)
+                                        tab.key(page_list, 'clock'), 9, 1)
 
   rvgs[1] = Rvg.init(1, STATE,
                      tab.key(page_list, 'mod'), 2, 1)
-  lfos[1] = Lfos.init(1, STATE,
-                      {45, 90, 135, 180, 225, 270}, {},
-                     tab.key(page_list, 'mod'), 5, 1)
+  lfos[1] = LfoBank.init(1, STATE,
+                         LFO_PHASES, {},
+                         tab.key(page_list, 'mod'), 5, 1)
+  local BRATIO = 10
+  lfos[2] = LfoBank.init(2, STATE,
+                         {0, 2, 7, 44, 58, 79, 122},
+                         {37/BRATIO, 27/BRATIO, 6.51/BRATIO, 3/BRATIO, 1.52/BRATIO, 1.21/BRATIO, 1/BRATIO},
+                         tab.key(page_list, 'mod'), 10, 1)
 
   for i=1,NB_HALESEQS do
     local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS,
@@ -570,6 +575,7 @@ function grid_redraw()
   elseif curr_page == 'mod' then
     rvgs[1]:grid_redraw(g)
     lfos[1]:grid_redraw(g)
+    lfos[2]:grid_redraw(g)
   elseif curr_page == 'outputs' then
     for _, o in ipairs(outputs) do
       o:grid_redraw(g)
@@ -726,6 +732,15 @@ function redraw()
   elseif curr_page == 'mod' then
     rvgs[1]:redraw()
     lfos[1]:redraw()
+    for i, phase in ipairs(LFO_PHASES) do
+      if tab.contains({0, 90, 180, 270}, phase) then
+        local x = paperface.panel_grid_to_screen_x(lfos[1].x + 1) + SCREEN_STAGE_W + 2
+        local y = paperface.panel_grid_to_screen_y(i) + SCREEN_STAGE_W - 2
+        screen.move(x, y)
+        screen.text(phase.."°")
+      end
+    end
+    lfos[2]:redraw()
   elseif curr_page == 'outputs' then
     for _, o in ipairs(outputs) do
       o:redraw()
