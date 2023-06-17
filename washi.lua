@@ -45,6 +45,7 @@ include("washi/lib/consts")
 
 -- local NB_HALESEQS = 1
 local NB_HALESEQS = 2
+local NB_OUTS = 6
 
 local norns_clock
 local quantized_clocks
@@ -392,6 +393,10 @@ local function init_patch()
   add_link("haleseq_1_a", "output_3")
   add_link("haleseq_2_a", "output_4")
   add_link("haleseq_2_b", "output_5")
+
+  add_link("rvg_1_smooth", "lfo_bank_2_rate")
+  add_link("lfo_bank_2_1", "output_2_vel")
+  add_link("lfo_bank_2_4", "output_2_dur")
 end
 
 function init()
@@ -484,17 +489,15 @@ function init()
 
   params:add_separator("outputs", "outputs")
 
-  for vs=1,NB_VSTEPS+1 do
-    -- local label = output_nb_to_name(vs)
-    local label = ""..vs
-    local ox = 2
-    local oy = (vs-1)*3 + 1
-    while oy > SCREEN_STAGE_Y_NB do
-      oy = oy - SCREEN_STAGE_Y_NB
+  local ox = 1
+  for o=1,NB_OUTS do
+    local label = ""..o
+    if vs ~= 1 and mod1(o,2) == 1 then
       ox = ox + 3
     end
-    outputs[vs] = Output.init(label, STATE,
-                              tab.key(page_list, 'outputs'), ox, oy)
+    local oy = mod1(o,2) * 3
+    outputs[o] = Output.init(label, STATE,
+                             tab.key(page_list, 'outputs'), ox, oy)
   end
 
   init_patch()
