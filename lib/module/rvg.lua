@@ -1,4 +1,4 @@
--- washi. module/random voltage source
+-- washi. module/random voltage generator
 --
 -- Serge RVG
 
@@ -57,8 +57,9 @@ function Rvg.new(id, STATE,
   p.ins = {}
   p.outs = {}
 
-  p.i_rate = In.new(p.fqid.."_rate", p, nil, x, y+4)
-  p.i_trig = Comparator.new(p.fqid.."_trig", p, nil, x+1, y+4)
+  p.i_rate = In.new(p.fqid.."_rate", p, nil, x, y+6)
+  p.i_trig = Comparator.new(p.fqid.."_trig", p, nil, x+1, y+6)
+  p.i_trig_dummy = Comparator.new(p.fqid.."_trig_dummy", p) -- for self-trigging wo/ display
 
   p.o_smooth = Out.new(p.fqid.."_smooth", p, x, y)
   p.o_stepped = Out.new(p.fqid.."_stepped", p, x, y+1)
@@ -93,6 +94,7 @@ function Rvg.init(id, STATE, page_id, x, y)
   if STATE ~= nil then
     STATE.ins[q.i_rate.id] = q.i_rate
     STATE.ins[q.i_trig.id] = q.i_trig
+    STATE.ins[q.i_trig_dummy.id] = q.i_trig_dummy
     STATE.outs[q.o_smooth.id] = q.o_smooth
     STATE.outs[q.o_stepped.id] = q.o_stepped
     STATE.outs[q.o_pulse.id] = q.o_pulse
@@ -137,8 +139,8 @@ function Rvg:clock()
     -- REVIEW: might be better to have a single clock for all RVGs & LFOs doing that?
     -- even maybe an event queue, dropping events that are too old
     if trig then
-      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig.id, V_MAX/2)
-      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig.id, 0)
+      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, V_MAX/2)
+      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, 0)
     end
 
   end
@@ -149,7 +151,10 @@ function Rvg:process_ins()
     params:set(self.fqid.."_rate", round(util.linlin(0, V_MAX, LFO_MIN_RATE, LFO_MAX_RATE, self.i_rate.v)))
   end
 
-  if self.i_trig.triggered and self.i_trig.status == 1 then
+  local triggered = (self.i_trig.triggered and self.i_trig.status == 1)
+  local self_triggered = (self.i_trig_dummy.triggered and self.i_trig_dummy.status == 1)
+
+  if triggered or self_triggered then
     local v = math.random(V_MAX+1)-1
 
     self.o_stepped:update(v)
