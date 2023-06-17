@@ -394,9 +394,11 @@ local function init_patch()
   add_link("haleseq_2_a", "output_4")
   add_link("haleseq_2_b", "output_5")
 
-  add_link("rvg_1_smooth", "lfo_bank_2_rate")
-  add_link("lfo_bank_2_1", "output_2_vel")
-  add_link("lfo_bank_2_4", "output_2_dur")
+  -- add_link("rvg_1_smooth", "lfo_bank_2_rate")
+  -- add_link("lfo_bank_2_1", "output_2_vel")
+  -- add_link("lfo_bank_2_4", "output_2_dur")
+
+  add_link("lfo_bank_2_3", "output_2_mod")
 end
 
 function init()
@@ -406,6 +408,8 @@ function init()
   s_lattice = lattice:new{}
 
   grid_connect_maybe()
+
+  nb:init()
 
   local scope = Scope.new('popup', STATE)
   STATE.scope = scope
@@ -493,7 +497,7 @@ function init()
   for o=1,NB_OUTS do
     local label = ""..o
     if vs ~= 1 and mod1(o,2) == 1 then
-      ox = ox + 3
+      ox = ox + 4
     end
     local oy = mod1(o,2) * 3
     outputs[o] = Output.init(label, STATE,

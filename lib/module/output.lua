@@ -64,6 +64,7 @@ function Output.new(id, STATE,
   p.i_trig = Comparator.new(p.fqid..'_trig', p, nil, x+1, y)
   p.i_dur = In.new(p.fqid..'_dur', p, nil, x, y+1)
   p.i_vel = In.new(p.fqid..'_vel', p, nil, x+1, y+1)
+  p.i_mod = In.new(p.fqid..'_mod', p, nil, x+2, y+1)
 
   p.nb_playing_note = nil
 
@@ -73,7 +74,7 @@ end
 function Output:init_params()
   local label = self.id
 
-  params:add_group("track_"..label, "Output #"..label, 7)
+  params:add_group("track_"..label, "Output #"..label, 8)
 
   -- NB: right now, 1:1 mapping between outs & nb voices
   nb:add_param("nb_voice_"..label, "nb Voice "..label)
@@ -86,6 +87,9 @@ function Output:init_params()
 
   params:add{type = "number", id = "out_octave_min_"..label, name = "Min Octave", min = -2, max = 8, default = -2}
   params:add{type = "number", id = "out_octave_max_"..label, name = "Max Octave", min = -2, max = 8, default = 8}
+
+  local OFF_ON = {'off', 'on'}
+  params:add_option(self.fqid .. "_bend", "Note Bend", OFF_ON, tab.key(OFF_ON, 'off'))
 end
 
 function Output.init(id, STATE,
@@ -99,6 +103,7 @@ function Output.init(id, STATE,
     STATE.ins[o.i_trig.id] = o.i_trig
     STATE.ins[o.i_dur.id] = o.i_dur
     STATE.ins[o.i_vel.id] = o.i_vel
+    STATE.ins[o.i_mod.id] = o.i_mod
   end
 
   return o
@@ -156,6 +161,11 @@ function Output:process_ins()
   if triggered or triggered_spe then -- FIXME: make retrigger on TIE but not SKIP
     self:nb_play_volts(self.i.v)
   end
+
+  if self.i_mod.changed then
+    self:nb_modulate_volts(self.i_mod.v)
+  end
+
 end
 
 function Output:get_nb_player()
@@ -187,7 +197,12 @@ function Output:nb_note(note, vel, beat_div)
   nb_playing_note = note
 end
 
-function Output:nb_play(note)
+function Output:nb_bend(note, st)
+  local player = self:get_nb_player()
+  player:pitch_bend(note, st)
+end
+
+function Output:nb_play(note, bend_st)
   local llabel = string.lower(self.id)
 
   self:nb_note_off()
@@ -218,11 +233,30 @@ function Output:nb_play(note)
 
   -- self:nb_note_on(note, vel)
   self:nb_note(note, vel, params:get(self.fqid .. "_trig_dur")/100)
+
+  if bend_st ~= nil and bend_st ~= 0 then
+    self:nb_bend(note, bend_st)
+  end
 end
 
 function Output:nb_play_volts(volts)
   local note = round(util.linlin(0, V_MAX, 0, 127, volts))
-  self:nb_play(note)
+
+  local bend_st = nil
+  if params:string(self.fqid .. "_bend") == 'on' then
+    local bend_volts = volts - util.linlin(0, 127, 0, V_MAX, note)
+    -- NB: really really not sure about this calculation
+    -- my bend_volts is in Volts * 1000 (due to precision of V_MAX)
+    -- instinctively i'd say that i'd need to also divide by V_MAX, but that give too low a value...
+    bend_st = bend_volts / 12
+  end
+
+  self:nb_play(note, bend_st)
+end
+
+function Output:nb_modulate_volts(volts)
+  local player = self:get_nb_player()
+  player:modulate(volts/V_MAX)
 end
 
 
