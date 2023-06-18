@@ -113,16 +113,7 @@ end
 -- ------------------------------------------------------------------------
 -- internal logic
 
--- triggered w/ only pitch in, from a haleseq CV out
--- -- FIXME: not working rn, hence...
 function Output:is_triggered_spe()
-
-  -- ...this patch
-  if self.i.changed then
-    return true
-  else
-    return false
-  end
 
   -- as links to its trig in
   if not (tab.count(self.i_trig.incoming_vals) == 0
@@ -135,7 +126,7 @@ function Output:is_triggered_spe()
   end
 
   local found_one = false
-  for from_out_label, v in ipairs(self.i.incoming_vals) do
+  for from_out_label, v in pairs(self.i.incoming_vals) do
     if from_out_label ~= "GLOBAL" and found_one then
       return false
     end
