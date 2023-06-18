@@ -162,7 +162,7 @@ function patching.exec_plan(outs, ins, links, in_label,
   local curr_in = ins[in_label]
   if curr_in == nil then
     dbg("!!! in '"..in_label.."' not found", level)
-    return modules, module_out_links
+    return modules, module_triggered_ins, module_out_links
   end
 
   local curr_module = curr_in.parent
@@ -202,7 +202,8 @@ function patching.exec_plan(outs, ins, links, in_label,
         if ins[next_in_label] ~= nil then
           set_insert_coord(module_out_links[curr_module], {curr_out, ins[next_in_label]})
         end
-        patching.exec_plan(outs, ins, links, next_in_label, modules, module_triggered_ins, module_out_links, level+1)
+        patching.exec_plan(outs, ins, links, next_in_label,
+                           modules, module_triggered_ins, module_out_links, level+1)
       end
     end
 
@@ -211,6 +212,38 @@ function patching.exec_plan(outs, ins, links, in_label,
   return modules, module_triggered_ins, module_out_links
 end
 
+-- like `patching.exec_plan`, but takes multiple ins (at level #1) at once
+function patching.exec_plan_mult(outs, ins, links, in_labels,
+                                 modules, module_triggered_ins, module_out_links, level)
+  if modules == nil then modules = {} end
+  if module_triggered_ins == nil then module_triggered_ins = {} end
+  if module_out_links == nil then module_out_links = {} end
+
+  for _, in_label in ipairs(in_labels) do
+    -- if ins[in_label] ~= nil then
+    --   set_insert_coord(module_out_links[curr_module], {curr_out, ins[in_label]})
+    -- end
+    patching.exec_plan(outs, ins, links, in_label,
+                       modules, module_triggered_ins, module_out_links)
+  end
+
+  return modules, module_triggered_ins, module_out_links
+end
+
+function patching.exec_plan_from_out(outs, ins, links, out_label)
+  local curr_out = outs[out_label]
+  if curr_out == nil then
+    dbg("!!! out '"..out_label.."' not found", level)
+  end
+
+  local next_in_labels = links[out_label]
+
+  if next_in_labels ~= nil then
+    return patching.exec_plan_mult(outs, ins, links, next_in_labels)
+  else
+    return {}, {}, {}
+  end
+end
 
 -- ... then in this 2nd function, loop over ordered (by level) sequence of triggered_modules, process input vals (`module:process_ins`) & set next module's vals (`target_input:update`)
 function patching.fire_and_propagate(outs, ins, links,
@@ -269,17 +302,73 @@ function patching.fire_and_propagate(outs, ins, links,
     end
   end
 
-  -- for _, i in ipairs(fired_ins) do
-  --   dbg(i.id)
+  dbg("----------")
+  DEBUG = false
 
-  --   local parent = i.parent
-  --   parent:process_ins()
-  -- end
+end
+
+function patching.fire_and_propagate_from_out(outs, ins, links,
+                                              out_label, initial_v)
+
+  if initial_v == nil then initial_v = V_MAX/2 end
+
+  dbg("----------")
+  dbg("PATCH LAYOUT")
+  dbg("----------")
+  local fired_modules, fired_ins, link_map = patching.exec_plan_from_out(outs, ins, links, out_label)
+
+  dbg("----------")
+  dbg("TRIGGERED MODULES")
+  dbg("----------")
+
+  for level, modules in ipairs(fired_modules) do
+    for _, m in ipairs(modules) do
+      patching.module_clear_unlinked_ins(outs, ins, links, m)
+    end
+  end
+
+  for level, modules in ipairs(fired_modules) do
+
+    if level == 1 then
+      local from_label = out_label
+      local next_in_labels = links[out_label]
+
+      for _, in_label in ipairs(next_in_labels) do
+        local to = ins[in_label]
+        dbg(from_label .. " -> " .. to.id .. ": " .. initial_v, level-1)
+        to:register(from_label, initial_v)
+      end
+    end
+
+    for _, m in ipairs(modules) do
+
+      dbg(m.fqid, level-1)
+
+      patching.module_update_all_ins(m)
+      m:process_ins()
+
+      for _, outbound_link in ipairs(link_map[m]) do
+
+        local from = outbound_link[1]
+        local to = outbound_link[2]
+
+        local v = from.v
+
+        dbg(from.id .. " -> " .. to.id .. ": " .. v, level-1)
+
+        to:register(from.id, v)
+      end
+
+      :: NEXT_MODULE ::
+    end
+  end
 
   dbg("----------")
   DEBUG = false
 
 end
+
+
 
 
 -- ------------------------------------------------------------------------
