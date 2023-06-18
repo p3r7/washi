@@ -79,9 +79,9 @@ function Haleseq.new(id, STATE,
                                SCREEN_STAGE_X_NB,
                                6)
 
-  p.i_preset = Comparator.new(p.fqid.."_preset", p, nil,
-                              SCREEN_STAGE_X_NB - 1,
-                              7)
+  p.i_preset = In.new(p.fqid.."_preset", p, nil,
+                      SCREEN_STAGE_X_NB - 1,
+                      7)
 
 
   local stage_start_x = SCREEN_STAGE_X_NB - 2 - p.nb_steps - 1
