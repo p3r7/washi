@@ -266,29 +266,6 @@ local vreverse = false
 local mclock_acum = 0
 local last_mclock_tick_t = 0
 
--- base1 modulo
-function mod1(v, m)
-  return ((v - 1) % m) + 1
-end
-
-function is_whole_number(v)
-  return (v%1 == 0)
-end
-
-function clock_div_opt_v(o)
-  local m = {
-    ['off'] = 0,
-    ['1/1'] = 1,
-    ['1/2'] = 2,
-    ['1/4'] = 4,
-    ['1/8'] = 8,
-    ['1/16'] = 16,
-    ['1/32'] = 32,
-    ['1/64'] = 64,
-  }
-  return m[o]
-end
-
 is_doing_stuff = false
 
 function mclock_tick(t, forced)
@@ -459,6 +436,8 @@ function init()
                     end
   )
   params:add_option("rnd_seq_root", "Rnd Scale", musicutil.NOTE_NAMES, tab.key(musicutil.NOTE_NAMES, 'C'))
+
+  params:add{type = "number", id = "pulse_width", name = "Pulse Width", min = 1, max = 100, default = 10}
 
 
   -- --------------------------------

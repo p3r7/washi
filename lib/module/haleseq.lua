@@ -72,16 +72,16 @@ function Haleseq.new(id, STATE,
   p.i_preset_reset = Comparator.new(p.fqid.."_preset_reset", p, nil,
                                     SCREEN_STAGE_X_NB,
                                     5)
-  p.i_hold = In.new(p.fqid.."_hold", p, nil,
-                    SCREEN_STAGE_X_NB,
-                    4)
-  p.i_reverse = In.new(p.fqid.."_reverse", p, nil,
-                       SCREEN_STAGE_X_NB,
-                       6)
+  p.i_hold = Comparator.new(p.fqid.."_hold", p, nil,
+                            SCREEN_STAGE_X_NB,
+                            4)
+  p.i_reverse = Comparator.new(p.fqid.."_reverse", p, nil,
+                               SCREEN_STAGE_X_NB,
+                               6)
 
-  p.i_preset = In.new(p.fqid.."_preset", p, nil,
-                      SCREEN_STAGE_X_NB - 1,
-                      7)
+  p.i_preset = Comparator.new(p.fqid.."_preset", p, nil,
+                              SCREEN_STAGE_X_NB - 1,
+                              7)
 
 
   local stage_start_x = SCREEN_STAGE_X_NB - 2 - p.nb_steps - 1
@@ -97,9 +97,11 @@ function Haleseq.new(id, STATE,
   --   TODO: goes high and remains high while a push button is pushed
   p.cpo = Out.new(p.fqid.."_cpo", p,
                   stage_start_x + p.nb_steps, 1)
+  p.cpo_end_clock = nil
   -- AEP - All Event Pulse
   p.aep = Out.new(p.fqid.."_aep", p,
                   stage_start_x + p.nb_steps + 1, 1)
+  p.aep_end_clock = nil
 
   p.cv_outs = {}
 
@@ -140,9 +142,7 @@ function Haleseq.new(id, STATE,
   p.last_vstep_t = 0
   p.last_preset_t = 0
 
-  p.reverse = false
   p.vreverse = false
-  p.hold = false
 
   p.g_knob = nil
   p.g_btn = nil
@@ -288,12 +288,35 @@ function Haleseq:process_ins()
   if self.i_preset.changed then
     params:set(self.fqid.."_preset", round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
   else
+    local any_stage_preset_up = false
     for v, stage in ipairs(self.stages) do
       if stage.i.triggered and stage.i.status == 1 then
+        any_stage_preset_up = true
         params:set(self.fqid.."_preset", v)
         break
       end
     end
+    if any_stage_preset_up then
+      self.cpo:update(V_MAX/2)
+      if self.cpo_end_clock then
+        clock.cancel(self.cpo_end_clock)
+      end
+      self.cpo_end_clock = clock.run(function()
+          clock.sleep(TRIG_S)
+          -- TODO: propagate
+          self.cpo:update(0)
+      end)
+    end
+  end
+
+  if self.i_reset.status == 1 then
+    self:reset()
+  end
+  if self.i_vreset.status == 1 then
+    self:vreset()
+  end
+  if self.i_preset_reset.status == 1 then
+    self:reset_preset()
   end
 
   -- if self.i_clock.status == 1 or forced then
@@ -316,7 +339,15 @@ function Haleseq:process_ins()
 
     -- REVIEW: should implement special out for gate w/ own pulse width?!
     self.aep:update(V_MAX/2)
-    self.aep:update(0)
+
+    if self.aep_end_clock then
+      clock.cancel(self.aep_end_clock)
+    end
+    self.aep_end_clock = clock.run(function()
+        clock.sleep(pulse_width_dur(params:get("pulse_width"), NB_BARS))
+        -- TODO: propagate
+        self.aep:update(0)
+    end)
 
     -- REVIEW: shoudl maybe set them all to 0 at begining of the fn?
     for s, stage in ipairs(self.stages) do
@@ -436,7 +467,7 @@ function Haleseq:clock_tick()
   -- --------------------------------
   -- case 2: hold
 
-  if self.hold then
+  if self.i_hold.status == 1 then
     return false
   end
 
@@ -452,7 +483,7 @@ function Haleseq:clock_tick()
     self.prev_step = self.step
   end
 
-  local sign = self.reverse and -1 or 1
+  local sign = (self.i_reverse.status == 1) and -1 or 1
 
   -- advance once ...
   self.step = mod1(self.step + sign, self.nb_steps)
@@ -704,13 +735,18 @@ function Haleseq:grid_redraw(g)
     g:led(x, 2+vs, l) -- v out
   end
 
-  g:led(16, 2, 5) -- vreset
-  g:led(16, 3, 1) -- vclock
-  g:led(16, 4, 5) -- reset
-  g:led(16, 5, 3) -- hold
-  g:led(16, 6, 5) -- preset
-  g:led(16, 7, 3) -- reverse
-  g:led(16, 8, 3) -- clock
+  paperface.out_grid_redraw(self.cv_outs[self.nb_vsteps+1], g)
+
+  paperface.out_grid_redraw(self.aep, g, 0)
+  paperface.out_grid_redraw(self.cpo, g, 0)
+
+  paperface.in_grid_redraw(self.i_vreset, g, 5)
+  paperface.in_grid_redraw(self.i_vclock, g, 3)
+  paperface.in_grid_redraw(self.i_reset, g, 5)
+  paperface.in_grid_redraw(self.i_hold, g, 3)
+  paperface.in_grid_redraw(self.i_preset_reset, g, 5)
+  paperface.in_grid_redraw(self.i_reverse, g, 3)
+  paperface.in_grid_redraw(self.i_clock, g, 3)
 end
 
 function Haleseq:grid_key(x, y, z)
@@ -749,34 +785,68 @@ function Haleseq:grid_key(x, y, z)
     end
   end
 
-  -- if x == STEPS_GRID_X_OFFSET + self.nb_steps + 1
-  --   and (y >= G_Y_KNOB and y < G_Y_KNOB + NB_STEPS) then
-  --   local vs = y - G_Y_KNOB
+  -- if x == 16 and y == 7 then
   --   if (z >= 1) then
-  --     self.STATE.scope:assoc(self.cv_outs[vs])
+  --     self.i_clock:register("GLOBAL", V_MAX/2)
   --   else
-  --     self.STATE.scope:clear()
+  --     self.i_clock:register("GLOBAL", 0)
   --   end
+  --   self.i_clock:update()
+  --   return
+  -- end
+  -- if x == 16 and y == 2 then
+  --   if (z >= 1) then
+  --     self.i_vclock:register("GLOBAL", V_MAX/2)
+  --   else
+  --     self.i_vclock:register("GLOBAL", 0)
+  --   end
+  --   self.i_vclock:update()
+  --   return
   -- end
 
-  if x == 16 and y == 2 and z >= 1 then
-    self:vreset()
+  if x == 16 and y == 2 then
+    if (z >= 1) then
+      self.i_vreset:register("GLOBAL", V_MAX/2)
+    else
+      self.i_vreset:register("GLOBAL", 0)
+    end
+    self.i_vreset:update()
     return
   end
-  if x == 16 and y == 4 and z >= 1 then
-    self:reset()
+  if x == 16 and y == 4 then
+    if (z >= 1) then
+      self.i_reset:register("GLOBAL", V_MAX/2)
+    else
+      self.i_reset:register("GLOBAL", 0)
+    end
+    self.i_reset:update()
     return
   end
   if x == 16 and y == 5 then
-    self.hold = (z >= 1)
+    if (z >= 1) then
+      self.i_hold:register("GLOBAL", V_MAX/2)
+    else
+      self.i_hold:register("GLOBAL", 0)
+    end
+    self.i_hold:update()
     return
   end
-  if x == 16 and y == 6 and z >= 1 then
-    self:reset_preset()
+  if x == 16 and y == 6 then
+    if (z >= 1) then
+      self.i_preset_reset:register("GLOBAL", V_MAX/2)
+    else
+      self.i_preset_reset:register("GLOBAL", 0)
+    end
+    self.i_preset_reset:update()
     return
   end
   if x == 16 and y == 7 then
-    self.reverse = (z >= 1)
+    if (z >= 1) then
+      self.i_reverse:register("GLOBAL", V_MAX/2)
+    else
+      self.i_reverse:register("GLOBAL", 0)
+    end
+    self.i_reverse:update()
     return
   end
 end
@@ -860,26 +930,22 @@ function Haleseq:redraw()
 
   -- CPO - Common Pulse Out
   -- (preset change gate out)
-  paperface.trig_out(paperface.panel_grid_to_screen_x(self.cpo.x), paperface.panel_grid_to_screen_y(self.cpo.y), math.abs(os.clock() - self.last_preset_t) < PULSE_T, SCREEN_LEVEL_LABEL_SPE)
+  local trig_cpo = (self.cpo.v > 0
+                    or (math.abs(os.clock() - self.cpo.last_changed_t) < PULSE_T))
+  paperface.trig_out(paperface.panel_grid_to_screen_x(self.cpo.x), paperface.panel_grid_to_screen_y(self.cpo.y), trig_cpo, SCREEN_LEVEL_LABEL_SPE)
 
   -- AEP - All Event Pulse
-  local trig_aep = (math.abs(os.clock() - self.aep.last_changed_t) < PULSE_T)
+  local trig_aep = (self.aep.v > 0 or (math.abs(os.clock() - self.aep.last_changed_t) < PULSE_T))
   paperface.trig_out(paperface.panel_grid_to_screen_x(self.aep.x), paperface.panel_grid_to_screen_y(self.aep.y), trig_aep, SCREEN_LEVEL_LABEL_SPE)
 
-  trig = false
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_vreset.x), paperface.panel_grid_to_screen_y(self.i_vreset.y), trig) -- vreset
-  trig = (math.abs(os.clock() - self.i_vclock.last_up_t) < PULSE_T)
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_vclock.x), paperface.panel_grid_to_screen_y(self.i_vclock.y), trig) -- vclock
-  trig = false
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_reset.x), paperface.panel_grid_to_screen_y(self.i_reset.y), trig) -- reset
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_hold.x), paperface.panel_grid_to_screen_y(self.i_hold.y), trig) -- hold
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_preset_reset.x), paperface.panel_grid_to_screen_y(self.i_preset_reset.y), trig) -- preset (reset)
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_reverse.x), paperface.panel_grid_to_screen_y(self.i_reverse.y), trig) -- reverse
-  trig = (math.abs(os.clock() - self.i_clock.last_up_t) < PULSE_T)
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_clock.x), paperface.panel_grid_to_screen_y(self.i_clock.y), trig) -- clock
-
-  trig = (math.abs(os.clock() - self.i_preset.last_changed_t) < PULSE_T)
-  paperface.main_in(paperface.panel_grid_to_screen_x(self.i_preset.x), paperface.panel_grid_to_screen_y(self.i_preset.y), trig) -- preset (VC)
+  paperface.in_redraw(self.i_vreset)
+  paperface.in_redraw(self.i_vclock)
+  paperface.in_redraw(self.i_reset)
+  paperface.in_redraw(self.i_hold)
+  paperface.in_redraw(self.i_preset_reset)
+  paperface.in_redraw(self.i_reverse)
+  paperface.in_redraw(self.i_clock)
+  paperface.in_redraw(self.i_preset)
 
   if self.scope_on then
     self.STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)

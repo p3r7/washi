@@ -43,30 +43,52 @@ end
 -- ------------------------------------------------------------------------
 -- grid
 
+function paperface.in_grid_redraw(i, g, l)
+  if i.x == nil or i.y == nil then
+    return
+  end
+
+  if l == nil then l = 3 end
+
+  local x = paperface.panel_to_grid_x(i.x)
+  local y = paperface.panel_to_grid_y(i.y)
+
+  if i.kind == 'comparator' then
+    local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
+    if triggered then
+      l = 10
+    end
+  elseif i.kind == 'in' then
+    local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+    if triggered then
+      l = 10
+    end
+  end
+
+  g:led(x, y, l)
+end
+
+function paperface.out_grid_redraw(o, g, l)
+  if o.x == nil or o.y == nil then
+    return
+  end
+
+  if l == nil then l = 3 end
+
+  local x = paperface.panel_to_grid_x(o.x)
+  local y = paperface.panel_to_grid_y(o.y)
+  if (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T) then
+    l = 10
+  end
+  g:led(x, y, l)
+end
+
 function paperface.module_grid_redraw(m, g)
   if m.ins ~= nil then
     for _, i_label in ipairs(m.ins) do
       local i = m.STATE.ins[i_label]
-      if i ~= nil and i.x ~= nil and i.y ~= nil then
-        local x = paperface.panel_to_grid_x(i.x)
-        local y = paperface.panel_to_grid_y(i.y)
-        local l = 3
-
-        if i.kind == 'comparator' then
-          local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
-          if triggered then
-            l = 10
-          end
-        elseif i.kind == 'in' then
-          local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
-          if triggered then
-            l = 10
-          end
-        end
-
-        g:led(x, y, l)
-        -- else
-        --   tab.print(i)
+      if i ~= nil then
+        paperface.in_grid_redraw(i, g)
       end
     end
   end
@@ -74,14 +96,8 @@ function paperface.module_grid_redraw(m, g)
   if m.outs ~= nil then
     for _, o_label in pairs(m.outs) do
       local o = m.STATE.outs[o_label]
-      if o ~= nil and o.x ~= nil and o.y ~= nil then
-        local x = paperface.panel_to_grid_x(o.x)
-        local y = paperface.panel_to_grid_y(o.y)
-        local l = 3
-        if (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T) then
-          l = 10
-        end
-        g:led(x, y, l)
+      if o ~= nil then
+        paperface.out_grid_redraw(o, g)
       end
     end
   end
@@ -321,20 +337,39 @@ function paperface.trig_in(x, y, trig, filled)
 end
 
 
+function paperface.in_redraw(i)
+  if i.x == nil or i.y == nil then
+    return
+  end
+
+  local x = paperface.panel_grid_to_screen_x(i.x)
+  local y = paperface.panel_grid_to_screen_y(i.y)
+  if i.kind == 'comparator' then
+    local triggered = ((i.status == 1) or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
+    paperface.trig_in(x, y, triggered)
+  elseif i.kind == 'in' then
+    local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+    paperface.main_in(x, y, triggered)
+  end
+end
+
+function paperface.out_redraw(o)
+  if o.x == nil or o.y == nil then
+    return
+  end
+
+  local x = paperface.panel_grid_to_screen_x(o.x)
+  local y = paperface.panel_grid_to_screen_y(o.y)
+  local triggered = (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
+  paperface.trig_out(x, y, triggered)
+end
+
 function paperface.module_redraw(m)
   if m.ins ~= nil then
     for _, i_label in ipairs(m.ins) do
       local i = m.STATE.ins[i_label]
-      if i ~= nil and i.x ~= nil and i.y ~= nil then
-        local x = paperface.panel_grid_to_screen_x(i.x)
-        local y = paperface.panel_grid_to_screen_y(i.y)
-        if i.kind == 'comparator' then
-          local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
-          paperface.trig_in(x, y, triggered)
-        elseif i.kind == 'in' then
-          local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
-          paperface.main_in(x, y, triggered)
-        end
+      if i ~= nil then
+        paperface.in_redraw(i)
       end
     end
   end
@@ -342,11 +377,8 @@ function paperface.module_redraw(m)
   if m.outs ~= nil then
     for _, o_label in pairs(m.outs) do
       local o = m.STATE.outs[o_label]
-      if o ~= nil and o.x ~= nil and o.y ~= nil then
-        local x = paperface.panel_grid_to_screen_x(o.x)
-        local y = paperface.panel_grid_to_screen_y(o.y)
-        local triggered = (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
-        paperface.trig_out(x, y, triggered)
+      if o ~= nil then
+        paperface.out_redraw(o)
       end
     end
   end

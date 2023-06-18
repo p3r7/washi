@@ -16,6 +16,8 @@ NB_BARS = 2
 CLOCK_DIV_DENOMS = {1, 2, 4, 8, 16, 32, 64}
 CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
 
+TRIG_S = 0.01
+
 PULSE_T = 0.02 -- FIXME: don't use os.clock() but a lattice clock for stable gate beahvior
 
 NANA_TRIG_DRAW_T = 0.04

@@ -74,6 +74,10 @@ function mod1(v, m)
   return ((v - 1) % m) + 1
 end
 
+function is_whole_number(v)
+  return (v%1 == 0)
+end
+
 function mean(t)
   local sum = 0
   local count= 0
@@ -132,24 +136,9 @@ function tunpack(t)
   return table.unpack(tvals(t))
 end
 
-function tab_contains_coord(t, c)
-  for _, c2 in ipairs(t) do
-    if c[1] == c2[1] and c[2] == c2[2] then
-      return true
-    end
-  end
-  return false
-end
-
 function set_insert(t, v)
   if not tab.contains(t, v) then
     table.insert(t, v)
-  end
-end
-
-function set_insert_coord(t, c)
-  if not tab_contains_coord(t, c) then
-    table.insert(t, c)
   end
 end
 
@@ -159,6 +148,37 @@ function sets_merge(t1, t2)
   end
 end
 
+
+-- ------------------------------------------------------------------------
+-- coords
+
+function tab_contains_coord(t, c)
+  for _, c2 in ipairs(t) do
+    if c[1] == c2[1] and c[2] == c2[2] then
+      return true
+    end
+  end
+  return false
+end
+
+function set_insert_coord(t, c)
+  if not tab_contains_coord(t, c) then
+    table.insert(t, c)
+  end
+end
+
+
+-- ------------------------------------------------------------------------
+-- time
+
+function pulse_width_dur(width_pct, nb_bars)
+  if nb_bars == nil then nb_bars = 1 end
+  local bar_bpm = params:get("clock_tempo") / nb_bars
+
+  local beat_dur = 60 / bar_bpm
+
+  return width_pct * beat_dur / 100
+end
 
 -- ------------------------------------------------------------------------
 -- output names
