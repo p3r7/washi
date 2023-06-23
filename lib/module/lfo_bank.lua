@@ -150,6 +150,7 @@ function LfoBank.new(id, STATE,
 
   p.i_rate = In.new(p.fqid.."_rate", p, nil, x, y+4)
   p.i_shape = In.new(p.fqid.."_shape", p, nil, x, y+5)
+  p.i_hold = In.new(p.fqid.."_hold", p, nil, x, y+6)
 
   p.wave_outs = {}
 
@@ -208,6 +209,7 @@ function LfoBank.init(id, STATE,
   if STATE ~= nil then
     STATE.ins[q.i_rate.id] = q.i_rate
     STATE.ins[q.i_shape.id] = q.i_shape
+    STATE.ins[q.i_hold.id] = q.i_hold
     STATE.ins[q.i_trig_dummy.id] = q.i_trig_dummy
     for _, o in pairs(q.wave_outs) do
       STATE.outs[o.id] = o
@@ -235,6 +237,10 @@ function LfoBank:clock()
     local speed = params:get(self.fqid.."_rate")
     local step = (speed / step_s) * t_reso / 600
 
+    if self.i_hold.status == 1 then
+      goto NEXT_LFO_CLOCK_TICK
+    end
+
     for i, o in ipairs(self.wave_outs) do
       local ratio = 1
       if self.ratios[i] ~= nil then
@@ -257,6 +263,8 @@ function LfoBank:clock()
     -- REVIEW: might be better to have a single clock for all RVGs & LfoBank doing that?
     -- even maybe an event queue, dropping events that are too old
     patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, V_MAX/2)
+
+    ::NEXT_LFO_CLOCK_TICK::
   end
 end
 
