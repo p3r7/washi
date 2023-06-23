@@ -386,6 +386,7 @@ function init()
 
   grid_connect_maybe()
 
+  nb.voice_count = NB_OUTS
   nb:init()
 
   local scope = Scope.new('popup', STATE)
