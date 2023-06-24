@@ -729,6 +729,13 @@ function redraw()
       end
     end
     lfos[2]:redraw()
+    local x = paperface.panel_grid_to_screen_x(lfos[2].x + 1) + SCREEN_STAGE_W + 2
+    local yf = paperface.panel_grid_to_screen_y(1) + SCREEN_STAGE_W - 2
+    local ys = paperface.panel_grid_to_screen_y(7) + SCREEN_STAGE_W - 2
+    screen.move(x, yf)
+    screen.text("f")
+    screen.move(x, ys)
+    screen.text("s")
   elseif curr_page == 'outputs' then
     for _, o in ipairs(outputs) do
       o:redraw()
