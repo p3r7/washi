@@ -57,6 +57,8 @@ function PulseDivider.new(id, STATE, divs,
   -- VC switch of input for quantized_clock
   p.i_clock_select = In.new(p.fqid..'_clock_div', p, nil, x, y + 1)
 
+  p.i_reset = Comparator.new(p.fqid..'_reset', p, nil, x, y + 2)
+
   x = x + 1
 
   if divs == nil then divs = CGS_PULSE_DIVS end
@@ -118,6 +120,7 @@ function PulseDivider.init(id, STATE, divs,
   if STATE ~= nil then
     STATE.ins[q.i.id] = q.i
     STATE.ins[q.i_clock_select.id] = q.i_clock_select
+    STATE.ins[q.i_reset.id] = q.i_reset
     for _, o in ipairs(q.div_outs) do
       STATE.outs[o.id] = o
     end
@@ -136,12 +139,16 @@ function PulseDivider:process_ins()
     params:set(self.fqid.."_clock_div", input_i)
   end
 
-  if self.i.triggered then
+  if self.i_reset.triggered then
+    for _, o in ipairs(self.div_outs) do
+      self.acum = 0
+      o:update(V_MAX / 2)
+    end
+  elseif self.i.triggered then
     if self.i.status == 1 then
       self:tick()
     else
       for _, o in ipairs(self.div_outs) do
-        -- o.v = 0
         o:update(0)
       end
     end
