@@ -10,7 +10,7 @@
 -- based on the work of:
 -- - Serge Tcherepnin
 -- - Ken Stone
--- - Dakota Merlin (@hale)
+-- - Dakota Melin (@hale)
 
 
 -- ------------------------------------------------------------------------
