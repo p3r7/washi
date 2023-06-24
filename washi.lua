@@ -9,6 +9,7 @@
 --
 -- based on the work of:
 -- - Serge Tcherepnin
+-- - Rex Probe
 -- - Ken Stone
 -- - Dakota Melin (@hale)
 
