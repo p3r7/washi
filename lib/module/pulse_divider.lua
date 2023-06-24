@@ -188,22 +188,13 @@ end
 -- screen
 
 function PulseDivider:redraw()
+  paperface.module_redraw(self)
 
-  local triggered = (math.abs(os.clock() - self.i.last_up_t) < NANA_TRIG_DRAW_T)
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i.x), paperface.panel_grid_to_screen_y(self.i.y), triggered)
-
-  triggered = (math.abs(os.clock() - self.i_clock_select.last_changed_t) < NANA_TRIG_DRAW_T)
-  paperface.main_in(paperface.panel_grid_to_screen_x(self.i_clock_select.x), paperface.panel_grid_to_screen_y(self.i_clock_select.y), triggered)
-
+  -- labels
   for i, v in ipairs(self.divs) do
     local o = self.div_outs[i]
-
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
-
-    local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
-
-    paperface.trig_out(x, y, trig)
     screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
     screen.text("/"..v)
   end
