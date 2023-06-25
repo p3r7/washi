@@ -437,7 +437,7 @@ function paperface.redraw_active_links(outs, ins, curr_page)
     end
 
     if i.kind == 'comparator' then
-      local triggered = (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T)
+      local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
       if triggered then
         paperface.draw_input_links(i, outs, curr_page)
       end
