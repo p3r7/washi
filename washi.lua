@@ -108,6 +108,105 @@ local function rnd_cv_out_llabel_for_haleseq(h)
   end
 end
 
+
+-- ------------------------------------------------------------------------
+-- whole patch
+
+local function init_patch()
+  add_link("norns_clock", "quantized_clock_global")
+
+  -- add_link("haleseq_2_abcd", "pulse_divider_1_clock_div")
+  add_link("pulse_divider_1_3", "haleseq_2_vclock")
+
+  -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
+  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
+  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
+  add_link("pulse_divider_1_7", "haleseq_1_vclock")
+
+  add_link("pulse_divider_1_3", "haleseq_2_vclock")
+
+  -- add_link("haleseq_1_a", "haleseq_2_clock")
+  -- add_link("haleseq_1_abcd", "haleseq_2_preset")
+
+  -- add_link("lfo_bank_1_1", "haleseq_2_preset")
+  -- add_link("rvg_1_smooth", "haleseq_2_preset")
+  add_link("lfo_bank_2_5", "haleseq_2_preset")
+  -- add_link("rvg_1_stepped", "haleseq_2_preset")
+
+  -- add_link("haleseq_1_abcd", "lfos_1_rate")
+  -- add_link("haleseq_2_a", "lfos_1_shape")
+
+  add_link("haleseq_1_abcd", "output_1")
+  add_link("haleseq_2_abcd", "output_2")
+  add_link("haleseq_1_a", "output_3")
+  add_link("haleseq_2_a", "output_4")
+  add_link("haleseq_2_b", "output_5")
+
+  -- add_link("rvg_1_smooth", "lfo_bank_2_rate")
+  -- add_link("lfo_bank_2_1", "output_2_vel")
+  -- add_link("lfo_bank_2_4", "output_2_dur")
+
+  add_link("lfo_bank_2_3", "output_2_mod")
+end
+
+
+local function rnd_mod_module()
+  local out_type = math.random(3)
+  if out_type == 1 then -- RVG
+    return rvgs[tab.count(rvgs)]
+  elseif out_type == 2 then -- LFO
+    return lfos[tab.count(lfos)]
+  elseif out_type == 3 then -- haleseq
+    return haleseqs[tab.count(haleseqs)]
+  end
+end
+
+local function rnd_other_mod_module(m)
+  local m2 = rnd_mod_module()
+  if m ~= nil then
+    while m2.fqid == m.fqid do
+      m2 = rnd_mod_module()
+    end
+  end
+  return m2
+end
+
+local function rnd_mod_out_for_module(m2)
+  if m2.kind == 'haleseq' then
+    if rnd() < 0.5 then
+      return m2.cv_outs[m2.nb_vsteps + 1] -- mux out
+    else
+      return m2.cv_outs[math.random(m2.nb_vsteps)]
+    end
+  elseif m2.kind == 'lfo_bank' then
+    return m2.wave_outs[math.random(tab.count(m2.wave_outs))]
+  elseif m2.kind == 'rvg' then
+    if rnd() < 0.50 then
+      return m2.o_smooth
+    else
+      return m2.o_stepped
+    end
+  end
+end
+
+local function rnd_mod_out_other_module(m)
+  local m2 = rnd_other_mod_module(m)
+  return rnd_mod_out_for_module(m2)
+end
+
+local function rnd_out_other_module(m)
+  local nb_outs = tab.count(outs)
+  local out_labels = tkeys(outs)
+  local ol = out_labels[math.random(nb_outs)]
+  local o = outs[ol]
+  while o.id == 'norns_clock' or o.parent.fqid == m.fqid do
+    ol = out_labels[math.random(nb_outs)]
+    o = outs[ol]
+  end
+  return o
+end
+
+
 local function rnd_patch()
   tempty(STATE.links)
 
@@ -117,23 +216,41 @@ local function rnd_patch()
     params:set(pd.fqid.."_clock_div", math.random(#CLOCK_DIV_DENOMS))
 
     if rnd() < 0.25 then
-      local haleseq_id = math.random(tab.count(haleseqs))
-      local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
-      add_link("haleseq_"..haleseq_id.."_"..out_llabel, "pulse_divider_1_clock_div")
+      local from_out = rnd_mod_out_other_module(pd)
+      add_link(from_out.id, pd.fqid.."_clock_div")
+    end
+  end
+
+  for _, rvg in ipairs(rvgs) do
+    if rnd() < 0.25 then
+      local from_out = rnd_mod_out_other_module(rvg)
+      add_link(from_out.id, rvg.fqid.."_rate")
+    end
+  end
+
+  for _, lfo in ipairs(lfos) do
+    if rnd() < 0.1 then
+      local from_out = rnd_mod_out_other_module(lfo)
+      add_link(from_out.id, lfo.fqid.."_rate")
+    end
+    if rnd() < 0.1 then
+      local from_out = rnd_mod_out_other_module(lfo)
+      add_link(from_out.id, lfo.fqid.."_shape")
+    end
+    if rnd() < 0.1 then
+      local from_out = rnd_mod_out_other_module(lfo)
+      add_link(from_out.id, lfo.fqid.."_hold")
     end
   end
 
   for i, h in ipairs(haleseqs) do
-    local has_in_preset_cv_patched = false
+    local has_in_preset_cv_patched = ((i == 1) and rnd() < 0.01 or rnd() < 0.5)
 
-    if i > 1 then
-      if rnd() < 0.2 then
-        -- patch from haleseq_1 to the others' preset
-        local out_llabel = rnd_cv_out_llabel_for_haleseq(haleseqs[1])
+    if has_in_preset_cv_patched then
+      -- patch from haleseq_1 to the others' preset
+      local from_out = rnd_mod_out_other_module(h)
 
-        add_link("haleseq_1_"..out_llabel, "haleseq_"..i.."_preset")
-        has_in_preset_cv_patched = true
-      end
+      add_link(from_out.id, "haleseq_"..i.."_preset")
     end
 
     -- clock
@@ -144,7 +261,7 @@ local function rnd_patch()
 
       local pd_id = math.random(tab.count(pulse_dividers))
       local pd = pulse_dividers[pd_id]
-      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], "haleseq_"..i.."_clock")
+      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], h.fqid.."_clock")
     end
 
     -- vclock
@@ -155,12 +272,35 @@ local function rnd_patch()
 
       local pd_id = math.random(tab.count(pulse_dividers))
       local pd = pulse_dividers[pd_id]
-      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], "haleseq_"..i.."_vclock")
+      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], h.fqid.."_vclock")
+    end
+
+    if rnd() < 0.1 then
+    -- if true then
+      local ol = rnd_out_other_module(h).id
+      print(ol .. " -> " .. h.fqid.."_reset")
+      add_link(ol, h.fqid.."_reset")
+    end
+    if rnd() < 0.1 then
+      add_link(rnd_out_other_module(h).id, h.fqid.."_vreset")
+    end
+    if rnd() < 0.1 then
+      add_link(rnd_out_other_module(h).id, h.fqid.."_preset_reset")
+    end
+    if rnd() < 0.8 then
+      add_link(rnd_out_other_module(h).id, h.fqid.."_hold")
+    end
+    if rnd() < 0.1 then
+      add_link(rnd_out_other_module(h).id, h.fqid.."_reverse")
+    end
+
+    if params:get(h.fqid.."_preset") > (3 * h.nb_steps / 4) then
+      params:set(h.fqid.."_preset", math.random(round(3 * h.nb_steps / 4)))
     end
   end
 
   local assigned_outs = {}
-  for i, _output in ipairs(outputs) do
+  for i, output in ipairs(outputs) do
     if i <= 2 then
       add_link("haleseq_"..i.."_abcd", "output_"..i)
     else
@@ -176,9 +316,19 @@ local function rnd_patch()
       table.insert(assigned_outs, out_label)
       add_link(out_label, "output_"..i)
     end
+
+    if rnd() < 0.1 then
+      add_link(rnd_mod_out_other_module(output).id, output.fqid.."_dur")
+    end
+    if rnd() < 0.1 then
+      add_link(rnd_mod_out_other_module(output).id, output.fqid.."_vel")
+    end
+    if rnd() < 0.2 then
+      add_link(rnd_mod_out_other_module(output).id, output.fqid.."_mod")
+    end
   end
 
-  DEBUG = true
+  -- DEBUG = true
 end
 
 -- ------------------------------------------------------------------------
@@ -343,40 +493,6 @@ end
 
 params.action_delete = function(filename, name, pset_number)
   os.execute("rm -f" .. filename .. PATCH_CONF_EXT)
-end
-
-
-local function init_patch()
-  add_link("norns_clock", "quantized_clock_global")
-
-  -- add_link("haleseq_2_abcd", "pulse_divider_1_clock_div")
-  add_link("pulse_divider_1_3", "haleseq_2_vclock")
-
-  -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
-  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
-  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
-  add_link("pulse_divider_1_7", "haleseq_1_vclock")
-
-  add_link("pulse_divider_1_3", "haleseq_2_vclock")
-
-  -- add_link("haleseq_1_a", "haleseq_2_clock")
-  add_link("haleseq_1_abcd", "haleseq_2_preset")
-
-  -- add_link("haleseq_1_abcd", "lfos_1_rate")
-  -- add_link("haleseq_2_a", "lfos_1_shape")
-  -- add_link("lfos_1_1", "haleseq_2_preset")
-
-  add_link("haleseq_1_abcd", "output_1")
-  add_link("haleseq_2_abcd", "output_2")
-  add_link("haleseq_1_a", "output_3")
-  add_link("haleseq_2_a", "output_4")
-  add_link("haleseq_2_b", "output_5")
-
-  -- add_link("rvg_1_smooth", "lfo_bank_2_rate")
-  -- add_link("lfo_bank_2_1", "output_2_vel")
-  -- add_link("lfo_bank_2_4", "output_2_dur")
-
-  add_link("lfo_bank_2_3", "output_2_mod")
 end
 
 function init()
