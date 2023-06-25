@@ -74,10 +74,13 @@ end
 function Output:init_params()
   local label = self.id
 
-  params:add_group("track_"..label, "Output #"..label, 8)
+  params:add_group("track_"..label, "Output #"..label, 9)
 
   -- NB: right now, 1:1 mapping between outs & nb voices
   nb:add_param("nb_voice_"..label, "nb Voice "..label)
+
+  local OUT_MODES = {'notes+mod', 'notes', 'mod'}
+  params:add_option(self.fqid .. "_mode", "Mode", OUT_MODES, tab.key(OUT_MODES, 'notes+mod'))
 
   params:add{type = "number", id = self.fqid .. "_trig_dur", name = "Trig Dur", min = TRIG_DUR_MIN, max = TRIG_DUR_MAX, default = TRIG_DUR_DEFAULT}
   params:add{type = "control", id = self.fqid.."_vel", name = "Velocity", controlspec = specs.VELOCITY}
@@ -149,11 +152,11 @@ function Output:process_ins()
   local triggered = (self.i_trig.triggered and self.i_trig.status == 1)
   local triggered_spe = self:is_triggered_spe()
 
-  if triggered or triggered_spe then -- FIXME: make retrigger on TIE but not SKIP
+  if tab.contains({'notes+mod', 'notes'}, params:string(self.fqid .. "_mode")) and (triggered or triggered_spe) then -- FIXME: make retrigger on TIE but not SKIP
     self:nb_play_volts(self.i.v)
   end
 
-  if self.i_mod.changed then
+  if tab.contains({'notes+mod', 'mod'}, params:string(self.fqid .. "_mode")) and self.i_mod.changed then
     self:nb_modulate_volts(self.i_mod.v)
   end
 
