@@ -298,7 +298,7 @@ function Haleseq:process_ins()
     end
     if any_stage_preset_up then
       self.cpo:update(V_MAX/2)
-      if self.cpo_end_clock then
+      if self.cpo_end_clock ~= nil then
         clock.cancel(self.cpo_end_clock)
       end
       self.cpo_end_clock = clock.run(function()
@@ -340,7 +340,7 @@ function Haleseq:process_ins()
     -- REVIEW: should implement special out for gate w/ own pulse width?!
     self.aep:update(V_MAX/2)
 
-    if self.aep_end_clock then
+    if self.aep_end_clock ~= nil then
       clock.cancel(self.aep_end_clock)
     end
     self.aep_end_clock = clock.run(function()
