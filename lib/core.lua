@@ -100,6 +100,10 @@ end
 -- ------------------------------------------------------------------------
 -- tables
 
+function tprint(t)
+  print(inspect(t))
+end
+
 -- remove all element of table without changing its memory pointer
 function tempty(t)
   for k, v in pairs(t) do
