@@ -590,10 +590,10 @@ function init()
 
   params:add_separator("outputs", "outputs")
 
-  local ox = 1
+  local ox = 2
   for o=1,NB_OUTS do
     local label = ""..o
-    if vs ~= 1 and mod1(o,2) == 1 then
+    if o ~= 1 and mod1(o,2) == 1 then
       ox = ox + 4
     end
     local oy = mod1(o,2) * 3
