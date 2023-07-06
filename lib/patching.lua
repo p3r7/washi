@@ -111,6 +111,7 @@ function patching.module_clear_unlinked_ins(outs, ins, links, m)
           i.incoming_vals[out_label] = nil
         end
       end
+      i:update()
     end
   end
 end
