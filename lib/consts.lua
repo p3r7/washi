@@ -82,10 +82,3 @@ SCREEN_LEVEL_LABEL_SPE = 5
 SCREEN_STAGE_W = 9
 SCREEN_STAGE_X_NB = 14
 SCREEN_STAGE_Y_NB = 7
-
-
--- ------------------------------------------------------------------------
--- grid
-
-GRID_W = 16
-GRID_H = 8

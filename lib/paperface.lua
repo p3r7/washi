@@ -15,20 +15,28 @@ include("washi/lib/consts")
 -- ------------------------------------------------------------------------
 -- panel grid
 
-function paperface.panel_to_grid_x(v)
-  return GRID_W - SCREEN_STAGE_X_NB + v
+function paperface.panel_to_grid_x(g, v)
+  return g.cols - SCREEN_STAGE_X_NB + v
 end
 
-function paperface.panel_to_grid_y(v)
-  return GRID_H - SCREEN_STAGE_Y_NB + v
+function paperface.panel_to_grid_x_offset(g, v, offset)
+  return v - offset
 end
 
-function paperface.grid_x_to_panel_x(v)
-  return v - (GRID_W - SCREEN_STAGE_X_NB)
+function paperface.panel_to_grid_y(g, v)
+  return g.rows - SCREEN_STAGE_Y_NB + v
 end
 
-function paperface.grid_y_to_panel_y(v)
-  return v - (GRID_H - SCREEN_STAGE_Y_NB)
+function paperface.grid_x_to_panel_x(g, v, offset)
+  if offset ~= nil then
+    return v + offset
+  end
+
+  return v - (g.cols - SCREEN_STAGE_X_NB)
+end
+
+function paperface.grid_y_to_panel_y(g, v)
+  return v - (g.rows - SCREEN_STAGE_Y_NB)
 end
 
 function paperface.panel_grid_to_screen_x(v)
@@ -43,6 +51,25 @@ end
 -- ------------------------------------------------------------------------
 -- grid
 
+function paperface.panel_to_grid_redraw(px, py, g, l, grid_cursor)
+  if l == nil then l = 3 end
+
+  local x
+  if grid_cursor ~= nil then
+    local grid_offset = grid_cursor - 1
+    x = paperface.panel_to_grid_x_offset(g, px, grid_offset)
+  else
+    x = paperface.panel_to_grid_x(g, px)
+  end
+  local y = paperface.panel_to_grid_y(g, py)
+
+  if x <= 0 or x > g.cols then
+    return
+  end
+
+  g:led(x, y, l)
+end
+
 function paperface.in_grid_redraw(i, g, l)
   if i.x == nil or i.y == nil then
     return
@@ -50,8 +77,18 @@ function paperface.in_grid_redraw(i, g, l)
 
   if l == nil then l = 3 end
 
-  local x = paperface.panel_to_grid_x(i.x)
-  local y = paperface.panel_to_grid_y(i.y)
+  local x
+  if i.parent.STATE.grid_cursor_active then
+    local grid_offset = i.parent.STATE.grid_cursor - 1
+    x = paperface.panel_to_grid_x_offset(g, i.x, grid_offset)
+  else
+    x = paperface.panel_to_grid_x(g, i.x)
+  end
+  local y = paperface.panel_to_grid_y(g, i.y)
+
+  if x <= 0 or x > g.cols then
+    return
+  end
 
   if i.kind == 'comparator' then
     local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
@@ -75,8 +112,20 @@ function paperface.out_grid_redraw(o, g, l)
 
   if l == nil then l = 3 end
 
-  local x = paperface.panel_to_grid_x(o.x)
-  local y = paperface.panel_to_grid_y(o.y)
+  local x
+  if o.parent.STATE.grid_cursor_active then
+    local grid_offset = o.parent.STATE.grid_cursor - 1
+    x = paperface.panel_to_grid_x_offset(g, o.x, grid_offset)
+  else
+    x = paperface.panel_to_grid_x(g, o.x)
+  end
+  local y = paperface.panel_to_grid_y(g, o.y)
+
+  if x <= 0 or x > g.cols then
+    return
+  end
+
+
   if (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T) then
     l = 10
   end

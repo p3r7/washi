@@ -682,22 +682,31 @@ local STEPS_GRID_X_OFFSET = 4
 
 function Haleseq:grid_redraw(g)
   local l = 3
+  local lmax = (g.nb_levels == 1) and 10 or 5
+
+  local grid_cursor = nil
+  if self.STATE.grid_cursor_active then
+    grid_cursor = self.STATE.grid_cursor
+  end
 
   for s=1,self.nb_steps do
-    l = 3
+    local stage = self.stages[s]
+
     local x = s + STEPS_GRID_X_OFFSET
     local y = 2
 
-    l = (self.step == s) and 5 or 1
-    g:led(x, y, l)     -- trig out
+    l = (self.step == s) and lmax or 1
+    paperface.in_grid_redraw(stage.o, g, l) -- trig out
 
     for vs=1,self.nb_vsteps do
       if (self.step == s) and (self.vstep == vs) then
         l = 15
       else
         l = round(util.linlin(0, V_MAX, 0, 12, self.seqvals[s][vs]))
+        if g.nb_levels == 1 then l = 0 end
       end
-      g:led(x, G_Y_KNOB+vs, l) -- value
+      -- g:led(x, G_Y_KNOB+vs, l) -- knob
+      paperface.panel_to_grid_redraw(x-2, G_Y_KNOB+vs-1, g, l, grid_cursor) -- knob
     end
     y = y + self.nb_vsteps + 1
     --                -- <pad>
@@ -713,7 +722,8 @@ function Haleseq:grid_redraw(g)
     elseif mode == Stage.M_TIE then
       l = 4
     end
-    g:led(x, y, l)   -- tie / run / skip
+    -- g:led(x, y, l)   -- tie / run / skip
+    paperface.panel_to_grid_redraw(x, y, g, l, grid_cursor) -- tie / run / skip
     l = 1
     if self.next_step ~= nil then
       if self.next_step == s then
@@ -726,13 +736,15 @@ function Haleseq:grid_redraw(g)
     elseif (params:get(self.fqid.."_preset") == s) then
       l = 5
     end
-    g:led(x, G_Y_PRESET, l)   -- press / select in
+    paperface.in_grid_redraw(stage.i, g, l) -- press / select in
+    -- g:led(x, G_Y_PRESET, l)   -- press / select in
   end
 
   local x = STEPS_GRID_X_OFFSET + self.nb_steps + 1
   for vs=1,self.nb_vsteps do
-    l = (self.vstep == vs) and 5 or 1
-    g:led(x, 2+vs, l) -- v out
+    l = (self.vstep == vs) and lmax or 1
+    -- g:led(x, 2+vs, l) -- v out
+    paperface.panel_to_grid_redraw(x-2, 1+vs, g, l, grid_cursor)
   end
 
   paperface.out_grid_redraw(self.cv_outs[self.nb_vsteps+1], g)
@@ -750,6 +762,12 @@ function Haleseq:grid_redraw(g)
 end
 
 function Haleseq:grid_key(x, y, z)
+
+  if self.STATE.grid_cursor_active then
+    -- REVIEW: wtf 2 offset?!
+    x = x + self.STATE.grid_cursor - 1 + 2
+  end
+
   if x > STEPS_GRID_X_OFFSET and x <= STEPS_GRID_X_OFFSET + self.nb_steps then
 
     -- PRESET

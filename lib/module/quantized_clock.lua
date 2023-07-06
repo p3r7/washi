@@ -134,8 +134,8 @@ function QuantizedClock:grid_redraw(g)
       if self.mclock_mult_trig then
         l = 10
       end
-      local x = paperface.panel_to_grid_x(self.x)
-      local y = paperface.panel_to_grid_y(self.y)
+      local x = paperface.panel_to_grid_x(g, self.x)
+      local y = paperface.panel_to_grid_y(g, self.y)
 
       g:led(x, y, l)
     end

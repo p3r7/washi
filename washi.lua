@@ -80,6 +80,8 @@ STATE = {
   selected_out = nil,
   scope = nil,
   coords_to_nana = coords_to_nana,
+  grid_cursor = 1,
+  grid_cursor_active = false,
 }
 
 local function add_link(o, i)
@@ -342,12 +344,18 @@ local has_grid = false
 local g_knob = nil
 local g_btn = nil
 
+function should_display_grid_cursor()
+  return (has_grid and g.cols < SCREEN_STAGE_X_NB)
+end
+
 function grid_connect_maybe(_g)
   if not has_grid then
     g = grid.connect()
     if g.device ~= nil then
       g.key = grid_key
       has_grid = true
+      STATE.grid_cursor = 1
+      STATE.grid_cursor_active = (g.cols < SCREEN_STAGE_X_NB)
     end
   end
 end
@@ -356,6 +364,7 @@ function grid_remove_maybe(_g)
   if g.device.port == _g.port then
     -- current grid got deconnected
     has_grid = false
+    STATE.grid_cursor_active = false
   end
 end
 
@@ -696,7 +705,11 @@ end
 
 function grid_key(x, y, z)
   local curr_page = pages.index
-  local screen_coord = curr_page.."."..paperface.grid_x_to_panel_x(x).."."..paperface.grid_y_to_panel_y(y)
+
+  local screen_coord = curr_page.."."..paperface.grid_x_to_panel_x(g, x).."."..paperface.grid_y_to_panel_y(g, y)
+  if should_display_grid_cursor() then
+    screen_coord = curr_page.."."..paperface.grid_x_to_panel_x(g, x, STATE.grid_cursor - 1).."."..paperface.grid_y_to_panel_y(g, y)
+  end
 
   local nana = STATE.coords_to_nana[screen_coord]
   if nana ~= nil and nana.kind == 'out' then
@@ -798,6 +811,16 @@ function enc(n, d)
   end
 
   if n == 1 then
+    if k1 and should_display_grid_cursor() then
+      local prev_v = STATE.grid_cursor
+      local sign = math.floor(d/math.abs(d))
+      STATE.grid_cursor = util.clamp(STATE.grid_cursor + sign, 1, SCREEN_STAGE_X_NB - g.cols + 1)
+      if STATE.grid_cursor ~= prev_v then
+        STATE.scope:clear()
+      end
+      return
+    end
+
     -- params:set("clock_tempo", params:get("clock_tempo") + d)
     STATE.scope:clear()
     pages:set_index_delta(d, false)
@@ -863,6 +886,20 @@ function redraw()
     end
   end
 
+  if should_display_grid_cursor() then
+    screen.aa(0)
+    screen.level(1)
+    local x0 = paperface.panel_grid_to_screen_x(STATE.grid_cursor)
+    if x0 == 0 then
+      x0 = 1
+    end
+    local x1 = paperface.panel_grid_to_screen_x(STATE.grid_cursor + g.cols)
+    local y0 = paperface.panel_grid_to_screen_y(1)
+    local y1 = paperface.panel_grid_to_screen_y(SCREEN_STAGE_Y_NB+1)
+    screen.rect(x0, 1, (x1 - x0), (y1 - y0))
+    screen.stroke()
+  end
+
   if STATE.scope:is_on() then
     STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)
   end
@@ -872,6 +909,7 @@ function redraw()
   else
     paperface.redraw_links(outs, links[patching.ins_from_labels(ins, links[STATE.selected_out])], pages.index)
   end
+
 
   screen.update()
 end
