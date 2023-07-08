@@ -99,11 +99,19 @@ end
 -- ------------------------------------------------------------------------
 -- EVAL - SINGLE MODULE
 
-function patching.module_clear_unlinked_ins(outs, ins, links, m)
-  if m.ins == nil then
-    return
+function patching.clear_all_ins(ins)
+  for _, i in pairs(ins) do
+    tempty(i.incoming_vals)
+    i.v = 0
+    if i.kind == 'comparator' then
+      i.status = 0
+      -- i.triggered = false
+    end
   end
-  for _, in_label in ipairs(m.ins) do
+end
+
+function patching.clear_unlinked_ins_list(outs, ins, links, ins_list)
+  for _, in_label in ipairs(ins_list) do
     local i = ins[in_label]
     if i ~= nil then
       for out_label, _v in pairs(i.incoming_vals) do
@@ -114,6 +122,13 @@ function patching.module_clear_unlinked_ins(outs, ins, links, m)
       i:update()
     end
   end
+end
+
+function patching.module_clear_unlinked_ins(outs, ins, links, m)
+  if m.ins == nil then
+    return
+  end
+  patching.clear_unlinked_ins_list(outs, ins, links, m.ins)
 end
 
 function patching.module_update_all_ins(m)

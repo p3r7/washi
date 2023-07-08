@@ -71,10 +71,6 @@ end
 -- ------------------------------------------------------------------------
 -- getter/setter
 
-function Comparator:reset()
-  self.incoming_vals = {}
-end
-
 function Comparator:register(out_label, v)
   self.incoming_vals[out_label] = v
 end
@@ -88,8 +84,8 @@ function Comparator:update()
   --   dbgf(self.incoming_vals)
   -- end
 
+  -- if tab.count(self.incoming_vals) == 0 and self.v == 0 then
   if tab.count(self.incoming_vals) == 0 then
-    -- keep old v
     self.changed = false
     return
   end

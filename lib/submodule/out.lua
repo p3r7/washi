@@ -43,10 +43,6 @@ end
 -- ------------------------------------------------------------------------
 -- accessors
 
-function Out:reset()
-  self.v = 0
-end
-
 function Out:update(v)
   local now = os.clock()
   local old_v = self.v

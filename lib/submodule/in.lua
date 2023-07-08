@@ -60,10 +60,6 @@ end
 -- ------------------------------------------------------------------------
 -- api
 
-function In:reset()
-  self.incoming_vals = {}
-end
-
 function In:register(out_label, v)
   self.incoming_vals[out_label] = v
 end
@@ -74,8 +70,8 @@ function In:update()
 
   self.last_updated_t = now
 
+  -- if tab.count(self.incoming_vals) == 0 and self.v == 0 then
   if tab.count(self.incoming_vals) == 0 then
-    -- keep old v
     self.changed = false
     return
   end
