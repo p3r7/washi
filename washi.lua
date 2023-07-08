@@ -73,13 +73,22 @@ outs = {}
 links = {}
 coords_to_nana = {}
 
+
 STATE = {
+  -- patch
   ins = ins,
   outs = outs,
   links = links,
+
+  -- panel coords to banana LUT
+  coords_to_nana = coords_to_nana,
+
+  -- grid
+  grid_mode = M_SCOPE,
   selected_out = nil,
   scope = nil,
-  coords_to_nana = coords_to_nana,
+
+  -- for 64 grids...
   grid_cursor = 1,
   grid_cursor_active = false,
 }
@@ -678,7 +687,12 @@ end
 local G_Y_PRESS = 8
 local G_Y_KNOB = 2
 
+local grid_redraw_counter = 0
+
+
 function grid_redraw()
+  grid_redraw_counter = grid_redraw_counter + 1
+
   g:all(0)
 
   local curr_page = page_list[pages.index]
@@ -702,10 +716,61 @@ function grid_redraw()
     end
   end
 
+  local l
+
+  -- mode
+  l = grid_level_radio(g, (STATE.grid_mode == M_SCOPE), grid_redraw_counter)
+  g:led(1, 1, l) -- scope
+  l = grid_level_radio(g, (STATE.grid_mode == M_EDIT), grid_redraw_counter)
+  g:led(2, 1, l) -- edit
+  l = grid_level_radio(g, (STATE.grid_mode == M_ADD), grid_redraw_counter)
+  g:led(3, 1, l) -- add
+  l = grid_level_radio(g, (STATE.grid_mode == M_DELETE), grid_redraw_counter)
+  g:led(4, 1, l) -- delete
+
+  -- prev / next
+  if should_display_grid_cursor() then
+    l = (STATE.grid_cursor > 1) and 10 or 2
+    g:led(g.cols - 1, 1, l) -- prev
+    l = STATE.grid_cursor + g.cols - 1 == SCREEN_STAGE_X_NB and 2 or 10
+    g:led(g.cols , 1, l)    -- next
+  end
+
   g:refresh()
 end
 
 function grid_key(x, y, z)
+
+  -- mode
+  if y == 1 and x == 1 and z >= 1 then
+    STATE.grid_mode = M_SCOPE
+    STATE.selected_out = nil
+    return
+  elseif y == 1 and x == 2 and z >= 1 then
+    STATE.grid_mode = M_EDIT
+    return
+  elseif y == 1 and x == 3 and z >= 1 then
+    STATE.grid_mode = M_ADD
+    return
+  elseif y == 1 and x == 4 and z >= 1 then
+    STATE.grid_mode = M_DELETE
+    return
+  end
+
+  -- prev/next
+  if should_display_grid_cursor() then
+    if y == 1 and z >= 1 and ((x == g.cols-1) or (x == g.cols)) then
+      local prev_v = STATE.grid_cursor
+      local sign = (x == g.cols-1) and -1 or 1
+      STATE.grid_cursor = util.clamp(STATE.grid_cursor + sign, 1, SCREEN_STAGE_X_NB - g.cols + 1)
+      if STATE.grid_cursor ~= prev_v then
+        STATE.scope:clear()
+      end
+      return
+    end
+  end
+
+
   local curr_page = pages.index
 
   local screen_coord = curr_page.."."..paperface.grid_x_to_panel_x(g, x).."."..paperface.grid_y_to_panel_y(g, y)
@@ -714,20 +779,35 @@ function grid_key(x, y, z)
   end
 
   local nana = STATE.coords_to_nana[screen_coord]
-  if nana ~= nil and nana.kind == 'out' then
-    if (z >= 1) then
-      STATE.scope:assoc(nana)
-    else
-      STATE.scope:clear()
+  if nana ~= nil then
+
+    if nana.kind == 'in' then
+      if STATE.grid_mode == M_ADD and STATE.selected_out ~= nil and z >= 1 then
+        add_link(STATE.selected_out.id, nana.id)
+      elseif STATE.grid_mode == M_DELETE and STATE.selected_out ~= nil and z >= 1 then
+        remove_link(STATE.selected_out.id, nana.id)
+      end
+    end
+
+    if nana.kind == 'out' then
+      if STATE.grid_mode == M_SCOPE then
+        if (z >= 1) then
+          STATE.scope:assoc(nana)
+        else
+          STATE.scope:clear()
+        end
+      elseif STATE.grid_mode == M_ADD and z >= 1 then
+        STATE.selected_out = nana
+      end
     end
     -- return
   end
-
 
   local h = get_current_haleseq()
   if h ~= nil then
     h:grid_key(x, y, z)
   end
+
 end
 
 -- ------------------------------------------------------------------------
@@ -890,7 +970,7 @@ function redraw()
 
   if should_display_grid_cursor() then
     screen.aa(0)
-    screen.level(1)
+    screen.level(4)
     local x0 = paperface.panel_grid_to_screen_x(STATE.grid_cursor)
     if x0 == 0 then
       x0 = 1
@@ -909,9 +989,8 @@ function redraw()
   if STATE.selected_out == nil then
     paperface.redraw_active_links(outs, ins, pages.index)
   else
-    paperface.redraw_links(outs, links[patching.ins_from_labels(ins, links[STATE.selected_out])], pages.index)
+    paperface.redraw_links(outs, patching.ins_from_labels(ins, links[STATE.selected_out.id]), pages.index)
   end
-
 
   screen.update()
 end

@@ -82,3 +82,18 @@ SCREEN_LEVEL_LABEL_SPE = 5
 SCREEN_STAGE_W = 9
 SCREEN_STAGE_X_NB = 14
 SCREEN_STAGE_Y_NB = 7
+
+
+-- ------------------------------------------------------------------------
+-- grid
+
+SMALLEST_GRID_W = 8
+
+
+-- ------------------------------------------------------------------------
+-- INTERACTION MODES
+
+M_SCOPE = 'scope'
+M_EDIT = 'edit'
+M_ADD = 'add'
+M_DELETE = 'delete'

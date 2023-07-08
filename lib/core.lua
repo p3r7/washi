@@ -184,6 +184,7 @@ function pulse_width_dur(width_pct, nb_bars)
   return width_pct * beat_dur / 100
 end
 
+
 -- ------------------------------------------------------------------------
 -- output names
 
@@ -198,4 +199,20 @@ function mux_output_nb_to_name(vs)
     label = label .. output_nb_to_name(vs)
   end
   return label
+end
+
+
+-- ------------------------------------------------------------------------
+-- grid
+
+function grid_level_radio(g, cond, redraw_counter)
+  if g.nb_levels == 1 then
+    if cond then
+      return ( (redraw_counter % 5) == 0 ) and 10 or 0
+    else
+      return 10
+    end
+  end
+
+  return (cond and 10 or 2)
 end

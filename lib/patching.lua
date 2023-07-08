@@ -52,12 +52,16 @@ end
 
 function patching.ins_from_labels(ins, in_labels)
   local res = {}
-  for _, in_label in ipairs(in_labels) do
-    local i = ins[in_label]
-    if i ~= nil then
-      table.insert(res, i)
+
+  if in_labels ~= nil then
+    for _, in_label in ipairs(in_labels) do
+      local i = ins[in_label]
+      if i ~= nil then
+        table.insert(res, i)
+      end
     end
   end
+
   return res
 end
 
@@ -351,8 +355,12 @@ function patching.fire_and_propagate_from_out(outs, ins, links,
 
       for _, in_label in ipairs(next_in_labels) do
         local to = ins[in_label]
-        dbg(from_label .. " -> " .. to.id .. ": " .. initial_v, level-1)
-        to:register(from_label, initial_v)
+        if to == nil then
+          print("WARNING: unknown in "..in_label)
+        else
+          dbg(from_label .. " -> " .. to.id .. ": " .. initial_v, level-1)
+          to:register(from_label, initial_v)
+        end
       end
     end
 

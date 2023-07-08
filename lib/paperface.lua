@@ -468,6 +468,10 @@ function paperface.draw_input_links(i, outs, curr_page)
 end
 
 function paperface.redraw_links(outs, ins, curr_page)
+  if ins == nil then
+    return
+  end
+
   for _, i in pairs(ins) do
     if i.x == nil or i.y == nil then
       goto NEXT_IN_LINK
