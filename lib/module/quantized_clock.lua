@@ -149,6 +149,8 @@ end
 -- screen
 
 function QuantizedClock:redraw()
+  paperface.module_redraw(self)
+
   for i, v in ipairs(self.divs) do
 
     local o = self.div_outs[i]
@@ -156,8 +158,10 @@ function QuantizedClock:redraw()
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
 
-    local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
-    paperface.trig_out(x, y, trig)
+    -- local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
+    -- paperface.trig_out(x, y, trig)
+
+
     screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
     screen.text(v)
 
@@ -166,7 +170,8 @@ function QuantizedClock:redraw()
     -- but it presents itself as a pulse multiplier
     if v == (self.mclock_div / 8) then
       self.mclock_mult_trig = trig
-      paperface.trig_in(paperface.panel_grid_to_screen_x(self.x), paperface.panel_grid_to_screen_y(self.y), trig)
+      local tame = (self.STATE.grid_mode ~= M_SCOPE)
+      paperface.trig_in(paperface.panel_grid_to_screen_x(self.x), paperface.panel_grid_to_screen_y(self.y), trig, false, tame)
     end
 
   end

@@ -926,6 +926,8 @@ function Haleseq:redraw_stage(s, stage)
 end
 
 function Haleseq:redraw()
+  local tame = false
+
   -- seq
   for s, stage in ipairs(self.stages) do
     self:redraw_stage(s, stage)
@@ -936,28 +938,34 @@ function Haleseq:redraw()
     local o = self.cv_outs[vs]
     local at = (self.vstep == vs)
     local trig = at and (math.abs(os.clock() - self.last_vstep_t) < PULSE_T)
+    local tame = paperface.should_tame_out_redraw(o)
 
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
 
-    paperface.trig_out(x, y, trig)
+    paperface.trig_out(x, y, trig, tame)
     if not trig and at then
-      paperface.banana(x, y, false)
+      local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+      paperface.banana(x, y, false, level)
     end
   end
   local trig_mux = (math.abs(os.clock() - self.cv_outs[self.nb_vsteps+1].last_changed_t) < PULSE_T)
   local mux_o = self.cv_outs[self.nb_vsteps+1]
-  paperface.trig_out(paperface.panel_grid_to_screen_x(mux_o.x), paperface.panel_grid_to_screen_y(mux_o.y), trig_mux, SCREEN_LEVEL_LABEL_SPE)
+
+  tame = paperface.should_tame_out_redraw(mux_o)
+  paperface.trig_out_spe(paperface.panel_grid_to_screen_x(mux_o.x), paperface.panel_grid_to_screen_y(mux_o.y), trig_mux, tame)
 
   -- CPO - Common Pulse Out
   -- (preset change gate out)
   local trig_cpo = (self.cpo.v > 0
                     or (math.abs(os.clock() - self.cpo.last_changed_t) < PULSE_T))
-  paperface.trig_out(paperface.panel_grid_to_screen_x(self.cpo.x), paperface.panel_grid_to_screen_y(self.cpo.y), trig_cpo, SCREEN_LEVEL_LABEL_SPE)
+  tame = paperface.should_tame_out_redraw(self.cpo)
+  paperface.trig_out_spe(paperface.panel_grid_to_screen_x(self.cpo.x), paperface.panel_grid_to_screen_y(self.cpo.y), trig_cpo, tame)
 
   -- AEP - All Event Pulse
   local trig_aep = (self.aep.v > 0 or (math.abs(os.clock() - self.aep.last_changed_t) < PULSE_T))
-  paperface.trig_out(paperface.panel_grid_to_screen_x(self.aep.x), paperface.panel_grid_to_screen_y(self.aep.y), trig_aep, SCREEN_LEVEL_LABEL_SPE)
+  tame = paperface.should_tame_out_redraw(self.aep)
+  paperface.trig_out_spe(paperface.panel_grid_to_screen_x(self.aep.x), paperface.panel_grid_to_screen_y(self.aep.y), trig_aep, tame)
 
   paperface.in_redraw(self.i_vreset)
   paperface.in_redraw(self.i_vclock)

@@ -73,7 +73,6 @@ outs = {}
 links = {}
 coords_to_nana = {}
 
-
 STATE = {
   -- patch
   ins = ins,
@@ -781,7 +780,7 @@ function grid_key(x, y, z)
   local nana = STATE.coords_to_nana[screen_coord]
   if nana ~= nil then
 
-    if nana.kind == 'in' then
+    if nana.kind == 'in' or nana.kind == 'comparator' then
       if STATE.grid_mode == M_ADD and STATE.selected_out ~= nil and z >= 1 then
         add_link(STATE.selected_out.id, nana.id)
       elseif STATE.grid_mode == M_DELETE and STATE.selected_out ~= nil and z >= 1 then
@@ -987,7 +986,8 @@ function redraw()
   end
 
   if STATE.selected_out == nil then
-    paperface.redraw_active_links(outs, ins, pages.index)
+    local tame = (STATE.grid_mode ~= M_SCOPE)
+    paperface.redraw_active_links(outs, ins, pages.index, tame)
   else
     paperface.redraw_links(outs, patching.ins_from_labels(ins, links[STATE.selected_out.id]), pages.index)
   end

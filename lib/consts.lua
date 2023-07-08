@@ -75,6 +75,11 @@ SCREEN_STAGE_Y_OFFSET = 1
 SCREEN_LEVEL_LABEL = 1
 SCREEN_LEVEL_LABEL_SPE = 5
 
+SCREEN_LEVEL_BANANA = 10
+SCREEN_LEVEL_BANANA_TAMED = 2
+
+SCREEN_LEVEL_LINK = 5
+SCREEN_LEVEL_LINK_TAMED = 1
 
 -- ------------------------------------------------------------------------
 -- panel grid

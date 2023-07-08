@@ -216,8 +216,6 @@ function paperface.knob(x, y, v, l)
   local v2 = v + v_offset + (v_blind_pct/4)
   local v_max = V_MAX + v_blind_pct
 
-  -- print(v)
-
   screen.aa(1)
 
   local arc_start_x = x + radius * cos((v_offset + (v_blind_pct/4))/v_max) * -1
@@ -245,9 +243,10 @@ end
 -- ------------------------------------------------------------------------
 -- screen - connectors
 
-function paperface.banana(x, y, fill)
+function paperface.banana(x, y, fill, level)
   screen.aa(1)
-  screen.level(10)
+  if level == nil then level = SCREEN_LEVEL_BANANA end
+  screen.level(level)
   local radius = math.floor((SCREEN_STAGE_W/2) - 1)
   screen.move(x + radius + 1, y)
   screen.circle(x + radius + 1, y + radius + 1, radius)
@@ -354,34 +353,43 @@ function paperface.trig_in_label_filled(x, y, l)
 
   if l == nil then l = SCREEN_LEVEL_LABEL end
   screen.level(l)
-
-
 end
 
 
 -- ------------------------------------------------------------------------
 -- screen - combined
 
-function paperface.main_in(x, y, trig)
+function paperface.main_in(x, y, trig, tame)
   paperface.main_in_label(x, y)
   if trig then
-    paperface.banana(x, y, trig)
+    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, y, trig, level)
   end
 end
 
-function paperface.trig_out(x, y, trig, l)
+function paperface.trig_out_spe(x, y, trig, tame)
+  paperface.trig_out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
+  if trig then
+    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, y, trig, level)
+  end
+end
+
+function paperface.trig_out(x, y, trig, tame)
   paperface.trig_out_label(x, y, l)
   if trig then
-    paperface.banana(x, y, trig)
+    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, y, trig, level)
   end
 end
 
-function paperface.trig_in(x, y, trig, filled)
+function paperface.trig_in(x, y, trig, filled, tame)
   paperface.trig_in_label(x, y, nil, filled)
 
   -- nana
   if trig then
-    paperface.banana(x, y, trig)
+    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, y, trig, level)
   end
 end
 
@@ -395,11 +403,25 @@ function paperface.in_redraw(i)
   local y = paperface.panel_grid_to_screen_y(i.y)
   if i.kind == 'comparator' then
     local triggered = ((i.status == 1) or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
-    paperface.trig_in(x, y, triggered)
+    local tame = paperface.should_tame_in_redraw(i)
+    paperface.trig_in(x, y, triggered, false, tame)
   elseif i.kind == 'in' then
     local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
-    paperface.main_in(x, y, triggered)
+    local tame = paperface.should_tame_in_redraw(i)
+    paperface.main_in(x, y, triggered, tame)
   end
+end
+
+function paperface.should_tame_in_redraw(i)
+  return (i.parent.STATE.grid_mode ~= M_SCOPE)
+end
+
+function paperface.is_out_selected(o)
+  return (o.parent.STATE.grid_mode ~= M_SCOPE and o.parent.STATE.selected_out ~= nil and o.parent.STATE.selected_out.id == o.id)
+end
+
+function paperface.should_tame_out_redraw(o)
+  return (o.parent.STATE.grid_mode ~= M_SCOPE and (o.parent.STATE.selected_out == nil or o.parent.STATE.selected_out.id ~= o.id))
 end
 
 function paperface.out_redraw(o)
@@ -409,8 +431,9 @@ function paperface.out_redraw(o)
 
   local x = paperface.panel_grid_to_screen_x(o.x)
   local y = paperface.panel_grid_to_screen_y(o.y)
-  local triggered = (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
-  paperface.trig_out(x, y, triggered)
+  local triggered = paperface.is_out_selected(o) or (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
+  local tame = paperface.should_tame_out_redraw(o)
+  paperface.trig_out(x, y, triggered, tame)
 end
 
 function paperface.module_redraw(m)
@@ -437,7 +460,7 @@ end
 -- ------------------------------------------------------------------------
 -- patch
 
-function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page)
+function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, tame)
   local startx = paperface.panel_grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
   local starty = paperface.panel_grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
   local endx = paperface.panel_grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
@@ -445,13 +468,14 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page)
   local midx = (endx + startx)/2
   local midy = (endy + starty)/2
 
-  screen.level(5)
+  local level = (tame ~= nil and tame) and SCREEN_LEVEL_LINK_TAMED or SCREEN_LEVEL_LINK
+  screen.level(level)
   screen.move(startx, starty)
   screen.curve(midx, starty, midx, endy, endx, endy)
   screen.stroke()
 end
 
-function paperface.draw_input_links(i, outs, curr_page)
+function paperface.draw_input_links(i, outs, curr_page, tame)
   for from_out_label, _v in pairs(i.incoming_vals) do
     local from_out = outs[from_out_label]
 
@@ -462,12 +486,13 @@ function paperface.draw_input_links(i, outs, curr_page)
 
     paperface.draw_link(from_out.x, from_out.y, from_out.parent.page,
                         i.x, i.y, i.parent.page,
-                        curr_page)
+                        curr_page,
+                        tame)
     ::DRAW_NEXT_LINK::
   end
 end
 
-function paperface.redraw_links(outs, ins, curr_page)
+function paperface.redraw_links(outs, ins, curr_page, tame)
   if ins == nil then
     return
   end
@@ -477,13 +502,13 @@ function paperface.redraw_links(outs, ins, curr_page)
       goto NEXT_IN_LINK
     end
 
-    paperface.draw_input_links(i, outs, curr_page)
+    paperface.draw_input_links(i, outs, curr_page, tame)
 
     ::NEXT_IN_LINK::
   end
 end
 
-function paperface.redraw_active_links(outs, ins, curr_page)
+function paperface.redraw_active_links(outs, ins, curr_page, tame)
   for _, i in pairs(ins) do
     if i.x == nil or i.y == nil then
       goto NEXT_IN_ACTIVE_LINK
@@ -492,12 +517,12 @@ function paperface.redraw_active_links(outs, ins, curr_page)
     if i.kind == 'comparator' then
       local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
       if triggered then
-        paperface.draw_input_links(i, outs, curr_page)
+        paperface.draw_input_links(i, outs, curr_page, tame)
       end
     elseif i.kind == 'in' then
       local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
       if triggered then
-        paperface.draw_input_links(i, outs, curr_page)
+        paperface.draw_input_links(i, outs, curr_page, tame)
       end
     end
     ::NEXT_IN_ACTIVE_LINK::
