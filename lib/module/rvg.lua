@@ -183,19 +183,7 @@ end
 -- screen
 
 function Rvg:redraw()
-  local trig = (math.abs(os.clock() - self.i_trig.last_up_t) < NANA_TRIG_DRAW_T)
-  paperface.trig_in(paperface.panel_grid_to_screen_x(self.i_trig.x), paperface.panel_grid_to_screen_y(self.i_trig.y), trig)
-
-  trig = (math.abs(os.clock() - self.i_rate.last_changed_t) < NANA_TRIG_DRAW_T)
-  paperface.main_in(paperface.panel_grid_to_screen_x(self.i_rate.x), paperface.panel_grid_to_screen_y(self.i_rate.y), trig)
-
-  trig = ( (math.abs(os.clock() - self.o_smooth.last_changed_t) < NANA_TRIG_DRAW_T))
-  paperface.trig_out(paperface.panel_grid_to_screen_x(self.o_smooth.x), paperface.panel_grid_to_screen_y(self.o_smooth.y), trig)
-  trig = ( (math.abs(os.clock() - self.o_stepped.last_changed_t) < NANA_TRIG_DRAW_T))
-  paperface.trig_out(paperface.panel_grid_to_screen_x(self.o_stepped.x), paperface.panel_grid_to_screen_y(self.o_stepped.y), trig)
-  trig = ( (math.abs(os.clock() - self.o_pulse.last_changed_t) < NANA_TRIG_DRAW_T))
-  paperface.trig_out(paperface.panel_grid_to_screen_x(self.o_pulse.x), paperface.panel_grid_to_screen_y(self.o_pulse.y), trig)
-
+  paperface.module_redraw(self)
 end
 
 -- ------------------------------------------------------------------------
