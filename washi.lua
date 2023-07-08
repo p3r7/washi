@@ -212,6 +212,8 @@ end
 local function rnd_patch()
   tempty(STATE.links)
 
+  patching.clear_all_ins(STATE.ins)
+
   add_link("norns_clock", "quantized_clock_global")
 
   for _, pd in ipairs(pulse_dividers) do
