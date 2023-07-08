@@ -258,6 +258,7 @@ function Haleseq.init(id, STATE, nb_steps, nb_vsteps,
     STATE.ins[h.i_reset.id] = h.i_reset
     STATE.ins[h.i_vreset.id] = h.i_vreset
     STATE.ins[h.i_preset.id] = h.i_preset
+    STATE.ins[h.i_preset_reset.id] = h.i_preset_reset
     STATE.ins[h.i_hold.id] = h.i_hold
     STATE.ins[h.i_reverse.id] = h.i_reverse
 
