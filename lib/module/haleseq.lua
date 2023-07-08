@@ -300,7 +300,7 @@ function Haleseq:process_ins()
     if any_stage_preset_up then
       self.cpo:update(V_MAX/2)
       if self.cpo_end_clock ~= nil then
-        clock.cancel(self.cpo_end_clock)
+        -- clock.cancel(self.cpo_end_clock)
       end
       self.cpo_end_clock = clock.run(function()
           clock.sleep(TRIG_S)
@@ -342,7 +342,7 @@ function Haleseq:process_ins()
     self.aep:update(V_MAX/2)
 
     if self.aep_end_clock ~= nil then
-      clock.cancel(self.aep_end_clock)
+      -- clock.cancel(self.aep_end_clock)
     end
     self.aep_end_clock = clock.run(function()
         clock.sleep(pulse_width_dur(params:get("pulse_width"), NB_BARS))
