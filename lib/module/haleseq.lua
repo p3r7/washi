@@ -690,6 +690,8 @@ function Haleseq:grid_redraw(g)
     grid_cursor = self.STATE.grid_cursor
   end
 
+  local screen_to_grid_offset = SMALLEST_GRID_W - (SCREEN_STAGE_X_NB % SMALLEST_GRID_W)
+
   for s=1,self.nb_steps do
     local stage = self.stages[s]
 
@@ -707,7 +709,7 @@ function Haleseq:grid_redraw(g)
         if g.nb_levels == 1 then l = 0 end
       end
       -- g:led(x, G_Y_KNOB+vs, l) -- knob
-      paperface.panel_to_grid_redraw(x-2, G_Y_KNOB+vs-1, g, l, grid_cursor) -- knob
+      paperface.panel_to_grid_redraw(x-screen_to_grid_offset, G_Y_KNOB+vs-1, g, l, grid_cursor) -- knob
     end
     y = y + self.nb_vsteps + 1
     --                -- <pad>
@@ -745,7 +747,7 @@ function Haleseq:grid_redraw(g)
   for vs=1,self.nb_vsteps do
     l = (self.vstep == vs) and lmax or 1
     -- g:led(x, 2+vs, l) -- v out
-    paperface.panel_to_grid_redraw(x-2, 1+vs, g, l, grid_cursor)
+    paperface.panel_to_grid_redraw(x-screen_to_grid_offset, 1+vs, g, l, grid_cursor)
   end
 
   paperface.out_grid_redraw(self.cv_outs[self.nb_vsteps+1], g)
@@ -765,8 +767,8 @@ end
 function Haleseq:grid_key(x, y, z)
 
   if self.STATE.grid_cursor_active then
-    -- REVIEW: wtf 2 offset?!
-    x = x + self.STATE.grid_cursor - 1 + 2
+    local screen_to_grid_offset = SMALLEST_GRID_W - (SCREEN_STAGE_X_NB % SMALLEST_GRID_W)
+    x = x + self.STATE.grid_cursor - 1 + screen_to_grid_offset
   end
 
   if x > STEPS_GRID_X_OFFSET and x <= STEPS_GRID_X_OFFSET + self.nb_steps then
