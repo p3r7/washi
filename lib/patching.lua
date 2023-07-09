@@ -85,8 +85,7 @@ function patching.get_link_v(link_props, from, to)
   local lprops = patching.get_link_props(link_props, from.id, to.id)
   if lprops ~= nil then
     if lprops.scaling < 0 then
-      -- REVIEW: really not sure about this inverter implem
-      v = 0 - v * lprops.scaling
+      v = V_MAX + v * lprops.scaling
     else
       v = v * lprops.scaling
     end
