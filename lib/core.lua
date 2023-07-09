@@ -114,6 +114,9 @@ end
 -- replace table value w/ other without changing its memory pointer
 function treplace(t, newt)
   tempty(t)
+  if newt == nil then
+    return
+  end
   for k, v in pairs(newt) do
     t[k] = v
   end
@@ -156,9 +159,13 @@ end
 -- ------------------------------------------------------------------------
 -- coords
 
+function are_coords_same(c, c2)
+  return (c[1] == c2[1] and c[2] == c2[2])
+end
+
 function tab_contains_coord(t, c)
   for _, c2 in ipairs(t) do
-    if c[1] == c2[1] and c[2] == c2[2] then
+    if are_coords_same(c, c2) then
       return true
     end
   end

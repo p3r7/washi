@@ -75,12 +75,16 @@ function Scope:clock()
   end
 end
 
+function Scope:sample_raw(v)
+  self.buffer:push(v)
+  if self.buffer:length() > self.buffer_len then
+    self.buffer:pop()
+  end
+end
+
 function Scope:sample()
   if self.nana ~= nil then
-    self.buffer:push(self.nana.v)
-    if self.buffer:length() > self.buffer_len then
-      self.buffer:pop()
-    end
+    self:sample_raw(self.nana.v)
   end
 end
 

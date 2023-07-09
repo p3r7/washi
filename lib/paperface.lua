@@ -393,6 +393,33 @@ function paperface.trig_in(x, y, trig, filled, tame)
   end
 end
 
+function paperface.is_in_selected(i)
+  return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
+          and i.parent.STATE.selected_nana ~= nil
+          -- and (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
+          and i.parent.STATE.selected_nana.id == i.id)
+end
+
+function paperface.is_out_selected(o)
+  return ((o.parent.STATE.grid_mode == M_LINK or o.parent.STATE.grid_mode == M_EDIT)
+          and o.parent.STATE.selected_nana ~= nil
+          -- and o.parent.STATE.selected_nana.kind == 'out'
+          and o.parent.STATE.selected_nana.id == o.id)
+end
+
+function paperface.should_tame_in_redraw(i)
+  return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
+          and (i.parent.STATE.selected_nana == nil
+               -- or not (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
+               or i.parent.STATE.selected_nana.id ~= i.id))
+end
+
+function paperface.should_tame_out_redraw(o)
+  return ((o.parent.STATE.grid_mode == M_LINK or o.parent.STATE.grid_mode == M_EDIT)
+          and (o.parent.STATE.selected_nana == nil
+               -- or o.parent.STATE.selected_nana.id.kind ~= 'out'
+               or o.parent.STATE.selected_nana.id ~= o.id))
+end
 
 function paperface.in_redraw(i)
   if i.x == nil or i.y == nil then
@@ -402,26 +429,14 @@ function paperface.in_redraw(i)
   local x = paperface.panel_grid_to_screen_x(i.x)
   local y = paperface.panel_grid_to_screen_y(i.y)
   if i.kind == 'comparator' then
-    local triggered = ((i.status == 1) or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
+    local triggered = paperface.is_in_selected(i) or ((i.status == 1) or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
     local tame = paperface.should_tame_in_redraw(i)
     paperface.trig_in(x, y, triggered, false, tame)
   elseif i.kind == 'in' then
-    local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+    local triggered = paperface.is_in_selected(i) or (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
     local tame = paperface.should_tame_in_redraw(i)
     paperface.main_in(x, y, triggered, tame)
   end
-end
-
-function paperface.should_tame_in_redraw(i)
-  return (i.parent.STATE.grid_mode ~= M_SCOPE)
-end
-
-function paperface.is_out_selected(o)
-  return (o.parent.STATE.grid_mode ~= M_SCOPE and o.parent.STATE.selected_out ~= nil and o.parent.STATE.selected_out.id == o.id)
-end
-
-function paperface.should_tame_out_redraw(o)
-  return (o.parent.STATE.grid_mode ~= M_SCOPE and (o.parent.STATE.selected_out == nil or o.parent.STATE.selected_out.id ~= o.id))
 end
 
 function paperface.out_redraw(o)
@@ -475,24 +490,63 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, tame)
   screen.stroke()
 end
 
-function paperface.draw_input_links(i, outs, curr_page, tame)
+function paperface.redraw_link(o, i, curr_page, tame)
+    if (o.x == nil or o.y == nil) or (i.x == nil or i.y == nil) then
+      return
+    end
+
+    paperface.draw_link(o.x, o.y, o.parent.page,
+                        i.x, i.y, i.parent.page,
+                        curr_page,
+                        tame)
+end
+
+function paperface.draw_input_links(outs, i, curr_page, tame)
   for from_out_label, _v in pairs(i.incoming_vals) do
     local from_out = outs[from_out_label]
 
     -- OUT not known or wo/ visual representation
     if not from_out or (from_out.x == nil or from_out.y == nil) then
-      goto DRAW_NEXT_LINK
+      goto DRAW_NEXT_IN_LINK
     end
 
-    paperface.draw_link(from_out.x, from_out.y, from_out.parent.page,
-                        i.x, i.y, i.parent.page,
-                        curr_page,
-                        tame)
-    ::DRAW_NEXT_LINK::
+    paperface.redraw_link(from_out, i, curr_page, tame)
+
+    ::DRAW_NEXT_IN_LINK::
   end
 end
 
-function paperface.redraw_links(outs, ins, curr_page, tame)
+function paperface.draw_output_links(ins, links, o, curr_page, tame)
+  local to_in_labels = links[o.id]
+
+  if to_in_labels == nil then
+    return
+  end
+
+  for _, to_label in pairs(to_in_labels) do
+    local to = ins[to_label]
+
+    -- OUT not known or wo/ visual representation
+    if not to or (to.x == nil or to.y == nil) then
+      goto DRAW_NEXT_OUT_LINK
+    end
+
+    paperface.redraw_link(o, to, curr_page, tame)
+
+    ::DRAW_NEXT_OUT_LINK::
+  end
+end
+
+function paperface.redraw_nana_links(outs, ins, links, nana, curr_page, tame)
+  if nana.kind == 'in' or nana.kind == 'comparator' then
+    paperface.draw_input_links(outs, nana, curr_page, tame)
+  else
+    paperface.draw_output_links(ins, links, nana, curr_page, tame)
+  end
+end
+
+
+function paperface.redraw_to_inputs_links(outs, to_ins, curr_page, tame)
   if ins == nil then
     return
   end
@@ -502,7 +556,7 @@ function paperface.redraw_links(outs, ins, curr_page, tame)
       goto NEXT_IN_LINK
     end
 
-    paperface.draw_input_links(i, outs, curr_page, tame)
+    paperface.draw_input_links(outs, i, curr_page, tame)
 
     ::NEXT_IN_LINK::
   end
@@ -517,12 +571,12 @@ function paperface.redraw_active_links(outs, ins, curr_page, tame)
     if i.kind == 'comparator' then
       local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
       if triggered then
-        paperface.draw_input_links(i, outs, curr_page, tame)
+        paperface.draw_input_links(outs, i, curr_page, tame)
       end
     elseif i.kind == 'in' then
       local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
       if triggered then
-        paperface.draw_input_links(i, outs, curr_page, tame)
+        paperface.draw_input_links(outs, i, curr_page, tame)
       end
     end
     ::NEXT_IN_ACTIVE_LINK::

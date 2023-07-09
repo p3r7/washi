@@ -170,7 +170,7 @@ function QuantizedClock:redraw()
     -- but it presents itself as a pulse multiplier
     if v == (self.mclock_div / 8) then
       self.mclock_mult_trig = trig
-      local tame = (self.STATE.grid_mode ~= M_SCOPE)
+      local tame = (self.STATE.grid_mode == M_LINK or self.STATE.grid_mode == M_EDIT)
       paperface.trig_in(paperface.panel_grid_to_screen_x(self.x), paperface.panel_grid_to_screen_y(self.y), trig, false, tame)
     end
 

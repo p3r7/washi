@@ -262,7 +262,8 @@ function LfoBank:clock()
     -- NB: self-triggering to send out vals
     -- REVIEW: might be better to have a single clock for all RVGs & LfoBank doing that?
     -- even maybe an event queue, dropping events that are too old
-    patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, V_MAX/2)
+    patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.STATE.link_props,
+                                self.i_trig_dummy.id, V_MAX/2)
 
     ::NEXT_LFO_CLOCK_TICK::
   end

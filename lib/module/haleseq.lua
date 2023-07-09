@@ -755,6 +755,8 @@ function Haleseq:grid_redraw(g)
   paperface.out_grid_redraw(self.aep, g, 0)
   paperface.out_grid_redraw(self.cpo, g, 0)
 
+  paperface.in_grid_redraw(self.i_preset, g, 5)
+
   paperface.in_grid_redraw(self.i_vreset, g, 5)
   paperface.in_grid_redraw(self.i_vclock, g, 3)
   paperface.in_grid_redraw(self.i_reset, g, 5)
@@ -779,10 +781,12 @@ function Haleseq:grid_key(x, y, z)
       -- DEBUG = true
       if (z >= 1) then
         self.g_btn = s
-        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, V_MAX/2)
+        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.STATE.link_props,
+                                    self.stages[s].i.id, V_MAX/2)
       else
         self.g_btn = nil
-        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.stages[s].i.id, 0)
+        patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.STATE.link_props,
+                                    self.stages[s].i.id, 0)
       end
       return
     end

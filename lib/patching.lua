@@ -46,6 +46,51 @@ function patching.remove_link(links, o, i)
   end
 end
 
+function patching.toggle_link(links, o, i)
+  if links[o] ~= nil and tab.contains(links[o], i) then
+    patching.remove_link(links, o, i)
+    return A_REMOVED
+  else
+    patching.add_link(links, o, i)
+    return A_ADDED
+  end
+end
+
+function patching.get_link_props(link_props, from_id, to_id)
+  if link_props[from_id] ~= nil and link_props[from_id][to_id] ~= nil then
+    return link_props[from_id][to_id]
+  end
+end
+
+function patching.get_or_init_link_props(link_props, from_id, to_id)
+  local lprops = patching.get_link_props(link_props, from_id, to_id)
+  if lprops ~= nil then
+    return lprops
+  end
+
+  if link_props[from_id] == nil then link_props[from_id] = {} end
+  link_props[from_id][to_id] = {
+    scaling = 1.0,
+    offset = 0.0,
+  }
+  return link_props[from_id][to_id]
+end
+
+function patching.get_link_v(link_props, from, to)
+  local v = from.v
+  local lprops = patching.get_link_props(link_props, from.id, to.id)
+  if lprops ~= nil then
+    if lprops.scaling < 0 then
+      -- REVIEW: really not sure about this inverter implem
+      v = 0 - v * lprops.scaling
+    else
+      v = v * lprops.scaling
+    end
+    v = v + lprops.offset
+  end
+  return v
+end
+
 
 -- ------------------------------------------------------------------------
 -- LOOKUP
@@ -231,7 +276,6 @@ function patching.exec_plan(outs, ins, links, in_label,
   end
   return modules, module_triggered_ins, module_out_links
 end
-
 -- like `patching.exec_plan`, but takes multiple ins (at level #1) at once
 function patching.exec_plan_mult(outs, ins, links, in_labels,
                                  modules, module_triggered_ins, module_out_links, level)
@@ -265,8 +309,9 @@ function patching.exec_plan_from_out(outs, ins, links, out_label)
   end
 end
 
+
 -- ... then in this 2nd function, loop over ordered (by level) sequence of triggered_modules, process input vals (`module:process_ins`) & set next module's vals (`target_input:update`)
-function patching.fire_and_propagate(outs, ins, links,
+function patching.fire_and_propagate(outs, ins, links, link_props,
                                      in_label, initial_v)
 
   if initial_v == nil then initial_v = V_MAX/2 end
@@ -311,7 +356,7 @@ function patching.fire_and_propagate(outs, ins, links,
         -- could be dealt w/ by using a superclock, but idk if i wann go there yet
         --
         -- FIXME: better way would be to define Trigger kind of Out that resets itself at the end of loop
-        local v = from.v
+        local v = patching.get_link_v(link_props, from, to)
 
         dbg(from.id .. " -> " .. to.id .. ": " .. v, level-1)
 
@@ -327,7 +372,7 @@ function patching.fire_and_propagate(outs, ins, links,
 
 end
 
-function patching.fire_and_propagate_from_out(outs, ins, links,
+function patching.fire_and_propagate_from_out(outs, ins, links, link_props,
                                               out_label, initial_v)
 
   if initial_v == nil then initial_v = V_MAX/2 end
@@ -351,6 +396,7 @@ function patching.fire_and_propagate_from_out(outs, ins, links,
 
     if level == 1 then
       local from_label = out_label
+      local from = outs[out_label]
       local next_in_labels = links[out_label]
 
       for _, in_label in ipairs(next_in_labels) do
@@ -358,8 +404,9 @@ function patching.fire_and_propagate_from_out(outs, ins, links,
         if to == nil then
           print("WARNING: unknown in "..in_label)
         else
-          dbg(from_label .. " -> " .. to.id .. ": " .. initial_v, level-1)
-          to:register(from_label, initial_v)
+          local v = patching.get_link_v(link_props, from, to)
+          dbg(from_label .. " -> " .. to.id .. ": " .. v, level-1)
+          to:register(from_label, v)
         end
       end
     end
@@ -376,7 +423,7 @@ function patching.fire_and_propagate_from_out(outs, ins, links,
         local from = outbound_link[1]
         local to = outbound_link[2]
 
-        local v = from.v
+        local v = patching.get_link_v(link_props, from, to)
 
         dbg(from.id .. " -> " .. to.id .. ": " .. v, level-1)
 

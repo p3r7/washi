@@ -136,14 +136,17 @@ function Rvg:clock()
 
     -- REVIEW: might be better to have a single clock for all RVGs & LFOs doing that?
     -- even maybe an event queue, dropping events that are too old
-    -- if trig or self.o_smooth.changed then
     if trig then
-      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, V_MAX/2)
-      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.i_trig_dummy.id, 0)
+      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.STATE.link_props,
+                                  self.i_trig_dummy.id, V_MAX/2)
+      -- TODO: unto after TRIG_S!
+      patching.fire_and_propagate(self.STATE.outs, self.STATE.ins, self.STATE.links, self.STATE.link_props,
+                                  self.i_trig_dummy.id, 0)
     end
 
     if self.o_smooth.changed then
-      patching.fire_and_propagate_from_out(self.STATE.outs, self.STATE.ins, self.STATE.links, self.o_smooth.id, self.o_smooth.v)
+      patching.fire_and_propagate_from_out(self.STATE.outs, self.STATE.ins, self.STATE.links, self.STATE.link_props,
+                                           self.o_smooth.id, self.o_smooth.v)
     end
 
   end

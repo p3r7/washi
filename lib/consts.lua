@@ -81,6 +81,7 @@ SCREEN_LEVEL_BANANA_TAMED = 2
 SCREEN_LEVEL_LINK = 5
 SCREEN_LEVEL_LINK_TAMED = 1
 
+
 -- ------------------------------------------------------------------------
 -- panel grid
 
@@ -98,7 +99,10 @@ SMALLEST_GRID_W = 8
 -- ------------------------------------------------------------------------
 -- INTERACTION MODES
 
+A_ADDED = 'added'
+A_REMOVED = 'removed'
+
+M_PLAY = 'play'
 M_SCOPE = 'scope'
+M_LINK = 'link'
 M_EDIT = 'edit'
-M_ADD = 'add'
-M_DELETE = 'delete'

@@ -64,6 +64,23 @@ table.insert(page_list, 'outputs')
 local pages = UI.Pages.new(1, #page_list)
 pages:set_index(tab.key(page_list, 'haleseq 1'))
 
+local DIAL_W = 20
+
+local dialScaling = UI.Dial.new(SCREEN_W/4, SCREEN_H * 3/4 - DIAL_W/2, -- x / y
+                                DIAL_W, -- size
+                                1.0, -- v
+                                -1.0, 1.0, -- min / max
+                                nil, -- rounding (increments)
+                                0, -- start v
+                                {0} -- markers
+)
+local dialOffset = UI.Dial.new(SCREEN_W/4 + SCREEN_W/2 - DIAL_W, SCREEN_H * 3/4 - DIAL_W/2,
+                               DIAL_W,
+                               0,
+                               0, V_MAX,
+                               nil,
+                               0,
+                               {0, 250, 500, 750})
 
 -- ------------------------------------------------------------------------
 -- patching
@@ -71,6 +88,7 @@ pages:set_index(tab.key(page_list, 'haleseq 1'))
 ins = {}
 outs = {}
 links = {}
+link_props = {}
 coords_to_nana = {}
 
 STATE = {
@@ -78,13 +96,15 @@ STATE = {
   ins = ins,
   outs = outs,
   links = links,
+  link_props = link_props,
 
   -- panel coords to banana LUT
   coords_to_nana = coords_to_nana,
 
   -- grid
-  grid_mode = M_SCOPE,
-  selected_out = nil,
+  grid_mode = M_PLAY,
+  selected_nana = nil,
+  selected_link = nil,
   scope = nil,
 
   -- for 64 grids...
@@ -92,16 +112,55 @@ STATE = {
   grid_cursor_active = false,
 }
 
-local function add_link(o, i)
-  patching.add_link(links, o, i)
+local function add_link(from_id, to_id)
+  patching.add_link(links, from_id, to_id)
 end
 
-local function remove_link(o, i)
-  patching.remove_link(links, o, i)
+local function remove_link(from_id, to_id)
+  patching.remove_link(links, from_id, to_id)
+end
+
+local function toggle_link(from_id, to_id)
+  local action = patching.toggle_link(links, from_id, to_id)
+  if action == A_ADDED then
+    STATE.selected_link = {from_id, to_id}
+  else -- A_REMOVED
+    if STATE.selected_link ~= nil
+      and are_coords_same(STATE.selected_link, {from_id, to_id}) then
+      STATE.selected_link = nil
+    end
+  end
+end
+
+local function get_out_first_link_maybe(o)
+  local from_id = o.id
+  if links[from_id] == nil or tab.count(links[from_id]) == 0 then
+    return
+  end
+
+  local to_id = links[from_id][1]
+
+  return {from_id, to_id}
+end
+
+local function get_in_first_link_maybe(i)
+  for from_out_label, _v in pairs(i.incoming_vals) do
+    if from_out_label ~= 'GLOBAL' then
+      return {from_out_label, i.id}
+    end
+  end
+end
+
+local function get_first_link_maybe(nana)
+  if nana.kind == 'out' then
+    return get_out_first_link_maybe(nana)
+  else
+    return get_in_first_link_maybe(nana)
+  end
 end
 
 local function fire_and_propagate(in_label, initial_v)
-  return patching.fire_and_propagate(outs, ins, links,
+  return patching.fire_and_propagate(outs, ins, links, link_props,
                                      in_label, initial_v)
 end
 
@@ -219,6 +278,10 @@ end
 
 local function rnd_patch()
   tempty(STATE.links)
+  tempty(STATE.link_props)
+  STATE.selected_nana = nil
+  STATE.selected_link = nil
+
 
   patching.clear_all_ins(STATE.ins)
 
@@ -342,6 +405,7 @@ local function rnd_patch()
 
   -- DEBUG = true
 end
+
 
 -- ------------------------------------------------------------------------
 -- state
@@ -486,6 +550,7 @@ params.action_read = function(filename, name, pset_number)
   end
 
   treplace(links, conf.links)
+  treplace(link_props, conf.link_props)
 end
 
 params.action_write = function(filename, name, pset_number)
@@ -499,6 +564,7 @@ params.action_write = function(filename, name, pset_number)
   end
 
   conf.links = links
+  conf.link_props = link_props
 
   local confStr = inspect(conf)
   local f, err = io.open(filename..PATCH_CONF_EXT, "wb")
@@ -718,14 +784,14 @@ function grid_redraw()
   local l
 
   -- mode
+  l = grid_level_radio(g, (STATE.grid_mode == M_PLAY), grid_redraw_counter)
+  g:led(1, 1, l) -- play
   l = grid_level_radio(g, (STATE.grid_mode == M_SCOPE), grid_redraw_counter)
-  g:led(1, 1, l) -- scope
+  g:led(2, 1, l) -- scope
+  l = grid_level_radio(g, (STATE.grid_mode == M_LINK), grid_redraw_counter)
+  g:led(3, 1, l) -- link
   l = grid_level_radio(g, (STATE.grid_mode == M_EDIT), grid_redraw_counter)
-  g:led(2, 1, l) -- edit
-  l = grid_level_radio(g, (STATE.grid_mode == M_ADD), grid_redraw_counter)
-  g:led(3, 1, l) -- add
-  l = grid_level_radio(g, (STATE.grid_mode == M_DELETE), grid_redraw_counter)
-  g:led(4, 1, l) -- delete
+  g:led(4, 1, l) -- edit
 
   -- prev / next
   if should_display_grid_cursor() then
@@ -742,17 +808,23 @@ function grid_key(x, y, z)
 
   -- mode
   if y == 1 and x == 1 and z >= 1 then
-    STATE.grid_mode = M_SCOPE
-    STATE.selected_out = nil
+    STATE.grid_mode = M_PLAY
+    STATE.selected_nana = nil
+    STATE.selected_link = nil
+    STATE.scope:clear()
     return
   elseif y == 1 and x == 2 and z >= 1 then
-    STATE.grid_mode = M_EDIT
+    STATE.grid_mode = M_SCOPE
+    STATE.selected_nana = nil
+    STATE.selected_link = nil
     return
   elseif y == 1 and x == 3 and z >= 1 then
-    STATE.grid_mode = M_ADD
+    STATE.grid_mode = M_LINK
+    STATE.scope:clear()
     return
   elseif y == 1 and x == 4 and z >= 1 then
-    STATE.grid_mode = M_DELETE
+    STATE.grid_mode = M_EDIT
+    STATE.scope:clear()
     return
   end
 
@@ -780,23 +852,34 @@ function grid_key(x, y, z)
   local nana = STATE.coords_to_nana[screen_coord]
   if nana ~= nil then
 
-    if nana.kind == 'in' or nana.kind == 'comparator' then
-      if STATE.grid_mode == M_ADD and STATE.selected_out ~= nil and z >= 1 then
-        add_link(STATE.selected_out.id, nana.id)
-      elseif STATE.grid_mode == M_DELETE and STATE.selected_out ~= nil and z >= 1 then
-        remove_link(STATE.selected_out.id, nana.id)
+    if STATE.grid_mode == M_SCOPE then
+      if (z >= 1) then
+        STATE.scope:assoc(nana)
+      else
+        STATE.scope:clear()
+      end
+      return
+    end
+
+    if (nana.kind == 'in' or nana.kind == 'comparator') and z >= 1 then
+      if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+        if STATE.grid_mode == M_LINK then
+          local action = toggle_link(STATE.selected_nana.id, nana.id)
+        end
+      else
+        STATE.selected_nana = nana
+        STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
       end
     end
 
-    if nana.kind == 'out' then
-      if STATE.grid_mode == M_SCOPE then
-        if (z >= 1) then
-          STATE.scope:assoc(nana)
-        else
-          STATE.scope:clear()
+    if nana.kind == 'out' and z >= 1 then
+      if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+        if STATE.grid_mode == M_LINK then
+          toggle_link(nana.id, STATE.selected_nana.id)
         end
-      elseif STATE.grid_mode == M_ADD and z >= 1 then
-        STATE.selected_out = nana
+      else
+        STATE.selected_nana = nana
+        STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
       end
     end
     -- return
@@ -832,6 +915,20 @@ end
 
 function enc(n, d)
   local curr_page = page_list[pages.index]
+
+  if STATE.grid_mode == M_EDIT and (n == 2 or n == 3) then
+    if STATE.selected_link ~= nil then
+      local from_id = STATE.selected_link[1]
+      local to_id = STATE.selected_link[2]
+      local lprops = patching.get_or_init_link_props(link_props, from_id, to_id)
+      if n == 2 then
+        lprops.scaling = util.clamp(lprops.scaling + (d/20), -1.0, 1.0)
+      elseif n == 3 then
+        lprops.offset = util.clamp(lprops.offset + d * 5, 0, V_MAX)
+      end
+    end
+    return
+  end
 
   if curr_page == "clock" then
     if n == 2 then
@@ -927,6 +1024,37 @@ function redraw_clock_screen()
   pulse_dividers[1]:redraw()
 end
 
+function redraw_link_edit()
+  local x = SCREEN_W/4
+  local y = SCREEN_H/4
+  local w = SCREEN_W/2
+  local h = SCREEN_H/2
+
+  local from_id = STATE.selected_link[1]
+  local to_id = STATE.selected_link[2]
+  local lprops = patching.get_or_init_link_props(link_props, from_id, to_id)
+  local v = patching.get_link_v(link_props, outs[from_id], ins[to_id])
+  STATE.scope:sample_raw(v)
+
+  local scope_x = SCREEN_W/4
+  local scope_y = SCREEN_H/8
+  local scope_w = SCREEN_W/2
+  local scope_h = (SCREEN_H * 3/4) * 1/2
+  STATE.scope:redraw(scope_x, scope_y, scope_w, scope_h)
+
+  screen.level(2)
+  local offset_pixel_v = util.linlin(0, V_MAX, 0, scope_h-2, lprops.offset)
+  local offset_pixel_y = scope_y + scope_h - offset_pixel_v
+  screen.move(scope_x, offset_pixel_y)
+  screen.line(scope_x + scope_w, offset_pixel_y)
+  screen.stroke()
+
+  dialScaling:set_value(lprops.scaling)
+  dialScaling:redraw()
+  dialOffset:set_value(lprops.offset)
+  dialOffset:redraw()
+end
+
 function redraw()
   screen.clear()
 
@@ -985,11 +1113,19 @@ function redraw()
     STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)
   end
 
-  if STATE.selected_out == nil then
-    local tame = (STATE.grid_mode ~= M_SCOPE)
-    paperface.redraw_active_links(outs, ins, pages.index, tame)
-  else
-    paperface.redraw_links(outs, patching.ins_from_labels(ins, links[STATE.selected_out.id]), pages.index)
+  local tame = (STATE.grid_mode == M_LINK or STATE.grid_mode == M_EDIT)
+  paperface.redraw_active_links(outs, ins,
+                                pages.index, tame)
+
+  if STATE.grid_mode == M_EDIT and STATE.selected_link ~= nil then
+    redraw_link_edit()
+    local from_id = STATE.selected_link[1]
+    local to_id = STATE.selected_link[2]
+    paperface.redraw_link(outs[from_id], ins[to_id], pages.index)
+  elseif STATE.selected_nana ~= nil then
+    -- TODO: here
+    paperface.redraw_nana_links(outs, ins, links,
+                                STATE.selected_nana, pages.index)
   end
 
   screen.update()
