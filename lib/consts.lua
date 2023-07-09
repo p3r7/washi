@@ -35,6 +35,7 @@ LFO_DEFAULT_RATE = 0.5
 
 LFO_PHASES = {0, 45, 90, 135, 180, 225, 270}
 
+
 -- ------------------------------------------------------------------------
 -- sequenced values
 
@@ -80,6 +81,13 @@ SCREEN_LEVEL_BANANA_TAMED = 2
 
 SCREEN_LEVEL_LINK = 5
 SCREEN_LEVEL_LINK_TAMED = 1
+
+SCREEN_LW_LINK = 1
+SCREEN_LW_LINK_FOCUSED = 1.5
+
+DRAW_M_NORMAL = nil
+DRAW_M_TAME = 'tamed'
+DRAW_M_FOCUS = 'focus'
 
 
 -- ------------------------------------------------------------------------

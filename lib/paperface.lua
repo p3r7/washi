@@ -475,7 +475,7 @@ end
 -- ------------------------------------------------------------------------
 -- patch
 
-function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, tame)
+function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mode)
   local startx = paperface.panel_grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
   local starty = paperface.panel_grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
   local endx = paperface.panel_grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
@@ -483,14 +483,24 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, tame)
   local midx = (endx + startx)/2
   local midy = (endy + starty)/2
 
-  local level = (tame ~= nil and tame) and SCREEN_LEVEL_LINK_TAMED or SCREEN_LEVEL_LINK
+  local level = SCREEN_LEVEL_LINK
+  local lw = SCREEN_LW_LINK
+  if draw_mode == DRAW_M_TAME then
+    level = SCREEN_LEVEL_LINK_TAMED
+  elseif draw_mode == DRAW_M_FOCUS then
+    lw = SCREEN_LW_LINK_FOCUSED
+  end
+
+  screen.line_width(lw)
   screen.level(level)
   screen.move(startx, starty)
   screen.curve(midx, starty, midx, endy, endx, endy)
   screen.stroke()
+
+  screen.line_width(1)
 end
 
-function paperface.redraw_link(o, i, curr_page, tame)
+function paperface.redraw_link(o, i, curr_page, draw_mode)
     if (o.x == nil or o.y == nil) or (i.x == nil or i.y == nil) then
       return
     end
@@ -498,10 +508,10 @@ function paperface.redraw_link(o, i, curr_page, tame)
     paperface.draw_link(o.x, o.y, o.parent.page,
                         i.x, i.y, i.parent.page,
                         curr_page,
-                        tame)
+                        draw_mode)
 end
 
-function paperface.draw_input_links(outs, i, curr_page, tame)
+function paperface.draw_input_links(outs, i, curr_page, draw_mode)
   for from_out_label, _v in pairs(i.incoming_vals) do
     local from_out = outs[from_out_label]
 
@@ -510,13 +520,13 @@ function paperface.draw_input_links(outs, i, curr_page, tame)
       goto DRAW_NEXT_IN_LINK
     end
 
-    paperface.redraw_link(from_out, i, curr_page, tame)
+    paperface.redraw_link(from_out, i, curr_page, draw_mode)
 
     ::DRAW_NEXT_IN_LINK::
   end
 end
 
-function paperface.draw_output_links(ins, links, o, curr_page, tame)
+function paperface.draw_output_links(ins, links, o, curr_page, draw_mode)
   local to_in_labels = links[o.id]
 
   if to_in_labels == nil then
@@ -531,38 +541,38 @@ function paperface.draw_output_links(ins, links, o, curr_page, tame)
       goto DRAW_NEXT_OUT_LINK
     end
 
-    paperface.redraw_link(o, to, curr_page, tame)
+    paperface.redraw_link(o, to, curr_page, draw_mode)
 
     ::DRAW_NEXT_OUT_LINK::
   end
 end
 
-function paperface.redraw_nana_links(outs, ins, links, nana, curr_page, tame)
+function paperface.redraw_nana_links(outs, ins, links, nana, curr_page, draw_mode)
   if nana.kind == 'in' or nana.kind == 'comparator' then
-    paperface.draw_input_links(outs, nana, curr_page, tame)
+    paperface.draw_input_links(outs, nana, curr_page, draw_mode)
   else
-    paperface.draw_output_links(ins, links, nana, curr_page, tame)
+    paperface.draw_output_links(ins, links, nana, curr_page, draw_mode)
   end
 end
 
+-- UNUSED ?!
+-- function paperface.redraw_to_inputs_links(outs, to_ins, curr_page, draw_mode)
+--   if ins == nil then
+--     return
+--   end
 
-function paperface.redraw_to_inputs_links(outs, to_ins, curr_page, tame)
-  if ins == nil then
-    return
-  end
+--   for _, i in pairs(ins) do
+--     if i.x == nil or i.y == nil then
+--       goto NEXT_IN_LINK
+--     end
 
-  for _, i in pairs(ins) do
-    if i.x == nil or i.y == nil then
-      goto NEXT_IN_LINK
-    end
+--     paperface.draw_input_links(outs, i, curr_page, draw_mode)
 
-    paperface.draw_input_links(outs, i, curr_page, tame)
+--     ::NEXT_IN_LINK::
+--   end
+-- end
 
-    ::NEXT_IN_LINK::
-  end
-end
-
-function paperface.redraw_active_links(outs, ins, curr_page, tame)
+function paperface.redraw_active_links(outs, ins, curr_page, draw_mode)
   for _, i in pairs(ins) do
     if i.x == nil or i.y == nil then
       goto NEXT_IN_ACTIVE_LINK
@@ -571,12 +581,12 @@ function paperface.redraw_active_links(outs, ins, curr_page, tame)
     if i.kind == 'comparator' then
       local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
       if triggered then
-        paperface.draw_input_links(outs, i, curr_page, tame)
+        paperface.draw_input_links(outs, i, curr_page, draw_mode)
       end
     elseif i.kind == 'in' then
       local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
       if triggered then
-        paperface.draw_input_links(outs, i, curr_page, tame)
+        paperface.draw_input_links(outs, i, curr_page, draw_mode)
       end
     end
     ::NEXT_IN_ACTIVE_LINK::

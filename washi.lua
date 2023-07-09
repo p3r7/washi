@@ -1113,19 +1113,23 @@ function redraw()
     STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)
   end
 
-  local tame = (STATE.grid_mode == M_LINK or STATE.grid_mode == M_EDIT)
+  local draw_mode = DRAW_M_NORMAL
+  if (STATE.grid_mode == M_LINK or STATE.grid_mode == M_EDIT) then
+    draw_mode = DRAW_M_TAME
+  end
+  -- print(draw_mode)
   paperface.redraw_active_links(outs, ins,
-                                pages.index, tame)
+                                pages.index, draw_mode)
 
   if STATE.grid_mode == M_EDIT and STATE.selected_link ~= nil then
     redraw_link_edit()
     local from_id = STATE.selected_link[1]
     local to_id = STATE.selected_link[2]
-    paperface.redraw_link(outs[from_id], ins[to_id], pages.index)
+    paperface.redraw_link(outs[from_id], ins[to_id], pages.index, DRAW_M_FOCUS)
   elseif STATE.selected_nana ~= nil then
     -- TODO: here
     paperface.redraw_nana_links(outs, ins, links,
-                                STATE.selected_nana, pages.index)
+                                STATE.selected_nana, pages.index, DRAW_M_FOCUS)
   end
 
   screen.update()
