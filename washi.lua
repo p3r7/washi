@@ -132,6 +132,10 @@ local function toggle_link(from_id, to_id)
   end
 end
 
+local function are_linked(from_id, to_id)
+  return patching.are_linked(links, from_id, to_id)
+end
+
 local function get_out_first_link_maybe(o)
   local from_id = o.id
   if links[from_id] == nil or tab.count(links[from_id]) == 0 then
@@ -809,14 +813,14 @@ function grid_key(x, y, z)
   -- mode
   if y == 1 and x == 1 and z >= 1 then
     STATE.grid_mode = M_PLAY
-    STATE.selected_nana = nil
-    STATE.selected_link = nil
+    -- STATE.selected_nana = nil
+    -- STATE.selected_link = nil
     STATE.scope:clear()
     return
   elseif y == 1 and x == 2 and z >= 1 then
     STATE.grid_mode = M_SCOPE
-    STATE.selected_nana = nil
-    STATE.selected_link = nil
+    -- STATE.selected_nana = nil
+    -- STATE.selected_link = nil
     return
   elseif y == 1 and x == 3 and z >= 1 then
     STATE.grid_mode = M_LINK
@@ -865,6 +869,8 @@ function grid_key(x, y, z)
       if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
         if STATE.grid_mode == M_LINK then
           local action = toggle_link(STATE.selected_nana.id, nana.id)
+        elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
+          STATE.selected_link = {STATE.selected_nana.id, nana.id}
         end
       else
         STATE.selected_nana = nana
@@ -876,6 +882,8 @@ function grid_key(x, y, z)
       if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
         if STATE.grid_mode == M_LINK then
           toggle_link(nana.id, STATE.selected_nana.id)
+        elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
+          STATE.selected_link = {nana.id, STATE.selected_nana.id}
         end
       else
         STATE.selected_nana = nana
@@ -883,6 +891,10 @@ function grid_key(x, y, z)
       end
     end
     -- return
+  else
+    STATE.scope:clear()
+    STATE.selected_nana = nil
+    STATE.selected_link = nil
   end
 
   local h = get_current_haleseq()

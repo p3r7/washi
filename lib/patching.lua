@@ -46,8 +46,12 @@ function patching.remove_link(links, o, i)
   end
 end
 
+function patching.are_linked(links, o_id, i_id)
+  return (links[o_id] ~= nil and tab.contains(links[o_id], i_id))
+end
+
 function patching.toggle_link(links, o, i)
-  if links[o] ~= nil and tab.contains(links[o], i) then
+  if patching.are_linked(links, o, i) then
     patching.remove_link(links, o, i)
     return A_REMOVED
   else
