@@ -77,10 +77,11 @@ local dialScaling = UI.Dial.new(SCREEN_W/4, SCREEN_H * 3/4 - DIAL_W/2, -- x / y
 local dialOffset = UI.Dial.new(SCREEN_W/4 + SCREEN_W/2 - DIAL_W, SCREEN_H * 3/4 - DIAL_W/2,
                                DIAL_W,
                                0,
-                               0, V_MAX,
+                               0, 10,
                                nil,
                                0,
-                               {0, 250, 500, 750})
+                               {0, 250, 500, 750},
+                               "V")
 
 -- ------------------------------------------------------------------------
 -- patching
@@ -1063,7 +1064,7 @@ function redraw_link_edit()
 
   dialScaling:set_value(lprops.scaling)
   dialScaling:redraw()
-  dialOffset:set_value(lprops.offset)
+  dialOffset:set_value(util.linlin(0, V_MAX, 0, 10, lprops.offset))
   dialOffset:redraw()
 end
 
