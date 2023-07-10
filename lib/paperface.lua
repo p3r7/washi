@@ -396,28 +396,28 @@ end
 function paperface.is_in_selected(i)
   return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
           and i.parent.STATE.selected_nana ~= nil
-          -- and (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
+          and (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
           and i.parent.STATE.selected_nana.id == i.id)
 end
 
 function paperface.is_out_selected(o)
   return ((o.parent.STATE.grid_mode == M_LINK or o.parent.STATE.grid_mode == M_EDIT)
           and o.parent.STATE.selected_nana ~= nil
-          -- and o.parent.STATE.selected_nana.kind == 'out'
+          and o.parent.STATE.selected_nana.kind == 'out'
           and o.parent.STATE.selected_nana.id == o.id)
 end
 
 function paperface.should_tame_in_redraw(i)
   return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
           and (i.parent.STATE.selected_nana == nil
-               -- or not (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
+               or not (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
                or i.parent.STATE.selected_nana.id ~= i.id))
 end
 
 function paperface.should_tame_out_redraw(o)
   return ((o.parent.STATE.grid_mode == M_LINK or o.parent.STATE.grid_mode == M_EDIT)
           and (o.parent.STATE.selected_nana == nil
-               -- or o.parent.STATE.selected_nana.id.kind ~= 'out'
+               or not (o.parent.STATE.selected_nana.kind == 'out')
                or o.parent.STATE.selected_nana.id ~= o.id))
 end
 

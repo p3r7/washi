@@ -286,6 +286,10 @@ function Haleseq:process_ins()
   local ticked = false
   local vticked = false
 
+  -- for s, stage in ipairs(self.stages) do
+  --   stage.o:update(0)
+  -- end
+
   if self.i_preset.changed then
     params:set(self.fqid.."_preset", round(util.linlin(0, V_MAX, 1, self.nb_steps, self.i_preset.v)))
   else
@@ -889,23 +893,31 @@ function Haleseq:redraw_stage(s, stage)
 
   local x = paperface.panel_grid_to_screen_x(stage.x)
 
+  local trig = false
+
   -- trig out
+  -- paperface.out_redraw(stage.o) -- NB: misbehaving
   local at = (self.step == s)
-  local trig = at and (math.abs(os.clock() - self.last_step_t) < PULSE_T)
-   paperface.trig_out(x, paperface.panel_grid_to_screen_y(stage.o.y), trig)
+  local play_trig = at and (math.abs(os.clock() - self.last_step_t) < PULSE_T)
+  trig = paperface.is_out_selected(stage.o) or play_trig
+  local tame = paperface.should_tame_out_redraw(stage.o)
+  paperface.trig_out(x, paperface.panel_grid_to_screen_y(stage.o.y), trig, tame)
   if not trig and at then
-    paperface.banana(x, paperface.panel_grid_to_screen_y(stage.o.y), false)
+    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, paperface.panel_grid_to_screen_y(stage.o.y), false, level)
   end
 
   -- trig in
+  trig = paperface.is_in_selected(stage.i) or (self.g_btn == s)
   if params:get(self.fqid.."_preset") == s then
-    if (self.g_btn == s) then
+    if (self.g_btn == s) then -- FIXME: bad test
       paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), true)
     else
-      paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), false, true)
+      -- paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), false, true)
+      paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), paperface.is_in_selected(stage.i), true)
     end
   else
-    paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), (self.g_btn == s))
+    paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), trig)
   end
 
   -- vals (knobs)
@@ -914,10 +926,18 @@ function Haleseq:redraw_stage(s, stage)
     paperface.rect_label(x, y)
     l = 1
     if at then
-      if (self.vstep == vs) then
-        l = SCREEN_LEVEL_LABEL_SPE
-      else
-        l = 2
+      if not (self.STATE.grid_mode == M_LINK or self.STATE.grid_mode == M_EDIT) then
+        if (self.vstep == vs) then
+          l = SCREEN_LEVEL_LABEL_SPE
+        else
+          l = 2
+        end
+      else -- tame
+        if (self.vstep == vs) then
+          l = 2
+        else
+          l = 1
+        end
       end
     end
     paperface.knob(x, y, self.seqvals[s][vs], l)
