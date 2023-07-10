@@ -412,7 +412,7 @@ local function rnd_patch()
     if rnd() < 0.1 then
       add_link(rnd_mod_out_other_module(output).id, output.fqid.."_vel")
     end
-    if rnd() < 0.2 then
+    if i <= 2 or rnd() < 0.2 then
       add_link(rnd_mod_out_other_module(output).id, output.fqid.."_mod")
     end
   end
