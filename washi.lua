@@ -200,11 +200,11 @@ local function init_patch()
   add_link("pulse_divider_1_3", "haleseq_2_vclock")
 
   -- add_link("haleseq_1_a", "haleseq_2_clock")
-  -- add_link("haleseq_1_abcd", "haleseq_2_preset")
+  add_link("haleseq_1_abcd", "haleseq_2_preset")
 
   -- add_link("lfo_bank_1_1", "haleseq_2_preset")
   -- add_link("rvg_1_smooth", "haleseq_2_preset")
-  add_link("lfo_bank_2_5", "haleseq_2_preset")
+  -- add_link("lfo_bank_2_5", "haleseq_2_preset")
   -- add_link("rvg_1_stepped", "haleseq_2_preset")
 
   -- add_link("haleseq_1_abcd", "lfos_1_rate")
