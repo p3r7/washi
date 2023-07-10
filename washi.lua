@@ -907,6 +907,10 @@ function grid_key(x, y, z)
     STATE.selected_link = nil
   end
 
+  if STATE.grid_mode ~= M_PLAY then
+    return
+  end
+
   local h = get_current_haleseq()
   if h ~= nil then
     h:grid_key(x, y, z)
