@@ -102,7 +102,10 @@ function NornsClock:redraw(mult_trig)
   local y = paperface.panel_grid_to_screen_y(self.y)
 
   -- local trig = acum % (MCLOCK_DIVS / 8) == 0
-  paperface.trig_out(x, y, mult_trig)
+
+  local tame = (self.STATE.grid_mode == M_LINK or self.STATE.grid_mode == M_EDIT)
+
+  paperface.trig_out(x, y, mult_trig, tame)
 
   screen.move(x, y + 2 * SCREEN_STAGE_W - 2)
   screen.text(params:get("clock_tempo"))
