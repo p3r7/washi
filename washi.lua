@@ -216,6 +216,15 @@ local function init_patch()
   add_link("haleseq_2_a", "output_4")
   add_link("haleseq_2_b", "output_5")
 
+
+  -- FIXME: self-patching doesn't work
+  -- add_link("haleseq_1_stage_5", "haleseq_1_stage_3")
+
+  -- FIXME: x-patching doesn't work
+  -- add_link("haleseq_1_stage_5", "haleseq_2_stage_3") -- works
+  -- add_link("pulse_divider_1_3", "haleseq_2_clock")
+  -- add_link("haleseq_1_stage_5", "haleseq_2_stage_3") -- does not
+
   -- add_link("rvg_1_smooth", "lfo_bank_2_rate")
   -- add_link("lfo_bank_2_1", "output_2_vel")
   -- add_link("lfo_bank_2_4", "output_2_dur")
