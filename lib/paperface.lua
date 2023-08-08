@@ -376,10 +376,11 @@ function paperface.trig_out_spe(x, y, trig, tame)
 end
 
 function paperface.trig_out(x, y, trig, tame)
+  local l = SCREEN_LEVEL_LABEL
   paperface.trig_out_label(x, y, l)
   if trig then
-    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, level)
+    l = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, y, trig, l)
   end
 end
 
