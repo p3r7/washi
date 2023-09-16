@@ -198,11 +198,12 @@ function PulseDivider:redraw()
   paperface.module_redraw(self)
 
   -- labels
+  screen.level(SCREEN_LEVEL_LABEL)
   for i, v in ipairs(self.divs) do
     local o = self.div_outs[i]
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
-    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
+    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_LABEL_Y_OFFSET)
     screen.text("/"..v)
   end
 end

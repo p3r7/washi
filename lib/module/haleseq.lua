@@ -957,6 +957,8 @@ function Haleseq:redraw()
     self:redraw_stage(s, stage)
   end
 
+  -- if true then return end
+
   -- vseq
   for vs=1,self.nb_vsteps do
     local o = self.cv_outs[vs]

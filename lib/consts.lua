@@ -3,7 +3,13 @@
 -- ------------------------------------------------------------------------
 -- SCREEN & GRID
 
-FPS = 15
+if seamstress then
+  -- FPS = 60
+  FPS = 15
+else
+  FPS = 15
+end
+
 GRID_FPS = 15
 
 
@@ -85,9 +91,21 @@ SCREEN_LEVEL_LINK_TAMED = 1
 SCREEN_LW_LINK = 1
 SCREEN_LW_LINK_FOCUSED = 1.5
 
+if norns then
+  SCREEN_LABEL_Y_OFFSET = SCREEN_STAGE_W - 2
+end
+if seamstress then
+  SCREEN_LABEL_Y_OFFSET = 2
+end
+
 DRAW_M_NORMAL = nil
 DRAW_M_TAME = 'tamed'
 DRAW_M_FOCUS = 'focus'
+
+COLOR_BANANA_CV_IN = {128, 128, 128}
+COLOR_BANANA_TRIG_IN = {255, 255, 255}
+COLOR_BANANA_CV_OUT = {0, 0, 255}
+COLOR_BANANA_TRIG_OUT = {255, 0, 0}
 
 
 -- ------------------------------------------------------------------------

@@ -107,6 +107,7 @@ function NornsClock:redraw(mult_trig)
 
   paperface.trig_out(x, y, mult_trig, tame)
 
+  screen.level(SCREEN_LEVEL_LABEL)
   screen.move(x, y + 2 * SCREEN_STAGE_W - 2)
   screen.text(params:get("clock_tempo"))
   screen.move(x, y + 3 * SCREEN_STAGE_W - 2)
