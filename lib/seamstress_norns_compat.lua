@@ -26,6 +26,6 @@ function screen.update()
   screen.refresh()
 end
 
-function screen.curve(x1, y1, x2, y2, x3, y3)
-  _seamstress.screen_curve_to(x1, y1, x2, y2, x3, y3)
-end
+-- function screen.curve(x1, y1, x2, y2, x3, y3)
+--   _seamstress.screen_curve_to(x1, y1, x2, y2, x3, y3)
+-- end
