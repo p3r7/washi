@@ -49,6 +49,14 @@ function paperface.panel_grid_to_screen_y(v)
   return paperface.panel_grid_to_screen_x(v) + SCREEN_STAGE_Y_OFFSET
 end
 
+function paperface.screen_x_to_panel_grid(v)
+  return math.floor((v / SCREEN_STAGE_W) + 1)
+end
+
+function paperface.screen_y_to_panel_grid(v)
+  return math.floor(paperface.screen_x_to_panel_grid(v - SCREEN_STAGE_Y_OFFSET ))
+end
+
 
 -- ------------------------------------------------------------------------
 -- grid

@@ -554,6 +554,37 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- ux - linking
+
+function select_or_link(nana)
+  if (nana.kind == 'in' or nana.kind == 'comparator') then
+    if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+      if STATE.grid_mode == M_LINK then
+        local action = toggle_link(STATE.selected_nana.id, nana.id)
+      elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
+        STATE.selected_link = {STATE.selected_nana.id, nana.id}
+      end
+    else
+      STATE.selected_nana = nana
+      STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    end
+  end
+
+  if nana.kind == 'out' then
+    if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+      if STATE.grid_mode == M_LINK then
+        toggle_link(nana.id, STATE.selected_nana.id)
+      elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
+        STATE.selected_link = {nana.id, STATE.selected_nana.id}
+      end
+    else
+      STATE.selected_nana = nana
+      STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    end
+  end
+end
+
+-- ------------------------------------------------------------------------
 -- grid
 
 local G_Y_PRESS = 8
@@ -668,32 +699,35 @@ function grid_key(x, y, z)
       return
     end
 
-    if (nana.kind == 'in' or nana.kind == 'comparator') and z >= 1 then
-      if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
-        if STATE.grid_mode == M_LINK then
-          local action = toggle_link(STATE.selected_nana.id, nana.id)
-        elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
-          STATE.selected_link = {STATE.selected_nana.id, nana.id}
-        end
-      else
-        STATE.selected_nana = nana
-        STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
-      end
+    if z >= 1 then
+      select_or_link(nana)
     end
 
-    if nana.kind == 'out' and z >= 1 then
-      if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
-        if STATE.grid_mode == M_LINK then
-          toggle_link(nana.id, STATE.selected_nana.id)
-        elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
-          STATE.selected_link = {nana.id, STATE.selected_nana.id}
-        end
-      else
-        STATE.selected_nana = nana
-        STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
-      end
-    end
-    -- return
+    -- if (nana.kind == 'in' or nana.kind == 'comparator') and z >= 1 then
+    --   if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+    --     if STATE.grid_mode == M_LINK then
+    --       local action = toggle_link(STATE.selected_nana.id, nana.id)
+    --     elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
+    --       STATE.selected_link = {STATE.selected_nana.id, nana.id}
+    --     end
+    --   else
+    --     STATE.selected_nana = nana
+    --     STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    --   end
+    -- end
+
+    -- if nana.kind == 'out' and z >= 1 then
+    --   if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+    --     if STATE.grid_mode == M_LINK then
+    --       toggle_link(nana.id, STATE.selected_nana.id)
+    --     elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
+    --       STATE.selected_link = {nana.id, STATE.selected_nana.id}
+    --     end
+    --   else
+    --     STATE.selected_nana = nana
+    --     STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    --   end
+    -- end
   else
     STATE.scope:clear()
     STATE.selected_nana = nil
@@ -711,8 +745,41 @@ function grid_key(x, y, z)
 
 end
 
+
 -- ------------------------------------------------------------------------
--- controls
+-- mouse
+
+screen.click = function(x, y, state, button)
+
+  if state >= 1 then
+    local curr_page = pages.index
+    local screen_coord = curr_page.."."..paperface.screen_x_to_panel_grid(x).."."..paperface.screen_y_to_panel_grid(y)
+    local nana = STATE.coords_to_nana[screen_coord]
+
+    if nana == nil then
+      STATE.scope:clear()
+      STATE.selected_nana = nil
+      STATE.selected_link = nil
+      STATE.grid_mode = M_SCOPE
+      return
+    end
+
+    if button == 1 then -- left click
+      STATE.grid_mode = M_LINK
+      select_or_link(nana)
+    end
+
+    if button == 3 then --right click
+      STATE.grid_mode = M_SCOPE
+      STATE.scope:assoc(nana)
+    end
+
+  end
+end
+
+
+-- ------------------------------------------------------------------------
+-- keys / encs
 
 if seamstress then
   screen.key = function(char, modifiers, is_repeat, state)
@@ -722,6 +789,10 @@ if seamstress then
     end
 
     if type(char) == "string" then
+      if char == "s" and state >= 1 then
+        STATE.grid_mode = M_SCOPE
+      end
+
       if char == "r" and state >= 1 then
         if #modifiers == 0 then
           params:set("rnd_seqs", 1)
