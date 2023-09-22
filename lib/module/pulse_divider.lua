@@ -116,16 +116,6 @@ function PulseDivider.init(id, STATE, divs,
                              page_id, x, y)
 
   q:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[q.i.id] = q.i
-    STATE.ins[q.i_clock_select.id] = q.i_clock_select
-    STATE.ins[q.i_reset.id] = q.i_reset
-    for _, o in ipairs(q.div_outs) do
-      STATE.outs[o.id] = o
-    end
-  end
-
   return q
 end
 

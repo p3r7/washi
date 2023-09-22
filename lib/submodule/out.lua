@@ -22,6 +22,9 @@ function Out.new(id, parent,
     if parent.outs ~= nil then
       table.insert(parent.outs, p.id)
     end
+    if parent.STATE ~= nil then
+      parent.STATE.outs[p.id] = p
+    end
   end
 
   p.x = x

@@ -35,6 +35,9 @@ function Comparator.new(id, parent, callback,
     if parent.ins ~= nil then
       table.insert(parent.ins, p.id)
     end
+    if parent.STATE ~= nil then
+      parent.STATE.ins[p.id] = p
+    end
   end
 
   -- REVIEW: not using those anymore

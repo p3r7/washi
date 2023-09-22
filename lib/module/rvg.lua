@@ -88,18 +88,7 @@ end
 function Rvg.init(id, STATE, page_id, x, y)
   local q = Rvg.new(id, STATE,
                     page_id, x, y)
-
   q:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[q.i_rate.id] = q.i_rate
-    STATE.ins[q.i_trig.id] = q.i_trig
-    STATE.ins[q.i_trig_dummy.id] = q.i_trig_dummy
-    STATE.outs[q.o_smooth.id] = q.o_smooth
-    STATE.outs[q.o_stepped.id] = q.o_stepped
-    STATE.outs[q.o_pulse.id] = q.o_pulse
-  end
-
   return q
 end
 

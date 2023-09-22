@@ -51,12 +51,6 @@ function NornsClock.init(STATE,
                         page_id, x, y)
   local c = NornsClock.new(STATE,
                            page_id, x, y)
-
-  if STATE ~= nil then
-    STATE.ins[c.i.id] = c.i
-    STATE.outs[c.o.id] = c.o
-  end
-
   return c
 end
 

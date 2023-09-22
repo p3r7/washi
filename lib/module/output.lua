@@ -100,15 +100,6 @@ function Output.init(id, STATE,
   local o = Output.new(id, STATE,
                        page_id, x, y)
   o:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[o.i.id] = o.i
-    STATE.ins[o.i_trig.id] = o.i_trig
-    STATE.ins[o.i_dur.id] = o.i_dur
-    STATE.ins[o.i_vel.id] = o.i_vel
-    STATE.ins[o.i_mod.id] = o.i_mod
-  end
-
   return o
 end
 

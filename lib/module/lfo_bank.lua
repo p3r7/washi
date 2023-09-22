@@ -203,19 +203,7 @@ function LfoBank.init(id, STATE,
   local q = LfoBank.new(id, STATE,
                      phase_shifts, ratios,
                      page_id, x, y)
-
   q:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[q.i_rate.id] = q.i_rate
-    STATE.ins[q.i_shape.id] = q.i_shape
-    STATE.ins[q.i_hold.id] = q.i_hold
-    STATE.ins[q.i_trig_dummy.id] = q.i_trig_dummy
-    for _, o in pairs(q.wave_outs) do
-      STATE.outs[o.id] = o
-    end
-  end
-
   return q
 end
 

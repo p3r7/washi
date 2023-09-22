@@ -251,30 +251,6 @@ function Haleseq.init(id, STATE, nb_steps, nb_vsteps,
   local h = Haleseq.new(id, STATE, nb_steps, nb_vsteps,
                         page_id, x, y)
   h:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[h.i_clock.id] = h.i_clock
-    STATE.ins[h.i_vclock.id] = h.i_vclock
-    STATE.ins[h.i_reset.id] = h.i_reset
-    STATE.ins[h.i_vreset.id] = h.i_vreset
-    STATE.ins[h.i_preset.id] = h.i_preset
-    STATE.ins[h.i_preset_reset.id] = h.i_preset_reset
-    STATE.ins[h.i_hold.id] = h.i_hold
-    STATE.ins[h.i_reverse.id] = h.i_reverse
-
-    for _, s in ipairs(h.stages) do
-      STATE.ins[s.i.id] = s.i
-      STATE.outs[s.o.id] = s.o
-    end
-
-    STATE.outs[h.cpo.id] = h.cpo
-    STATE.outs[h.aep.id] = h.aep
-
-    for _, cv in ipairs(h.cv_outs) do
-      STATE.outs[cv.id] = cv
-    end
-
-  end
   return h
 end
 

@@ -71,14 +71,6 @@ function QuantizedClock.init(id, STATE, mclock_div, divs,
                              page_id, x, y)
   local q = QuantizedClock.new(id, STATE, mclock_div, divs, nil,
                                page_id, x, y)
-
-  if STATE ~= nil then
-    STATE.ins[q.i.id] = q.i
-    for _, o in ipairs(q.div_outs) do
-      STATE.outs[o.id] = o
-    end
-  end
-
   return q
 end
 
