@@ -459,6 +459,10 @@ function paperface.cv_out(x, y, trig, tame)
   paperface.out(x, y, trig, tame, "CV")
 end
 
+function paperface.cv_out_spe(x, y, trig, tame)
+  paperface.out(x, y, trig, tame, "CV", SCREEN_LEVEL_LABEL_SPE)
+end
+
 function paperface.is_in_selected(i)
   return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
           and i.parent.STATE.selected_nana ~= nil
@@ -514,7 +518,11 @@ function paperface.out_redraw(o)
   local y = paperface.panel_grid_to_screen_y(o.y)
   local triggered = paperface.is_out_selected(o) or (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
   local tame = paperface.should_tame_out_redraw(o)
-  paperface.trig_out(x, y, triggered, tame)
+  if o.kind == 'out' then
+    paperface.trig_out(x, y, triggered, tame)
+  elseif o.kind == 'cv_out' then
+    paperface.cv_out(x, y, triggered, tame)
+  end
 end
 
 function paperface.module_redraw(m)

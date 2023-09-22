@@ -7,6 +7,7 @@ local Stage = include("washi/lib/submodule/stage")
 local Comparator = include("washi/lib/submodule/comparator")
 local In = include("washi/lib/submodule/in")
 local Out = include("washi/lib/submodule/out")
+local CvOut = include("washi/lib/submodule/cv_out")
 
 local paperface = include("washi/lib/paperface")
 local patching = include("washi/lib/patching")
@@ -109,15 +110,15 @@ function Haleseq.new(id, STATE,
   for vs=1, nb_vsteps do
     local label = output_nb_to_name(vs)
     local llabel = string.lower(label)
-    local o = Out.new(p.fqid.."_"..llabel, p,
+    local o = CvOut.new(p.fqid.."_"..llabel, p,
                       stage_start_x + p.nb_steps, vs+1)
     p.cv_outs[vs] = o
   end
-  -- ABCD
+  -- ABCD (mux)
   local mux_label = mux_output_nb_to_name(nb_vsteps)
   local mux_llabel = string.lower(mux_label)
-  p.cv_outs[nb_vsteps+1] = Out.new(p.fqid.."_"..mux_llabel, p,
-                                   stage_start_x + p.nb_steps + 1, nb_vsteps+2)
+  p.cv_outs[nb_vsteps+1] = CvOut.new(p.fqid.."_"..mux_llabel, p,
+                                     stage_start_x + p.nb_steps + 1, nb_vsteps+2)
 
 
   -- --------------------------------
@@ -945,7 +946,7 @@ function Haleseq:redraw()
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
 
-    paperface.trig_out(x, y, trig, tame)
+    paperface.cv_out(x, y, trig, tame)
     if not trig and at then
       local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
       paperface.banana(x, y, false, level)
@@ -955,7 +956,7 @@ function Haleseq:redraw()
   local mux_o = self.cv_outs[self.nb_vsteps+1]
 
   tame = paperface.should_tame_out_redraw(mux_o)
-  paperface.trig_out_spe(paperface.panel_grid_to_screen_x(mux_o.x), paperface.panel_grid_to_screen_y(mux_o.y), trig_mux, tame)
+  paperface.cv_out_spe(paperface.panel_grid_to_screen_x(mux_o.x), paperface.panel_grid_to_screen_y(mux_o.y), trig_mux, tame)
 
   -- CPO - Common Pulse Out
   -- (preset change gate out)

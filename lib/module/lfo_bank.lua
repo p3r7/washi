@@ -15,6 +15,7 @@ local Formatters = require "formatters"
 local Comparator = include("washi/lib/submodule/comparator")
 local In = include("washi/lib/submodule/in")
 local Out = include("washi/lib/submodule/out")
+local CvOut = include("washi/lib/submodule/cv_out")
 
 local patching = include("washi/lib/patching")
 local paperface = include("washi/lib/paperface")
@@ -167,7 +168,8 @@ function LfoBank.new(id, STATE,
   end
 
   for i, phase in ipairs(phase_shifts) do
-    p.wave_outs[i] = Out.new(p.fqid.."_"..i, p, x+1, y+i-1)
+    -- p.wave_outs[i] = Out.new(p.fqid.."_"..i, p, x+1, y+i-1)
+    p.wave_outs[i] = CvOut.new(p.fqid.."_"..i, p, x+1, y+i-1)
   end
 
   -- --------------------------------

@@ -1,10 +1,8 @@
 -- washi. out
 
-
--- ------------------------------------------------------------------------
-
 local Out = {}
-Out.__index = Out
+local Out_mt = { __index = Out }
+-- Out.__index = Out
 
 
 -- ------------------------------------------------------------------------
@@ -12,7 +10,8 @@ Out.__index = Out
 
 function Out.new(id, parent,
                 x, y)
-  local p = setmetatable({}, Out)
+  -- local p = setmetatable({}, Out)
+  local p = setmetatable({}, Out_mt)
 
   p.kind = "out"
   p.id = id

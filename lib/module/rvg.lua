@@ -15,6 +15,7 @@ local Formatters = require "formatters"
 local Comparator = include("washi/lib/submodule/comparator")
 local In = include("washi/lib/submodule/in")
 local Out = include("washi/lib/submodule/out")
+local CvOut = include("washi/lib/submodule/cv_out")
 
 local patching = include("washi/lib/patching")
 local paperface = include("washi/lib/paperface")
@@ -61,7 +62,7 @@ function Rvg.new(id, STATE,
   p.i_trig = Comparator.new(p.fqid.."_trig", p, nil, x+1, y+6)
   p.i_trig_dummy = Comparator.new(p.fqid.."_trig_dummy", p) -- for self-trigging wo/ display
 
-  p.o_smooth = Out.new(p.fqid.."_smooth", p, x, y)
+  p.o_smooth = CvOut.new(p.fqid.."_smooth", p, x, y)
   p.o_stepped = Out.new(p.fqid.."_stepped", p, x, y+1)
   p.o_pulse = Out.new(p.fqid.."_pulse", p, x, y+2) -- NB: labelled 'timing' on old units
 
