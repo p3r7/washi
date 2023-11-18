@@ -7,6 +7,7 @@ local Stage = include("washi/lib/submodule/stage")
 local Comparator = include("washi/lib/submodule/comparator")
 local In = include("washi/lib/submodule/in")
 local Out = include("washi/lib/submodule/out")
+local CvOut = include("washi/lib/submodule/cv_out")
 
 local paperface = include("washi/lib/paperface")
 local patching = include("washi/lib/patching")
@@ -109,15 +110,15 @@ function Haleseq.new(id, STATE,
   for vs=1, nb_vsteps do
     local label = output_nb_to_name(vs)
     local llabel = string.lower(label)
-    local o = Out.new(p.fqid.."_"..llabel, p,
+    local o = CvOut.new(p.fqid.."_"..llabel, p,
                       stage_start_x + p.nb_steps, vs+1)
     p.cv_outs[vs] = o
   end
-  -- ABCD
+  -- ABCD (mux)
   local mux_label = mux_output_nb_to_name(nb_vsteps)
   local mux_llabel = string.lower(mux_label)
-  p.cv_outs[nb_vsteps+1] = Out.new(p.fqid.."_"..mux_llabel, p,
-                                   stage_start_x + p.nb_steps + 1, nb_vsteps+2)
+  p.cv_outs[nb_vsteps+1] = CvOut.new(p.fqid.."_"..mux_llabel, p,
+                                     stage_start_x + p.nb_steps + 1, nb_vsteps+2)
 
 
   -- --------------------------------
@@ -251,30 +252,6 @@ function Haleseq.init(id, STATE, nb_steps, nb_vsteps,
   local h = Haleseq.new(id, STATE, nb_steps, nb_vsteps,
                         page_id, x, y)
   h:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[h.i_clock.id] = h.i_clock
-    STATE.ins[h.i_vclock.id] = h.i_vclock
-    STATE.ins[h.i_reset.id] = h.i_reset
-    STATE.ins[h.i_vreset.id] = h.i_vreset
-    STATE.ins[h.i_preset.id] = h.i_preset
-    STATE.ins[h.i_preset_reset.id] = h.i_preset_reset
-    STATE.ins[h.i_hold.id] = h.i_hold
-    STATE.ins[h.i_reverse.id] = h.i_reverse
-
-    for _, s in ipairs(h.stages) do
-      STATE.ins[s.i.id] = s.i
-      STATE.outs[s.o.id] = s.o
-    end
-
-    STATE.outs[h.cpo.id] = h.cpo
-    STATE.outs[h.aep.id] = h.aep
-
-    for _, cv in ipairs(h.cv_outs) do
-      STATE.outs[cv.id] = cv
-    end
-
-  end
   return h
 end
 
@@ -957,6 +934,8 @@ function Haleseq:redraw()
     self:redraw_stage(s, stage)
   end
 
+  -- if true then return end
+
   -- vseq
   for vs=1,self.nb_vsteps do
     local o = self.cv_outs[vs]
@@ -967,7 +946,7 @@ function Haleseq:redraw()
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
 
-    paperface.trig_out(x, y, trig, tame)
+    paperface.cv_out(x, y, trig, tame)
     if not trig and at then
       local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
       paperface.banana(x, y, false, level)
@@ -977,7 +956,7 @@ function Haleseq:redraw()
   local mux_o = self.cv_outs[self.nb_vsteps+1]
 
   tame = paperface.should_tame_out_redraw(mux_o)
-  paperface.trig_out_spe(paperface.panel_grid_to_screen_x(mux_o.x), paperface.panel_grid_to_screen_y(mux_o.y), trig_mux, tame)
+  paperface.cv_out_spe(paperface.panel_grid_to_screen_x(mux_o.x), paperface.panel_grid_to_screen_y(mux_o.y), trig_mux, tame)
 
   -- CPO - Common Pulse Out
   -- (preset change gate out)

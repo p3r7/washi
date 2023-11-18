@@ -7,8 +7,10 @@ local paperface = {}
 
 
 -- ------------------------------------------------------------------------
+-- deps
 
 local Stage = include("washi/lib/submodule/stage")
+
 include("washi/lib/consts")
 
 
@@ -45,6 +47,14 @@ end
 
 function paperface.panel_grid_to_screen_y(v)
   return paperface.panel_grid_to_screen_x(v) + SCREEN_STAGE_Y_OFFSET
+end
+
+function paperface.screen_x_to_panel_grid(v)
+  return math.floor((v / SCREEN_STAGE_W) + 1)
+end
+
+function paperface.screen_y_to_panel_grid(v)
+  return math.floor(paperface.screen_x_to_panel_grid(v - SCREEN_STAGE_Y_OFFSET ))
 end
 
 
@@ -230,9 +240,18 @@ function paperface.knob(x, y, v, l)
   screen.line(arc_start_x, arc_start_y)
 
   local arc_offset = KNB_BLINDSPOT_PCT * math.pi*2 / 100
-  screen.arc(round(x), round(y), radius,
-             math.pi/2 + (arc_offset/2),
-             math.pi/2 + (arc_offset/2) + util.linlin(0, v_max, 0, math.pi * 2 - ARC_OVERSHOOT_COMP, v))
+  if norns then
+    screen.arc(round(x), round(y), radius,
+               math.pi/2 + (arc_offset/2),
+               math.pi/2 + (arc_offset/2) + util.linlin(0, v_max, 0, math.pi * 2 - ARC_OVERSHOOT_COMP, v))
+  end
+  if seamstress then
+    -- FIXME: doesn't do shit
+    screen.move(round(x), round(y))
+    -- screen.arc(radius,
+    --            math.pi/2 + (arc_offset/2),
+    --            math.pi/2 + (arc_offset/2) + util.linlin(0, v_max, 0, math.pi * 2 - ARC_OVERSHOOT_COMP, v))
+  end
 
   screen.move(round(x), round(y))
   screen.line(arc_end_x, arc_end_y)
@@ -243,17 +262,35 @@ end
 -- ------------------------------------------------------------------------
 -- screen - connectors
 
-function paperface.banana(x, y, fill, level)
+function paperface.banana(x, y, fill, level, color)
   screen.aa(1)
+
   if level == nil then level = SCREEN_LEVEL_BANANA end
   screen.level(level)
+
+  if seamstress and color then
+    screen.color(table.unpack(color))
+  end
+
   local radius = math.floor((SCREEN_STAGE_W/2) - 1)
-  screen.move(x + radius + 1, y)
-  screen.circle(x + radius + 1, y + radius + 1, radius)
-  if fill then
-    screen.fill()
-  else
-    screen.stroke()
+  if norns then
+    screen.move(x + radius + 1, y)
+    screen.circle(x + radius + 1, y + radius + 1, radius)
+    if fill then
+      screen.fill()
+    else
+      screen.stroke()
+    end
+  end
+
+  if seamstress then
+    radius = radius + 1
+    screen.move(x+radius, y+radius)
+    if fill then
+      screen.circle_fill(radius)
+    else
+      screen.circle(radius)
+    end
   end
 end
 
@@ -267,12 +304,19 @@ function paperface.rect_label(x, y, l)
   if l == nil then l = SCREEN_LEVEL_LABEL end
   screen.level(l)
 
-  screen.move(x, y)
-  screen.line(x, y + SCREEN_STAGE_W)
-  screen.stroke()
-  screen.move(x + SCREEN_STAGE_W, y)
-  screen.line(x + SCREEN_STAGE_W, y + SCREEN_STAGE_W)
-  screen.stroke()
+  -- if norns then
+    screen.move(x, y)
+    screen.line(x, y + SCREEN_STAGE_W)
+    screen.stroke()
+    screen.move(x + SCREEN_STAGE_W, y)
+    screen.line(x + SCREEN_STAGE_W, y + SCREEN_STAGE_W)
+    screen.stroke()
+  -- end
+
+  -- if seamstress then
+    -- screen.move(x, y)
+    -- screen.rect(SCREEN_STAGE_W, SCREEN_STAGE_W)
+  -- end
 end
 
 
@@ -295,7 +339,18 @@ function paperface.main_in_label(x, y, l)
   -- screen.line(x, y + SCREEN_STAGE_W/2)
   -- screen.stroke()
 
-  screen.display_png(norns.state.path .. "img/main_input.png", x, y)
+  if norns then
+    screen.display_png(norns.state.path .. "img/main_input.png", x, y)
+  end
+
+  if seamstress then
+    if TXTR_MAIN_IN == nil then
+      TXTR_MAIN_IN = screen.new_texture_from_file(seamstress.state.path .. "/img/main_input.png")
+    end
+
+    TXTR_MAIN_IN:render(x, y, 1)
+  end
+
 end
 
 -- panel graphic (square)
@@ -305,8 +360,14 @@ function paperface.trig_out_label(x, y, l)
   if l == nil then l = SCREEN_LEVEL_LABEL end
   screen.level(l)
 
-  screen.rect(x, y, SCREEN_STAGE_W, SCREEN_STAGE_W)
-  screen.stroke()
+  if norns then
+    screen.rect(x, y, SCREEN_STAGE_W, SCREEN_STAGE_W)
+    screen.stroke()
+  end
+  if seamstress then
+    screen.move(x, y)
+    screen.rect(SCREEN_STAGE_W+1, SCREEN_STAGE_W+1)
+  end
 end
 
 -- panel graphic (triangle)
@@ -363,24 +424,7 @@ function paperface.main_in(x, y, trig, tame)
   paperface.main_in_label(x, y)
   if trig then
     local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, level)
-  end
-end
-
-function paperface.trig_out_spe(x, y, trig, tame)
-  paperface.trig_out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
-  if trig then
-    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, level)
-  end
-end
-
-function paperface.trig_out(x, y, trig, tame)
-  local l = SCREEN_LEVEL_LABEL
-  paperface.trig_out_label(x, y, l)
-  if trig then
-    l = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, l)
+    paperface.banana(x, y, trig, level, COLOR_BANANA_CV_IN)
   end
 end
 
@@ -390,8 +434,41 @@ function paperface.trig_in(x, y, trig, filled, tame)
   -- nana
   if trig then
     local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, level)
+    paperface.banana(x, y, trig, level, COLOR_BANANA_TRIG_IN)
   end
+end
+
+function paperface.out(x, y, trig, tame, out_type, label_level)
+  if label_level == nil then label_level = SCREEN_LEVEL_LABEL end
+  paperface.trig_out_label(x, y, label_level)
+
+  local color
+  if out_type == "TRIG" then
+    color = COLOR_BANANA_TRIG_OUT
+  elseif out_type == "CV" then
+    color = COLOR_BANANA_CV_OUT
+  end
+
+  if trig then
+    l = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+    paperface.banana(x, y, trig, l, color)
+  end
+end
+
+function paperface.trig_out(x, y, trig, tame)
+  paperface.out(x, y, trig, tame, "TRIG")
+end
+
+function paperface.trig_out_spe(x, y, trig, tame)
+  paperface.out(x, y, trig, tame, "TRIG", SCREEN_LEVEL_LABEL_SPE)
+end
+
+function paperface.cv_out(x, y, trig, tame)
+  paperface.out(x, y, trig, tame, "CV")
+end
+
+function paperface.cv_out_spe(x, y, trig, tame)
+  paperface.out(x, y, trig, tame, "CV", SCREEN_LEVEL_LABEL_SPE)
 end
 
 function paperface.is_in_selected(i)
@@ -449,7 +526,11 @@ function paperface.out_redraw(o)
   local y = paperface.panel_grid_to_screen_y(o.y)
   local triggered = paperface.is_out_selected(o) or (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
   local tame = paperface.should_tame_out_redraw(o)
-  paperface.trig_out(x, y, triggered, tame)
+  if o.kind == 'out' then
+    paperface.trig_out(x, y, triggered, tame)
+  elseif o.kind == 'cv_out' then
+    paperface.cv_out(x, y, triggered, tame)
+  end
 end
 
 function paperface.module_redraw(m)

@@ -1,3 +1,4 @@
 [submodule "lib/nb"]
 	path = lib/nb
-	url = https://github.com/sixolet/nb.git
+	url = https://github.com/p3r7/nb.git
+	branch = seamstress-support

@@ -71,14 +71,6 @@ function QuantizedClock.init(id, STATE, mclock_div, divs,
                              page_id, x, y)
   local q = QuantizedClock.new(id, STATE, mclock_div, divs, nil,
                                page_id, x, y)
-
-  if STATE ~= nil then
-    STATE.ins[q.i.id] = q.i
-    for _, o in ipairs(q.div_outs) do
-      STATE.outs[o.id] = o
-    end
-  end
-
   return q
 end
 
@@ -158,11 +150,11 @@ function QuantizedClock:redraw()
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
 
-    local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
-    -- paperface.trig_out(x, y, trig)
-
-    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
+    screen.level(SCREEN_LEVEL_LABEL)
+    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_LABEL_Y_OFFSET)
     screen.text(v)
+
+    local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
 
     -- NB: dummy input linked to norns clock
     -- quantized clock is implemented as a standard pulse divider

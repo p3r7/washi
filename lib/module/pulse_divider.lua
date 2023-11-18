@@ -116,16 +116,6 @@ function PulseDivider.init(id, STATE, divs,
                              page_id, x, y)
 
   q:init_params()
-
-  if STATE ~= nil then
-    STATE.ins[q.i.id] = q.i
-    STATE.ins[q.i_clock_select.id] = q.i_clock_select
-    STATE.ins[q.i_reset.id] = q.i_reset
-    for _, o in ipairs(q.div_outs) do
-      STATE.outs[o.id] = o
-    end
-  end
-
   return q
 end
 
@@ -198,11 +188,12 @@ function PulseDivider:redraw()
   paperface.module_redraw(self)
 
   -- labels
+  screen.level(SCREEN_LEVEL_LABEL)
   for i, v in ipairs(self.divs) do
     local o = self.div_outs[i]
     local x = paperface.panel_grid_to_screen_x(o.x)
     local y = paperface.panel_grid_to_screen_y(o.y)
-    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_STAGE_W - 2)
+    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_LABEL_Y_OFFSET)
     screen.text("/"..v)
   end
 end

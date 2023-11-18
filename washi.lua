@@ -21,12 +21,14 @@ local lattice = require "lattice"
 local musicutil = require "musicutil"
 local UI = require "ui"
 
-local nb = include("washi/lib/nb/lib/nb")
+nb = include("washi/lib/nb/lib/nb")
 local inspect = include("washi/lib/inspect")
 
 local paperface = include("washi/lib/paperface")
 local patching = include("washi/lib/patching")
 local Scope = include("washi/lib/scope")
+
+local patch = include("washi/lib/patch")
 
 -- modules
 local NornsClock = include("washi/lib/module/norns_clock")
@@ -36,6 +38,12 @@ local Rvg = include("washi/lib/module/rvg")
 local LfoBank = include("washi/lib/module/lfo_bank")
 local Haleseq = include("washi/lib/module/haleseq")
 local Output = include("washi/lib/module/output")
+
+local kbdutil
+if seamstress ~= nil then
+  include("washi/lib/seamstress_norns_compat")
+  kbdutil = include("washi/lib/kbdutil")
+end
 
 include("washi/lib/core")
 include("washi/lib/consts")
@@ -63,6 +71,7 @@ end
 table.insert(page_list, 'outputs')
 local pages = UI.Pages.new(1, #page_list)
 pages:set_index(tab.key(page_list, 'haleseq 1'))
+-- pages:set_index(tab.key(page_list, 'outputs'))
 
 local DIAL_W = 20
 
@@ -82,6 +91,7 @@ local dialOffset = UI.Dial.new(SCREEN_W/4 + SCREEN_W/2 - DIAL_W, SCREEN_H * 3/4 
                                0,
                                {0, 250, 500, 750},
                                "V")
+
 
 -- ------------------------------------------------------------------------
 -- patching
@@ -169,257 +179,6 @@ local function fire_and_propagate(in_label, initial_v)
                                      in_label, initial_v)
 end
 
-local function rnd_std_cv_out_llabel_for_haleseq(h)
-  return string.lower(output_nb_to_name(math.random(h.nb_vsteps)))
-end
-
-local function rnd_cv_out_llabel_for_haleseq(h)
-  local out_label = ""
-  if rnd() < 0.5 then
-    return string.lower(mux_output_nb_to_name(h.nb_vsteps))
-  else
-    return output_nb_to_name(math.random(h.nb_vsteps))
-  end
-end
-
-
--- ------------------------------------------------------------------------
--- whole patch
-
-local function init_patch()
-  add_link("norns_clock", "quantized_clock_global")
-
-  -- add_link("haleseq_2_abcd", "pulse_divider_1_clock_div")
-  add_link("pulse_divider_1_3", "haleseq_2_vclock")
-
-  -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
-  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
-  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
-  add_link("pulse_divider_1_7", "haleseq_1_vclock")
-
-  add_link("pulse_divider_1_3", "haleseq_2_vclock")
-
-  -- add_link("haleseq_1_a", "haleseq_2_clock")
-  add_link("haleseq_1_abcd", "haleseq_2_preset")
-
-  -- add_link("lfo_bank_1_1", "haleseq_2_preset")
-  -- add_link("rvg_1_smooth", "haleseq_2_preset")
-  -- add_link("lfo_bank_2_5", "haleseq_2_preset")
-  -- add_link("rvg_1_stepped", "haleseq_2_preset")
-
-  -- add_link("haleseq_1_abcd", "lfos_1_rate")
-  -- add_link("haleseq_2_a", "lfos_1_shape")
-
-  add_link("haleseq_1_abcd", "output_1")
-  add_link("haleseq_2_abcd", "output_2")
-  add_link("haleseq_1_a", "output_3")
-  add_link("haleseq_2_a", "output_4")
-  add_link("haleseq_2_b", "output_5")
-
-
-  -- FIXME: self-patching doesn't work
-  -- add_link("haleseq_1_stage_5", "haleseq_1_stage_3")
-
-  -- FIXME: x-patching doesn't work
-  -- add_link("haleseq_1_stage_5", "haleseq_2_stage_3") -- works
-  -- add_link("pulse_divider_1_3", "haleseq_2_clock")
-  -- add_link("haleseq_1_stage_5", "haleseq_2_stage_3") -- does not
-
-  -- add_link("rvg_1_smooth", "lfo_bank_2_rate")
-  -- add_link("lfo_bank_2_1", "output_2_vel")
-  -- add_link("lfo_bank_2_4", "output_2_dur")
-
-  add_link("lfo_bank_2_3", "output_2_mod")
-end
-
-
-local function rnd_mod_module()
-  local out_type = math.random(3)
-  if out_type == 1 then -- RVG
-    return rvgs[tab.count(rvgs)]
-  elseif out_type == 2 then -- LFO
-    return lfos[tab.count(lfos)]
-  elseif out_type == 3 then -- haleseq
-    return haleseqs[tab.count(haleseqs)]
-  end
-end
-
-local function rnd_other_mod_module(m)
-  local m2 = rnd_mod_module()
-  if m ~= nil then
-    while m2.fqid == m.fqid do
-      m2 = rnd_mod_module()
-    end
-  end
-  return m2
-end
-
-local function rnd_mod_out_for_module(m2)
-  if m2.kind == 'haleseq' then
-    if rnd() < 0.5 then
-      return m2.cv_outs[m2.nb_vsteps + 1] -- mux out
-    else
-      return m2.cv_outs[math.random(m2.nb_vsteps)]
-    end
-  elseif m2.kind == 'lfo_bank' then
-    return m2.wave_outs[math.random(tab.count(m2.wave_outs))]
-  elseif m2.kind == 'rvg' then
-    if rnd() < 0.50 then
-      return m2.o_smooth
-    else
-      return m2.o_stepped
-    end
-  end
-end
-
-local function rnd_mod_out_other_module(m)
-  local m2 = rnd_other_mod_module(m)
-  return rnd_mod_out_for_module(m2)
-end
-
-local function rnd_out_other_module(m)
-  local nb_outs = tab.count(outs)
-  local out_labels = tkeys(outs)
-  local ol = out_labels[math.random(nb_outs)]
-  local o = outs[ol]
-  while o.id == 'norns_clock' or o.parent.fqid == m.fqid do
-    ol = out_labels[math.random(nb_outs)]
-    o = outs[ol]
-  end
-  return o
-end
-
-
-local function rnd_patch()
-  tempty(STATE.links)
-  tempty(STATE.link_props)
-  STATE.selected_nana = nil
-  STATE.selected_link = nil
-
-
-  patching.clear_all_ins(STATE.ins)
-
-  add_link("norns_clock", "quantized_clock_global")
-
-  for _, pd in ipairs(pulse_dividers) do
-    params:set(pd.fqid.."_clock_div", math.random(#CLOCK_DIV_DENOMS))
-
-    if rnd() < 0.25 then
-      local from_out = rnd_mod_out_other_module(pd)
-      add_link(from_out.id, pd.fqid.."_clock_div")
-    end
-  end
-
-  for _, rvg in ipairs(rvgs) do
-    if rnd() < 0.25 then
-      local from_out = rnd_mod_out_other_module(rvg)
-      add_link(from_out.id, rvg.fqid.."_rate")
-    end
-  end
-
-  for _, lfo in ipairs(lfos) do
-    if rnd() < 0.1 then
-      local from_out = rnd_mod_out_other_module(lfo)
-      add_link(from_out.id, lfo.fqid.."_rate")
-    end
-    if rnd() < 0.1 then
-      local from_out = rnd_mod_out_other_module(lfo)
-      add_link(from_out.id, lfo.fqid.."_shape")
-    end
-    if rnd() < 0.1 then
-      local from_out = rnd_mod_out_other_module(lfo)
-      add_link(from_out.id, lfo.fqid.."_hold")
-    end
-  end
-
-  for i, h in ipairs(haleseqs) do
-    local has_in_preset_cv_patched = ((i == 1) and rnd() < 0.01 or rnd() < 0.5)
-
-    if has_in_preset_cv_patched then
-      -- patch from haleseq_1 to the others' preset
-      local from_out = rnd_mod_out_other_module(h)
-
-      add_link(from_out.id, "haleseq_"..i.."_preset")
-    end
-
-    -- clock
-    if not has_in_preset_cv_patched or rnd() < 0.1 then
-      params:set("clock_div_"..h.id, math.random(#CLOCK_DIVS-1)+1)
-    else
-      params:set("clock_div_"..h.id, tab.key(CLOCK_DIVS, 'off'))
-
-      local pd_id = math.random(tab.count(pulse_dividers))
-      local pd = pulse_dividers[pd_id]
-      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], h.fqid.."_clock")
-    end
-
-    -- vclock
-    if rnd() < 0.5 then
-      params:set("vclock_div_"..h.id, math.random(#CLOCK_DIVS-1)+1)
-    else
-      params:set("vclock_div_"..h.id, tab.key(CLOCK_DIVS, 'off'))
-
-      local pd_id = math.random(tab.count(pulse_dividers))
-      local pd = pulse_dividers[pd_id]
-      add_link(pd.fqid.."_"..pd.divs[math.random(tab.count(pd.divs))], h.fqid.."_vclock")
-    end
-
-    if rnd() < 0.1 then
-    -- if true then
-      local ol = rnd_out_other_module(h).id
-      print(ol .. " -> " .. h.fqid.."_reset")
-      add_link(ol, h.fqid.."_reset")
-    end
-    if rnd() < 0.1 then
-      add_link(rnd_out_other_module(h).id, h.fqid.."_vreset")
-    end
-    if rnd() < 0.1 then
-      add_link(rnd_out_other_module(h).id, h.fqid.."_preset_reset")
-    end
-    if rnd() < 0.8 then
-      add_link(rnd_out_other_module(h).id, h.fqid.."_hold")
-    end
-    if rnd() < 0.1 then
-      add_link(rnd_out_other_module(h).id, h.fqid.."_reverse")
-    end
-
-    if params:get(h.fqid.."_preset") > (3 * h.nb_steps / 4) then
-      params:set(h.fqid.."_preset", math.random(round(3 * h.nb_steps / 4)))
-    end
-  end
-
-  local assigned_outs = {}
-  for i, output in ipairs(outputs) do
-    if i <= 2 then
-      add_link("haleseq_"..i.."_abcd", "output_"..i)
-    else
-      local haleseq_id = math.random(tab.count(haleseqs))
-      local cv_llabel = rnd_std_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
-      local out_label = "haleseq_"..haleseq_id.."_"..cv_llabel
-      while tab.contains(assigned_outs, out_label) do
-        haleseq_id = math.random(tab.count(haleseqs))
-        cv_llabel = rnd_std_cv_out_llabel_for_haleseq(haleseqs[haleseq_id])
-        out_label = "haleseq_"..haleseq_id.."_"..cv_llabel
-      end
-
-      table.insert(assigned_outs, out_label)
-      add_link(out_label, "output_"..i)
-    end
-
-    if rnd() < 0.1 then
-      add_link(rnd_mod_out_other_module(output).id, output.fqid.."_dur")
-    end
-    if rnd() < 0.1 then
-      add_link(rnd_mod_out_other_module(output).id, output.fqid.."_vel")
-    end
-    if i <= 2 or rnd() < 0.2 then
-      add_link(rnd_mod_out_other_module(output).id, output.fqid.."_mod")
-    end
-  end
-
-  -- DEBUG = true
-end
-
 
 -- ------------------------------------------------------------------------
 -- state
@@ -465,6 +224,7 @@ local function get_current_haleseq()
     end
   end
 end
+
 
 -- ------------------------------------------------------------------------
 -- state - sequence values
@@ -594,9 +354,28 @@ params.action_delete = function(filename, name, pset_number)
   os.execute("rm -f" .. filename .. PATCH_CONF_EXT)
 end
 
+if seamstress then
+  midi.add = function (dev, is_input)
+    if not is_input then
+      print("new midi out detected: "..dev.name)
+      nb.add_midi_player_seamstress(dev)
+      -- update all
+      for _, o in ipairs(outputs) do
+        -- patched to update if already set
+        nb:add_param("nb_voice_" .. o.id, "nb Voice " .. o.id)
+      end
+    end
+  end
+end
+
+
 function init()
   screen.aa(0)
   screen.line_width(1)
+
+  if seamstress then
+     screen.set_size(SCREEN_W, SCREEN_H, 5)
+  end
 
   s_lattice = lattice:new{}
 
@@ -613,19 +392,33 @@ function init()
   -- --------------------------------
   -- global params
 
+  params:add_trigger("init_patch", "Init Patch")
+  params:set_action("init_patch",
+                    function(_v)
+                      patch.init(STATE)
+                    end
+  )
+
+  params:add_trigger("clear_patch", "Clear Patch")
+  params:set_action("clear_patch",
+                    function(_v)
+                      patch.clear(STATE)
+                    end
+  )
+
   params:add_trigger("rnd_all", "Randomize All")
   params:set_action("rnd_all",
                     function(_v)
                       params:set("rnd_seq_root", math.random(#musicutil.NOTE_NAMES))
                       params:set("rnd_seqs", 1)
-                      rnd_patch()
+                      patch.random(STATE, pulse_dividers, rvgs, lfos, haleseqs, outputs)
                     end
   )
 
   params:add_trigger("rnd_patch", "Randomize Patch")
   params:set_action("rnd_patch",
                     function(_v)
-                      rnd_patch()
+                      patch.random(STATE, pulse_dividers, rvgs, lfos, haleseqs, outputs)
                     end
   )
 
@@ -638,7 +431,6 @@ function init()
                       end
                     end
   )
-
 
   local RND_MODES = {'Scale', 'Blip Bloop'}
   params:add_option("rnd_seq_mode", "Rnd Mode", RND_MODES, tab.key(RND_MODES, 'Scale'))
@@ -700,7 +492,8 @@ function init()
                              tab.key(page_list, 'outputs'), ox, oy)
   end
 
-  init_patch()
+  patch.init(STATE)
+
 
   -- --------------------------------
 
@@ -759,6 +552,37 @@ function cleanup()
   s_lattice:destroy()
 end
 
+
+-- ------------------------------------------------------------------------
+-- ux - linking
+
+function select_or_link(nana)
+  if (nana.kind == 'in' or nana.kind == 'comparator') then
+    if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+      if STATE.grid_mode == M_LINK then
+        local action = toggle_link(STATE.selected_nana.id, nana.id)
+      elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
+        STATE.selected_link = {STATE.selected_nana.id, nana.id}
+      end
+    else
+      STATE.selected_nana = nana
+      STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    end
+  end
+
+  if nana.kind == 'out' then
+    if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+      if STATE.grid_mode == M_LINK then
+        toggle_link(nana.id, STATE.selected_nana.id)
+      elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
+        STATE.selected_link = {nana.id, STATE.selected_nana.id}
+      end
+    else
+      STATE.selected_nana = nana
+      STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    end
+  end
+end
 
 -- ------------------------------------------------------------------------
 -- grid
@@ -875,32 +699,35 @@ function grid_key(x, y, z)
       return
     end
 
-    if (nana.kind == 'in' or nana.kind == 'comparator') and z >= 1 then
-      if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
-        if STATE.grid_mode == M_LINK then
-          local action = toggle_link(STATE.selected_nana.id, nana.id)
-        elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
-          STATE.selected_link = {STATE.selected_nana.id, nana.id}
-        end
-      else
-        STATE.selected_nana = nana
-        STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
-      end
+    if z >= 1 then
+      select_or_link(nana)
     end
 
-    if nana.kind == 'out' and z >= 1 then
-      if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
-        if STATE.grid_mode == M_LINK then
-          toggle_link(nana.id, STATE.selected_nana.id)
-        elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
-          STATE.selected_link = {nana.id, STATE.selected_nana.id}
-        end
-      else
-        STATE.selected_nana = nana
-        STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
-      end
-    end
-    -- return
+    -- if (nana.kind == 'in' or nana.kind == 'comparator') and z >= 1 then
+    --   if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+    --     if STATE.grid_mode == M_LINK then
+    --       local action = toggle_link(STATE.selected_nana.id, nana.id)
+    --     elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
+    --       STATE.selected_link = {STATE.selected_nana.id, nana.id}
+    --     end
+    --   else
+    --     STATE.selected_nana = nana
+    --     STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    --   end
+    -- end
+
+    -- if nana.kind == 'out' and z >= 1 then
+    --   if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+    --     if STATE.grid_mode == M_LINK then
+    --       toggle_link(nana.id, STATE.selected_nana.id)
+    --     elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
+    --       STATE.selected_link = {nana.id, STATE.selected_nana.id}
+    --     end
+    --   else
+    --     STATE.selected_nana = nana
+    --     STATE.selected_link = get_first_link_maybe(STATE.selected_nana)
+    --   end
+    -- end
   else
     STATE.scope:clear()
     STATE.selected_nana = nil
@@ -918,8 +745,88 @@ function grid_key(x, y, z)
 
 end
 
+
 -- ------------------------------------------------------------------------
--- controls
+-- mouse
+
+screen.click = function(x, y, state, button)
+
+  if state >= 1 then
+    local curr_page = pages.index
+    local screen_coord = curr_page.."."..paperface.screen_x_to_panel_grid(x).."."..paperface.screen_y_to_panel_grid(y)
+    local nana = STATE.coords_to_nana[screen_coord]
+
+    if nana == nil then
+      STATE.scope:clear()
+      STATE.selected_nana = nil
+      STATE.selected_link = nil
+      STATE.grid_mode = M_SCOPE
+      return
+    end
+
+    if button == 1 then -- left click
+      STATE.grid_mode = M_LINK
+      select_or_link(nana)
+    end
+
+    if button == 3 then --right click
+      STATE.grid_mode = M_SCOPE
+      STATE.scope:assoc(nana)
+    end
+
+  end
+end
+
+
+-- ------------------------------------------------------------------------
+-- keys / encs
+
+if seamstress then
+  screen.key = function(char, modifiers, is_repeat, state)
+
+    if char == nil then
+      return
+    end
+
+    if type(char) == "string" then
+      if char == "s" and state >= 1 then
+        STATE.grid_mode = M_SCOPE
+      end
+
+      if char == "r" and state >= 1 then
+        if #modifiers == 0 then
+          params:set("rnd_seqs", 1)
+          params:set("rnd_seqs", 0)
+        elseif kbdutil.isShift(modifiers) then
+          params:set("rnd_all", 1)
+          params:set("rnd_all", 0)
+        end
+      end
+
+      if char == "i" and kbdutil.isShift(modifiers) and state >= 1 then
+        params:set("init_patch", 1)
+        params:set("init_patch", 0)
+      end
+
+      if char == "c" and kbdutil.isShift(modifiers) and state >= 1 then
+        params:set("clear_patch", 1)
+        params:set("clear_patch", 0)
+      end
+    end
+
+    if char.name ~= nil then
+      if char.name == "up" and state >= 1 then
+        STATE.scope:clear()
+        pages:set_index_delta(-1, false)
+      end
+      if char.name == "down" and state >= 1 then
+        STATE.scope:clear()
+        pages:set_index_delta(1, false)
+      end
+    end
+
+  end
+end
 
 local k1 = false
 local k3 = false
@@ -1094,18 +1001,21 @@ function redraw()
   elseif curr_page == 'mod' then
     rvgs[1]:redraw()
     lfos[1]:redraw()
+    screen.level(SCREEN_LEVEL_LABEL)
     for i, phase in ipairs(LFO_PHASES) do
       if tab.contains({0, 90, 180, 270}, phase) then
         local x = paperface.panel_grid_to_screen_x(lfos[1].x + 1) + SCREEN_STAGE_W + 2
-        local y = paperface.panel_grid_to_screen_y(i) + SCREEN_STAGE_W - 2
+        local y = paperface.panel_grid_to_screen_y(i) + SCREEN_LABEL_Y_OFFSET
         screen.move(x, y)
-        screen.text(phase.."°")
+        if norns then phase = phase.."°" end
+        screen.text(phase)
       end
     end
     lfos[2]:redraw()
+    screen.level(SCREEN_LEVEL_LABEL)
     local x = paperface.panel_grid_to_screen_x(lfos[2].x + 1) + SCREEN_STAGE_W + 2
-    local yf = paperface.panel_grid_to_screen_y(1) + SCREEN_STAGE_W - 2
-    local ys = paperface.panel_grid_to_screen_y(7) + SCREEN_STAGE_W - 2
+    local yf = paperface.panel_grid_to_screen_y(1) + SCREEN_LABEL_Y_OFFSET
+    local ys = paperface.panel_grid_to_screen_y(7) + SCREEN_LABEL_Y_OFFSET
     screen.move(x, yf)
     screen.text("f")
     screen.move(x, ys)

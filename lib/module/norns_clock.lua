@@ -51,12 +51,6 @@ function NornsClock.init(STATE,
                         page_id, x, y)
   local c = NornsClock.new(STATE,
                            page_id, x, y)
-
-  if STATE ~= nil then
-    STATE.ins[c.i.id] = c.i
-    STATE.outs[c.o.id] = c.o
-  end
-
   return c
 end
 
@@ -107,6 +101,7 @@ function NornsClock:redraw(mult_trig)
 
   paperface.trig_out(x, y, mult_trig, tame)
 
+  screen.level(SCREEN_LEVEL_LABEL)
   screen.move(x, y + 2 * SCREEN_STAGE_W - 2)
   screen.text(params:get("clock_tempo"))
   screen.move(x, y + 3 * SCREEN_STAGE_W - 2)
