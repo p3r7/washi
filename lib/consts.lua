@@ -75,7 +75,6 @@ SCREEN_H = 64
 -- ------------------------------------------------------------------------
 -- screen - paperface
 
--- local SCREEN_STAGE_W = 15
 -- local SCREEN_STAGE_Y_OFFSET = 12
 SCREEN_STAGE_Y_OFFSET = 1
 
@@ -92,7 +91,8 @@ SCREEN_LW_LINK = 1
 SCREEN_LW_LINK_FOCUSED = 1.5
 
 if norns then
-  SCREEN_LABEL_Y_OFFSET = SCREEN_STAGE_W - 2
+  SCREEN_STAGE_W = 15
+  SCREEN_LABEL_Y_OFFSET = SCREEN_STAGE_W - 8
 end
 if seamstress then
   SCREEN_LABEL_Y_OFFSET = 2
