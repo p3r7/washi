@@ -68,7 +68,7 @@ function In:register(out_label, v)
 end
 
 function In:update()
-  local now = os.clock()
+  local now = self.parent.STATE.superclk_t
   local old_v = self.v
 
   self.last_updated_t = now

@@ -100,13 +100,15 @@ function paperface.in_grid_redraw(i, g, l)
     return
   end
 
+  local scock_t = i.parent.STATE.superclk_t
   if i.kind == 'comparator' then
-    local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
+    local triggered = ( i.status == 1
+                        or ((scock_t - i.last_up_t) < LINK_TRIG_DRAW_T) )
     if triggered then
       l = 10
     end
   elseif i.kind == 'in' then
-    local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+    local triggered = ( (scock_t - i.last_changed_t) < LINK_TRIG_DRAW_T )
     if triggered then
       l = 10
     end
@@ -135,8 +137,8 @@ function paperface.out_grid_redraw(o, g, l)
     return
   end
 
-
-  if (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T) then
+  local sclock_t = o.parent.STATE.superclk_t
+  if ( (sclock_t - o.last_changed_t) < LINK_TRIG_DRAW_T ) then
     l = 10
   end
   g:led(x, y, l)
@@ -506,12 +508,15 @@ function paperface.in_redraw(i)
 
   local x = paperface.panel_grid_to_screen_x(i.x)
   local y = paperface.panel_grid_to_screen_y(i.y)
+  local sclock_t = i.parent.STATE.superclk_t
   if i.kind == 'comparator' then
-    local triggered = paperface.is_in_selected(i) or ((i.status == 1) or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
+    local triggered = ( paperface.is_in_selected(i)
+                        or ( (i.status == 1) or ( (sclock_t - i.last_up_t) < LINK_TRIG_DRAW_T) ) )
     local tame = paperface.should_tame_in_redraw(i)
     paperface.trig_in(x, y, triggered, false, tame)
   elseif i.kind == 'in' then
-    local triggered = paperface.is_in_selected(i) or (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+    local triggered = paperface.is_in_selected(i)
+      or ( (sclock_t - i.last_changed_t) < LINK_TRIG_DRAW_T )
     local tame = paperface.should_tame_in_redraw(i)
     paperface.main_in(x, y, triggered, tame)
   end
@@ -524,7 +529,9 @@ function paperface.out_redraw(o)
 
   local x = paperface.panel_grid_to_screen_x(o.x)
   local y = paperface.panel_grid_to_screen_y(o.y)
-  local triggered = paperface.is_out_selected(o) or (math.abs(os.clock() - o.last_changed_t) < LINK_TRIG_DRAW_T)
+  local sclock_t = o.parent.STATE.superclk_t
+  local triggered = ( paperface.is_out_selected(o)
+                      or ( (sclock_t - o.last_changed_t) < LINK_TRIG_DRAW_T ) )
   local tame = paperface.should_tame_out_redraw(o)
   if o.kind == 'out' then
     paperface.trig_out(x, y, triggered, tame)
@@ -660,13 +667,15 @@ function paperface.redraw_active_links(outs, ins, curr_page, draw_mode)
       goto NEXT_IN_ACTIVE_LINK
     end
 
+    local sclock_t = i.parent.STATE.superclk_t
     if i.kind == 'comparator' then
-      local triggered = (i.status == 1 or (math.abs(os.clock() - i.last_up_t) < LINK_TRIG_DRAW_T))
+      local triggered = ( i.status == 1
+                          or ( (sclock_t - i.last_up_t) < LINK_TRIG_DRAW_T ) )
       if triggered then
         paperface.draw_input_links(outs, i, curr_page, draw_mode)
       end
     elseif i.kind == 'in' then
-      local triggered = (math.abs(os.clock() - i.last_changed_t) < LINK_TRIG_DRAW_T)
+      local triggered = ( (sclock_t - i.last_changed_t) < LINK_TRIG_DRAW_T )
       if triggered then
         paperface.draw_input_links(outs, i, curr_page, draw_mode)
       end

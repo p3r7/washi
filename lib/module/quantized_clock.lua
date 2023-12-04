@@ -154,7 +154,7 @@ function QuantizedClock:redraw()
     screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_LABEL_Y_OFFSET)
     screen.text(v)
 
-    local trig = ( (math.abs(os.clock() - o.last_changed_t) < NANA_TRIG_DRAW_T))
+    local trig = ( (self.STATE.superclk_t - o.last_changed_t) < NANA_TRIG_DRAW_T )
 
     -- NB: dummy input linked to norns clock
     -- quantized clock is implemented as a standard pulse divider

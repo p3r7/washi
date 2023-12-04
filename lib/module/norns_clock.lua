@@ -90,7 +90,7 @@ end
 -- screen
 
 function NornsClock:redraw(mult_trig)
-    -- local trig = (math.abs(os.clock() - last_mclock_tick_t) < PULSE_T)
+  -- local trig = ((self.parent.STATE.superclk_t - last_mclock_tick_t) < PULSE_T)
 
   local x = paperface.panel_grid_to_screen_x(self.x)
   local y = paperface.panel_grid_to_screen_y(self.y)

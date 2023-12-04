@@ -80,7 +80,7 @@ end
 
 function Comparator:update()
   local prev_status = self.status
-  local now = os.clock()
+  local now = self.parent.STATE.superclk_t
 
   -- if self.id == "haleseq_1_clock" then
   --   dbgf('----------------')

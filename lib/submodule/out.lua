@@ -46,7 +46,7 @@ end
 -- accessors
 
 function Out:update(v)
-  local now = os.clock()
+  local now = self.parent.STATE.superclk_t
   local old_v = self.v
 
   self.last_updated_t = now

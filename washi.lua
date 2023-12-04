@@ -103,6 +103,9 @@ link_props = {}
 coords_to_nana = {}
 
 STATE = {
+  -- super clock counter
+  superclk_t = 0,
+
   -- patch
   ins = ins,
   outs = outs,
@@ -278,7 +281,7 @@ is_doing_stuff = false
 
 function mclock_tick(t, forced)
   if mclock_acum % (MCLOCK_DIVS / NB_BARS) == 0 then
-    last_mclock_tick_t = os.clock()
+    last_mclock_tick_t = STATE.superclk_t
   end
   if not forced then
     mclock_acum = mclock_acum + 1
@@ -302,6 +305,7 @@ end
 
 local redraw_clock
 local grid_redraw_clock
+local super_clock
 
 function get_first_nb_voice_midi_param_option_id(voice_id)
   local nb_voices = params:lookup_param("nb_voice_"..voice_id).options
@@ -524,6 +528,14 @@ function init()
       while true do
         clock.sleep(step_s)
         grid_redraw()
+      end
+  end)
+
+  super_clock = clock.run(
+    function()
+      while true do
+        clock.sleep(SCLOCK_FREQ)
+        STATE.superclk_t = STATE.superclk_t + SCLOCK_FREQ
       end
   end)
 
@@ -879,7 +891,7 @@ function enc(n, d)
       h:knob(n, d)
 
       -- retrig note to get a preview
-      if (math.abs(os.clock() - last_enc_note_play_t) >= PULSE_T) then
+      if ((STATE.superclk_t - last_enc_note_play_t) >= PULSE_T) then
         local vs = h:knob_vs()
         local volts = h:knob_volts()
 
@@ -903,7 +915,7 @@ function enc(n, d)
           end
         end
 
-        last_enc_note_play_t = os.clock()
+        last_enc_note_play_t = STATE.superclk_t
       end
       return
     end

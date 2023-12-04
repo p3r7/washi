@@ -4,8 +4,8 @@
 -- SCREEN & GRID
 
 if seamstress then
-  -- FPS = 60
-  FPS = 15
+  FPS = 60
+  -- FPS = 15
 else
   FPS = 15
 end
@@ -14,20 +14,26 @@ GRID_FPS = 15
 
 
 -- ------------------------------------------------------------------------
--- clock
+-- clock - seconds
+
+SCLOCK_FREQ = 1/20
+
+TRIG_S = 1/10
+
+PULSE_T = 1/10
+
+NANA_TRIG_DRAW_T = 1/5
+LINK_TRIG_DRAW_T = 1/5
+
+
+-- ------------------------------------------------------------------------
+-- (quantized) clock - bars
 
 MCLOCK_DIVS = 64
 NB_BARS = 2
 
 CLOCK_DIV_DENOMS = {1, 2, 4, 8, 16, 32, 64}
 CLOCK_DIVS = {'off', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64'}
-
-TRIG_S = 0.01
-
-PULSE_T = 0.02 -- FIXME: don't use os.clock() but a lattice clock for stable gate beahvior
-
-NANA_TRIG_DRAW_T = 0.04
-LINK_TRIG_DRAW_T = 0.04
 
 
 -- ------------------------------------------------------------------------
