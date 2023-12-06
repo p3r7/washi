@@ -14,7 +14,7 @@ on norns, on can just:
 
     ;install https://github.com/p3r7/washi
 
-in the cli:
+using the cli:
 
     git clone --recursive https://github.com/p3r7/washi
 
