@@ -808,21 +808,17 @@ if seamstress then
       if char == "r" and state >= 1 then
         if #modifiers == 0 then
           params:set("rnd_seqs", 1)
-          params:set("rnd_seqs", 0)
         elseif kbdutil.isShift(modifiers) then
           params:set("rnd_all", 1)
-          params:set("rnd_all", 0)
         end
       end
 
       if char == "i" and kbdutil.isShift(modifiers) and state >= 1 then
         params:set("init_patch", 1)
-        params:set("init_patch", 0)
       end
 
       if char == "c" and kbdutil.isShift(modifiers) and state >= 1 then
         params:set("clear_patch", 1)
-        params:set("clear_patch", 0)
       end
     end
 
