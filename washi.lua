@@ -115,6 +115,9 @@ STATE = {
   -- panel coords to banana LUT
   coords_to_nana = coords_to_nana,
 
+  -- screen
+  screen_dirty = true,
+
   -- grid
   grid_mode = M_PLAY,
   selected_nana = nil,
@@ -194,9 +197,11 @@ local has_grid = false
 local g_knob = nil
 local g_btn = nil
 
+
 function should_display_grid_cursor()
   return (has_grid and g.cols < SCREEN_STAGE_X_NB)
 end
+
 
 function grid_connect_maybe(_g)
   if not has_grid then
@@ -209,6 +214,7 @@ function grid_connect_maybe(_g)
     end
   end
 end
+
 
 function grid_remove_maybe(_g)
   if g.device.port == _g.port then
@@ -519,7 +525,10 @@ function init()
       local step_s = 1 / FPS
       while true do
         clock.sleep(step_s)
-        redraw()
+        if STATE.screen_dirty then
+          redraw()
+          STATE.screen_dirty = false
+        end
       end
   end)
   grid_redraw_clock = clock.run(
@@ -662,19 +671,23 @@ function grid_key(x, y, z)
     -- STATE.selected_nana = nil
     -- STATE.selected_link = nil
     STATE.scope:clear()
+    STATE.screen_dirty = true
     return
   elseif y == 1 and x == 2 and z >= 1 then
     STATE.grid_mode = M_SCOPE
     -- STATE.selected_nana = nil
     -- STATE.selected_link = nil
+    STATE.screen_dirty = true
     return
   elseif y == 1 and x == 3 and z >= 1 then
     STATE.grid_mode = M_LINK
     STATE.scope:clear()
+    STATE.screen_dirty = true
     return
   elseif y == 1 and x == 4 and z >= 1 then
     STATE.grid_mode = M_EDIT
     STATE.scope:clear()
+    STATE.screen_dirty = true
     return
   end
 
@@ -687,6 +700,7 @@ function grid_key(x, y, z)
       if STATE.grid_cursor ~= prev_v then
         STATE.scope:clear()
       end
+      STATE.screen_dirty = true
       return
     end
   end
@@ -708,6 +722,7 @@ function grid_key(x, y, z)
       else
         STATE.scope:clear()
       end
+      STATE.screen_dirty = true
       return
     end
 
@@ -747,12 +762,14 @@ function grid_key(x, y, z)
   end
 
   if STATE.grid_mode ~= M_PLAY then
+    STATE.screen_dirty = true
     return
   end
 
   local h = get_current_haleseq()
   if h ~= nil then
     h:grid_key(x, y, z)
+    STATE.screen_dirty = true
   end
 
 end
@@ -833,6 +850,7 @@ if seamstress then
       end
     end
 
+    STATE.screen_dirty = true
   end
 end
 
@@ -851,6 +869,7 @@ function key(n, v)
 
   if k1 and k3 then
     params:set("rnd_all", 1)
+    STATE.screen_dirty = true
   end
 end
 
@@ -868,6 +887,7 @@ function enc(n, d)
         lprops.offset = util.clamp(lprops.offset + d * 5, 0, V_MAX)
       end
     end
+    STATE.screen_dirty = true
     return
   end
 
@@ -913,6 +933,8 @@ function enc(n, d)
 
         last_enc_note_play_t = STATE.superclk_t
       end
+
+      STATE.screen_dirty = true
       return
     end
 
@@ -937,12 +959,14 @@ function enc(n, d)
       if STATE.grid_cursor ~= prev_v then
         STATE.scope:clear()
       end
+      STATE.screen_dirty = true
       return
     end
 
     -- params:set("clock_tempo", params:get("clock_tempo") + d)
     STATE.scope:clear()
     pages:set_index_delta(d, false)
+    STATE.screen_dirty = true
     return
   end
 end

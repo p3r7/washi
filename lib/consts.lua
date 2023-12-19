@@ -4,8 +4,8 @@
 -- SCREEN & GRID
 
 if seamstress then
-  -- FPS = 60
-  FPS = 15
+  FPS = 60
+  -- FPS = 15
 else
   FPS = 15
 end

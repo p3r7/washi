@@ -115,6 +115,8 @@ function Comparator:update()
     else
       self.last_down_t = now
     end
+
+    self.parent.STATE.screen_dirty = true
   end
 
   -- if self.id == "haleseq_1_clock" then

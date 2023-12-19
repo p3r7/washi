@@ -84,6 +84,7 @@ function In:update()
   self.changed = (old_v ~= self.v)
   if self.changed then
     self.last_changed_t = now
+    self.parent.STATE.screen_dirty = true
   end
 
   if self.callback then

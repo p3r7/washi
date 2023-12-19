@@ -56,6 +56,7 @@ function Out:update(v)
   self.changed = (old_v ~= self.v)
   if self.changed then
     self.last_changed_t = now
+    self.parent.STATE.screen_dirty = true
   end
 end
 
