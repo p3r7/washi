@@ -389,26 +389,43 @@ function paperface.trig_in_label(x, y, l, fill)
   end
   screen.level(l)
 
-  if fill then
+  if norns then
+    if fill then
       screen.move(x, y)
       -- NB: needed the 0.5s to get clean triangle edge
       screen.line(x + SCREEN_STAGE_W / 2 + 0.5, y + SCREEN_STAGE_W / 2 + 0.5)
       screen.line(x + SCREEN_STAGE_W, y)
       screen.fill()
-  else
-    -- NB: for some reason looks better if doing a stroke in between
+    else
+      -- NB: for some reason looks better if doing a stroke in between
+      screen.move(x, y)
+      screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+      screen.stroke()
+
+      screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+      screen.line(x + SCREEN_STAGE_W, y)
+      screen.stroke()
+
+      screen.move(x, y)
+      screen.line(x + SCREEN_STAGE_W, y)
+      screen.stroke()
+    end
+  elseif seamstress then
+    x = x + 1
+    local half_w = math.floor(SCREEN_STAGE_W / 2)
     screen.move(x, y)
-    screen.line(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
+    screen.line(x + half_w, y + SCREEN_STAGE_W / 2)
     screen.stroke()
 
-    screen.move(x + SCREEN_STAGE_W / 2, y + SCREEN_STAGE_W / 2)
-    screen.line(x + SCREEN_STAGE_W, y)
+    screen.move(x + half_w, y + SCREEN_STAGE_W / 2)
+    screen.line(x + SCREEN_STAGE_W - 1, y)
     screen.stroke()
 
     screen.move(x, y)
-    screen.line(x + SCREEN_STAGE_W, y)
+    screen.line(x + SCREEN_STAGE_W - 1, y)
     screen.stroke()
   end
+
 end
 
 function paperface.trig_in_label_filled(x, y, l)
