@@ -125,10 +125,12 @@ STATE = {
   mouse_potential_link_valid = false,
   nana_under_cursor = nil,
 
-  -- grid
-  grid_mode = M_PLAY,
+  -- selection
   selected_nana = nil,
   selected_link = nil,
+
+  -- grid
+  grid_mode = M_PLAY,
   scope = nil,
 
   -- for 64 grids...
