@@ -117,6 +117,13 @@ STATE = {
 
   -- screen
   screen_dirty = true,
+  mouse_clicked_left = false,
+  mouse_x = 0,
+  mouse_y = 0,
+  mouse_panel_x = 0,
+  mouse_panel_y = 0,
+  mouse_potential_link_valid = false,
+  nana_under_cursor = nil,
 
   -- grid
   grid_mode = M_PLAY,
@@ -173,7 +180,7 @@ local function get_in_first_link_maybe(i)
 end
 
 local function get_first_link_maybe(nana)
-  if nana.kind == 'out' then
+  if patching.is_out(nana) then
     return get_out_first_link_maybe(nana)
   else
     return get_in_first_link_maybe(nana)
@@ -577,9 +584,23 @@ end
 -- ------------------------------------------------------------------------
 -- ux - linking
 
+function valid_link(nana1, nana2)
+  if nana1.fqid == nana2.fqid then
+    return false
+  end
+
+  if patching.is_in(nana1) then
+    return patching.is_out(nana2)
+  end
+
+  if patching.is_out(nana1) then
+    return patching.is_in(nana2)
+  end
+end
+
 function select_or_link(nana)
-  if (nana.kind == 'in' or nana.kind == 'comparator') then
-    if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+  if patching.is_in(nana) then
+    if (STATE.selected_nana ~= nil and patching.is_out(STATE.selected_nana)) then
       if STATE.grid_mode == M_LINK then
         local action = toggle_link(STATE.selected_nana.id, nana.id)
       elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
@@ -591,8 +612,8 @@ function select_or_link(nana)
     end
   end
 
-  if nana.kind == 'out' then
-    if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+  if patching.is_out(nana) then
+    if (STATE.selected_nana ~= nil and patching.is_in(STATE.selected_nana)) then
       if STATE.grid_mode == M_LINK then
         toggle_link(nana.id, STATE.selected_nana.id)
       elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
@@ -730,8 +751,8 @@ function grid_key(x, y, z)
       select_or_link(nana)
     end
 
-    -- if (nana.kind == 'in' or nana.kind == 'comparator') and z >= 1 then
-    --   if (STATE.selected_nana ~= nil and STATE.selected_nana.kind == 'out') then
+    -- if patching.is_in(nana) and z >= 1 then
+    --   if (STATE.selected_nana ~= nil and patching.is_out(STATE.selected_nana)) then
     --     if STATE.grid_mode == M_LINK then
     --       local action = toggle_link(STATE.selected_nana.id, nana.id)
     --     elseif STATE.grid_mode == M_EDIT and are_linked(STATE.selected_nana.id, nana.id) then
@@ -743,8 +764,8 @@ function grid_key(x, y, z)
     --   end
     -- end
 
-    -- if nana.kind == 'out' and z >= 1 then
-    --   if (STATE.selected_nana ~= nil and (STATE.selected_nana.kind == 'in' or STATE.selected_nana.kind == 'comparator')) then
+    -- if patching.is_out(nana) and z >= 1 then
+    --   if patching.is_in(STATE.selected_nana) then
     --     if STATE.grid_mode == M_LINK then
     --       toggle_link(nana.id, STATE.selected_nana.id)
     --     elseif STATE.grid_mode == M_EDIT and are_linked(nana.id, STATE.selected_nana.id) then
@@ -778,22 +799,34 @@ end
 -- ------------------------------------------------------------------------
 -- mouse
 
+local function nana_at_screen_coord(page_id, x, y)
+  local panel_coords = page_id.."."..paperface.screen_x_to_panel_grid(x).."."..paperface.screen_y_to_panel_grid(y)
+  return STATE.coords_to_nana[panel_coords]
+end
+
+local function reset_selection()
+  STATE.scope:clear()
+  STATE.selected_nana = nil
+  STATE.selected_link = nil
+  -- TODO: don't switch mode!
+  STATE.grid_mode = M_SCOPE
+end
+
 screen.click = function(x, y, state, button)
+  if button == 1 then
+    STATE.mouse_clicked_left = (state >= 1)
+  end
 
   if state >= 1 then
-    local curr_page = pages.index
-    local screen_coord = curr_page.."."..paperface.screen_x_to_panel_grid(x).."."..paperface.screen_y_to_panel_grid(y)
-    local nana = STATE.coords_to_nana[screen_coord]
+    local nana = nana_at_screen_coord(pages.index, x, y)
 
     if nana == nil then
-      STATE.scope:clear()
-      STATE.selected_nana = nil
-      STATE.selected_link = nil
-      STATE.grid_mode = M_SCOPE
+      reset_selection()
       return
     end
 
     if button == 1 then -- left click
+      print(nana.fqid)
       STATE.grid_mode = M_LINK
       select_or_link(nana)
     end
@@ -802,7 +835,30 @@ screen.click = function(x, y, state, button)
       STATE.grid_mode = M_SCOPE
       STATE.scope:assoc(nana)
     end
+  end
+end
 
+screen.mouse = function(x, y)
+  STATE.mouse_x, STATE.mouse_y = x, y
+  local prev_mouse_panel_x = STATE.mouse_panel_x
+  local prev_mouse_panel_y = STATE.mouse_panel_y
+  STATE.mouse_panel_x, STATE.mouse_panel_y = paperface.screen_x_to_panel_grid(x), paperface.screen_y_to_panel_grid(y)
+
+  local changed_panel_coord = (prev_mouse_panel_x ~= STATE.mouse_panel_x or prev_mouse_panel_y ~= STATE.mouse_panel_y )
+
+  if changed_panel_coord then
+    STATE.nana_under_cursor = nana_at_screen_coord(pages.index, x, y)
+  end
+
+  if STATE.selected_nana and changed_panel_coord then
+
+    if not STATE.nana_under_cursor then
+      STATE.mouse_potential_link_valid = false
+    else
+      STATE.mouse_potential_link_valid = valid_link(STATE.selected_nana, STATE.nana_under_cursor)
+    end
+
+    STATE.screen_dirty = true
   end
 end
 
@@ -840,9 +896,12 @@ if seamstress then
     end
 
     if char.name ~= nil then
+      if char.name == "escape" and state >= 1 then
+        reset_selection()
+      end
       if char.name == "up" and state >= 1 then
-        STATE.scope:clear()
-        pages:set_index_delta(-1, false)
+          STATE.scope:clear()
+          pages:set_index_delta(-1, false)
       end
       if char.name == "down" and state >= 1 then
         STATE.scope:clear()
@@ -1098,6 +1157,12 @@ function redraw()
     -- TODO: here
     paperface.redraw_nana_links(outs, ins, links,
                                 STATE.selected_nana, pages.index, DRAW_M_FOCUS)
+
+    if seamstress then
+      paperface.draw_link(STATE.selected_nana.x, STATE.selected_nana.y, STATE.selected_nana.parent.page,
+                          STATE.mouse_panel_x, STATE.mouse_panel_y, pages.index,
+                          pages.index)
+    end
   end
 
   screen.update()

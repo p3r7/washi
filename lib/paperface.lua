@@ -10,6 +10,7 @@ local paperface = {}
 -- deps
 
 local Stage = include("washi/lib/submodule/stage")
+local patching = include("washi/lib/patching")
 
 include("washi/lib/consts")
 
@@ -328,7 +329,7 @@ function paperface.main_in_label(x, y, l)
 
   x = x - 2
 
-  -- if l == nil then l = SCREEN_LEVEL_LABEL end
+  if l == nil then l = SCREEN_LEVEL_LABEL end
   -- screen.level(l)
 
   -- screen.move(x, y + SCREEN_STAGE_W/2)
@@ -346,11 +347,36 @@ function paperface.main_in_label(x, y, l)
   end
 
   if seamstress then
-    if TXTR_MAIN_IN == nil then
-      TXTR_MAIN_IN = screen.new_texture_from_file(seamstress.state.path .. "/img/main_input.png")
-    end
 
-    TXTR_MAIN_IN:render(x, y, 1)
+    -- if TXTR_MAIN_IN == nil then
+    --   TXTR_MAIN_IN = screen.new_texture_from_file(seamstress.state.path .. "/img/main_input.png")
+    -- end
+
+    -- TXTR_MAIN_IN:render(x, y, 1)
+
+    screen.level(l)
+
+    y = y - 1
+
+    screen.move(x, y + SCREEN_STAGE_W / 2)
+    screen.line(x + (SCREEN_STAGE_W / 2) - 1, y + 1)
+    screen.move(x, y + SCREEN_STAGE_W / 2)
+    screen.line(x + (SCREEN_STAGE_W / 2) - 1, y + SCREEN_STAGE_W - 2)
+
+    x = x + (SCREEN_STAGE_W / 2)
+    screen.move(x, y + 1)
+    screen.line(x, y + SCREEN_STAGE_W - 2)
+
+    x = x + 2
+    screen.move(x, y + 1)
+    screen.line(x, y + SCREEN_STAGE_W - 2)
+
+    x = x + 1
+    screen.move(x, y + 1)
+    screen.line(x + (SCREEN_STAGE_W / 2) - 2, y + SCREEN_STAGE_W / 2)
+    screen.move(x, y + SCREEN_STAGE_W - 2)
+    screen.line(x + (SCREEN_STAGE_W / 2) - 2, y + SCREEN_STAGE_W / 2)
+
   end
 
 end
@@ -415,15 +441,12 @@ function paperface.trig_in_label(x, y, l, fill)
     local half_w = math.floor(SCREEN_STAGE_W / 2)
     screen.move(x, y)
     screen.line(x + half_w, y + SCREEN_STAGE_W / 2)
-    screen.stroke()
 
     screen.move(x + half_w, y + SCREEN_STAGE_W / 2)
     screen.line(x + SCREEN_STAGE_W - 1, y)
-    screen.stroke()
 
     screen.move(x, y)
     screen.line(x + SCREEN_STAGE_W - 1, y)
-    screen.stroke()
   end
 
 end
@@ -493,28 +516,28 @@ end
 function paperface.is_in_selected(i)
   return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
           and i.parent.STATE.selected_nana ~= nil
-          and (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
+          and patching.is_in(i.parent.STATE.selected_nana.kind)
           and i.parent.STATE.selected_nana.id == i.id)
 end
 
 function paperface.is_out_selected(o)
   return ((o.parent.STATE.grid_mode == M_LINK or o.parent.STATE.grid_mode == M_EDIT)
           and o.parent.STATE.selected_nana ~= nil
-          and o.parent.STATE.selected_nana.kind == 'out'
+          and patching.is_out(o.parent.STATE.selected_nana.kind)
           and o.parent.STATE.selected_nana.id == o.id)
 end
 
 function paperface.should_tame_in_redraw(i)
   return ((i.parent.STATE.grid_mode == M_LINK or i.parent.STATE.grid_mode == M_EDIT)
           and (i.parent.STATE.selected_nana == nil
-               or not (i.parent.STATE.selected_nana.kind == 'in' or i.parent.STATE.selected_nana.kind == 'comparator')
+               or not patching.is_in(i.parent.STATE.selected_nana.kind)
                or i.parent.STATE.selected_nana.id ~= i.id))
 end
 
 function paperface.should_tame_out_redraw(o)
   return ((o.parent.STATE.grid_mode == M_LINK or o.parent.STATE.grid_mode == M_EDIT)
           and (o.parent.STATE.selected_nana == nil
-               or not (o.parent.STATE.selected_nana.kind == 'out')
+               or not patching.is_out(o.parent.STATE.selected_nana.kind)
                or o.parent.STATE.selected_nana.id ~= o.id))
 end
 
@@ -654,7 +677,7 @@ function paperface.draw_output_links(ins, links, o, curr_page, draw_mode)
 end
 
 function paperface.redraw_nana_links(outs, ins, links, nana, curr_page, draw_mode)
-  if nana.kind == 'in' or nana.kind == 'comparator' then
+  if patching.is_in(nana) then
     paperface.draw_input_links(outs, nana, curr_page, draw_mode)
   else
     paperface.draw_output_links(ins, links, nana, curr_page, draw_mode)

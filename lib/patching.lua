@@ -98,6 +98,14 @@ end
 -- ------------------------------------------------------------------------
 -- LOOKUP
 
+function patching.is_in(nana)
+  return (nana.kind == 'in' or nana.kind == 'comparator')
+end
+
+function patching.is_out(nana)
+  return (nana.kind == 'out' or nana.kind == 'cv_out')
+end
+
 function patching.ins_from_labels(ins, in_labels)
   local res = {}
 
