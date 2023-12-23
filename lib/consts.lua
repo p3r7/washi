@@ -79,7 +79,7 @@ SCREEN_H = 64
 
 
 -- ------------------------------------------------------------------------
--- screen - paperface
+-- screen - paperface - grayscale
 
 -- local SCREEN_STAGE_Y_OFFSET = 12
 SCREEN_STAGE_Y_OFFSET = 1
@@ -107,11 +107,30 @@ end
 DRAW_M_NORMAL = nil
 DRAW_M_TAME = 'tamed'
 DRAW_M_FOCUS = 'focus'
+DRAW_M_INVALID = 'invalid'
+DRAW_M_VALID = 'valid'
+
+
+-- ------------------------------------------------------------------------
+-- screen - paperface - color (seamstress)
+
+COLOR_BG = {0, 0, 0}
+COLOR_LABEL = {63, 63, 63}
+COLOR_LABEL_SPE = {164, 164, 164}
 
 COLOR_BANANA_CV_IN = {128, 128, 128}
 COLOR_BANANA_TRIG_IN = {255, 255, 255}
 COLOR_BANANA_CV_OUT = {0, 0, 255}
 COLOR_BANANA_TRIG_OUT = {255, 0, 0}
+
+COLOR_LINK = {164, 164, 164}
+COLOR_LINK_FOCUSED = {164, 164, 164}
+COLOR_LINK_TAMED = {63, 63, 63}
+COLOR_INVALID = {95, 57, 57}
+COLOR_VALID = {141, 187, 187}
+
+-- COLOR_BG = {248, 247, 234}
+-- COLOR_LABEL = {0, 145, 190}
 
 
 -- ------------------------------------------------------------------------

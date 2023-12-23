@@ -230,3 +230,15 @@ function grid_level_radio(g, cond, redraw_counter)
 
   return (cond and 10 or 2)
 end
+
+
+-- -------------------------------------------------------------------------
+-- screen
+
+function screen_size()
+  if seamstress then
+    return screen.get_size()
+  elseif norns then
+    return 128, 64
+  end
+end

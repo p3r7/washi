@@ -1080,7 +1080,15 @@ function redraw_link_edit()
 end
 
 function redraw()
+  local screen_w, screen_h = screen_size()
+
   screen.clear()
+
+  if seamstress then
+    screen.move(1, 1)
+    screen.color(table.unpack(COLOR_BG))
+    screen.rect_fill(screen_w, screen_h)
+  end
 
   pages:redraw()
 
@@ -1159,9 +1167,10 @@ function redraw()
                                 STATE.selected_nana, pages.index, DRAW_M_FOCUS)
 
     if seamstress then
+      local draw_mode = STATE.mouse_potential_link_valid and DRAW_M_VALID or DRAW_M_INVALID
       paperface.draw_link(STATE.selected_nana.x, STATE.selected_nana.y, STATE.selected_nana.parent.page,
                           STATE.mouse_panel_x, STATE.mouse_panel_y, pages.index,
-                          pages.index)
+                          pages.index, draw_mode)
     end
   end
 

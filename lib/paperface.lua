@@ -614,14 +614,28 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mod
 
   local level = SCREEN_LEVEL_LINK
   local lw = SCREEN_LW_LINK
+  local col = COLOR_LINK
   if draw_mode == DRAW_M_TAME then
     level = SCREEN_LEVEL_LINK_TAMED
+    col = COLOR_LINK_TAMED
   elseif draw_mode == DRAW_M_FOCUS then
     lw = SCREEN_LW_LINK_FOCUSED
+    col = COLOR_LINK_FOCUSED
+  elseif draw_mode == DRAW_M_VALID then
+    col = COLOR_VALID
+  elseif draw_mode == DRAW_M_INVALID then
+    col = COLOR_INVALID
   end
 
-  screen.line_width(lw)
-  screen.level(level)
+  if norns then
+    screen.line_width(lw)
+    screen.level(level)
+  end
+
+  if seamstress then
+    screen.color(table.unpack(col))
+  end
+
   screen.move(startx, starty)
   screen.curve(midx, starty, midx, endy, endx, endy)
   screen.stroke()
