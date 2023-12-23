@@ -144,6 +144,17 @@ local function remove_link(from_id, to_id)
   patching.remove_link(links, from_id, to_id)
 end
 
+local function remove_all_links(nana)
+  if patching.is_out(nana) then
+    local targets = links[nana.id]
+    while tab.count(targets) > 0 do
+      remove_link(nana.id, targets[1])
+    end
+  else
+    -- TODO:
+  end
+end
+
 local function toggle_link(from_id, to_id)
   local action = patching.toggle_link(links, from_id, to_id)
   if action == A_ADDED then
@@ -899,9 +910,14 @@ if seamstress then
       if char.name == "escape" and state >= 1 then
         reset_selection()
       end
+      if char.name == "backspace" and state >= 1 then
+        if kbdutil.isShift(modifiers) and STATE.selected_nana then
+          remove_all_links(STATE.selected_nana)
+        end
+      end
       if char.name == "up" and state >= 1 then
-          STATE.scope:clear()
-          pages:set_index_delta(-1, false)
+        STATE.scope:clear()
+        pages:set_index_delta(-1, false)
       end
       if char.name == "down" and state >= 1 then
         STATE.scope:clear()
