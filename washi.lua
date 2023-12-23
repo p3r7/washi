@@ -585,7 +585,7 @@ end
 -- ux - linking
 
 function valid_link(nana1, nana2)
-  if nana1.fqid == nana2.fqid then
+  if nana1.id == nana2.id then
     return false
   end
 
