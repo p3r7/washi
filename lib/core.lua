@@ -35,6 +35,7 @@ function dbgf(v, level)
   DEBUG = prev_debug
 end
 
+
 -- ------------------------------------------------------------------------
 -- math
 
@@ -180,8 +181,9 @@ end
 
 
 -- ------------------------------------------------------------------------
--- time
+-- timing
 
+-- relative pulse width
 function pulse_width_dur(width_pct, nb_bars)
   if nb_bars == nil then nb_bars = 1 end
   local bar_bpm = params:get("clock_tempo") / nb_bars
@@ -189,6 +191,11 @@ function pulse_width_dur(width_pct, nb_bars)
   local beat_dur = 60 / bar_bpm
 
   return width_pct * beat_dur / 100
+end
+
+-- absolute pulse width
+function trig_threshold_time()
+  return PULSE_T
 end
 
 

@@ -875,26 +875,13 @@ function Haleseq:redraw_stage(s, stage)
   -- trig out
   -- paperface.out_redraw(stage.o) -- NB: misbehaving
   local at = (self.step == s)
-  local play_trig = at and ((self.STATE.superclk_t - self.last_step_t) < PULSE_T)
+  local play_trig = at and ((self.STATE.superclk_t - self.last_step_t) < trig_threshold_time())
   trig = paperface.is_out_selected(stage.o) or play_trig
   local tame = paperface.should_tame_out_redraw(stage.o)
   paperface.trig_out(x, paperface.panel_grid_to_screen_y(stage.o.y), trig, tame)
   if not trig and at then
     local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
     paperface.banana(x, paperface.panel_grid_to_screen_y(stage.o.y), false, level)
-  end
-
-  -- trig in
-  trig = paperface.is_in_selected(stage.i) or (self.g_btn == s)
-  if params:get(self.fqid.."_preset") == s then
-    if (self.g_btn == s) then -- FIXME: bad test
-      paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), true)
-    else
-      -- paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), false, true)
-      paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), paperface.is_in_selected(stage.i), true)
-    end
-  else
-    paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), trig)
   end
 
   -- vals (knobs)
@@ -924,6 +911,19 @@ function Haleseq:redraw_stage(s, stage)
   local mode_y = paperface.panel_grid_to_screen_y(stage.y+self.nb_vsteps+1)
   paperface.rect_label(x, mode_y)
   paperface.mode_switch(x, mode_y, self.stages[s]:get_mode())
+
+  -- trig in
+  trig = paperface.is_in_selected(stage.i) or (self.g_btn == s)
+  if params:get(self.fqid.."_preset") == s then
+    if (self.g_btn == s) then -- FIXME: bad test
+      paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), true)
+    else
+      -- paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), false, true)
+      paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), paperface.is_in_selected(stage.i), true)
+    end
+  else
+    paperface.trig_in(x, paperface.panel_grid_to_screen_y(stage.i.y), trig)
+  end
 end
 
 function Haleseq:redraw()
@@ -940,7 +940,7 @@ function Haleseq:redraw()
   for vs=1,self.nb_vsteps do
     local o = self.cv_outs[vs]
     local at = (self.vstep == vs)
-    local trig = at and (self.STATE.superclk_t - self.last_vstep_t) < PULSE_T
+    local trig = at and (self.STATE.superclk_t - self.last_vstep_t) < trig_threshold_time()
     local tame = paperface.should_tame_out_redraw(o)
 
     local x = paperface.panel_grid_to_screen_x(o.x)
@@ -952,7 +952,7 @@ function Haleseq:redraw()
       paperface.banana(x, y, false, level)
     end
   end
-  local trig_mux = ((self.STATE.superclk_t - self.cv_outs[self.nb_vsteps+1].last_changed_t) < PULSE_T)
+  local trig_mux = ((self.STATE.superclk_t - self.cv_outs[self.nb_vsteps+1].last_changed_t) < trig_threshold_time())
   local mux_o = self.cv_outs[self.nb_vsteps+1]
 
   tame = paperface.should_tame_out_redraw(mux_o)
@@ -961,12 +961,12 @@ function Haleseq:redraw()
   -- CPO - Common Pulse Out
   -- (preset change gate out)
   local trig_cpo = (self.cpo.v > 0
-                    or ((self.STATE.superclk_t - self.cpo.last_changed_t) < PULSE_T))
+                    or ((self.STATE.superclk_t - self.cpo.last_changed_t) < trig_threshold_time()))
   tame = paperface.should_tame_out_redraw(self.cpo)
   paperface.trig_out_spe(paperface.panel_grid_to_screen_x(self.cpo.x), paperface.panel_grid_to_screen_y(self.cpo.y), trig_cpo, tame)
 
   -- AEP - All Event Pulse
-  local trig_aep = (self.aep.v > 0 or ((self.STATE.superclk_t - self.aep.last_changed_t) < PULSE_T))
+  local trig_aep = (self.aep.v > 0 or ((self.STATE.superclk_t - self.aep.last_changed_t) < trig_threshold_time()))
   tame = paperface.should_tame_out_redraw(self.aep)
   paperface.trig_out_spe(paperface.panel_grid_to_screen_x(self.aep.x), paperface.panel_grid_to_screen_y(self.aep.y), trig_aep, tame)
 

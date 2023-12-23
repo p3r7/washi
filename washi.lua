@@ -907,7 +907,7 @@ function enc(n, d)
       h:knob(n, d)
 
       -- retrig note to get a preview
-      if ((STATE.superclk_t - last_enc_note_play_t) >= PULSE_T) then
+      if ((STATE.superclk_t - last_enc_note_play_t) >= trig_threshold_time()) then
         local vs = h:knob_vs()
         local volts = h:knob_volts()
 
