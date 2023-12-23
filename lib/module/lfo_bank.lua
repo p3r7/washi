@@ -168,7 +168,6 @@ function LfoBank.new(id, STATE,
   end
 
   for i, phase in ipairs(phase_shifts) do
-    -- p.wave_outs[i] = Out.new(p.fqid.."_"..i, p, x+1, y+i-1)
     p.wave_outs[i] = CvOut.new(p.fqid.."_"..i, p, x+1, y+i-1)
   end
 
