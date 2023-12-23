@@ -837,7 +837,6 @@ screen.click = function(x, y, state, button)
     end
 
     if button == 1 then -- left click
-      print(nana.fqid)
       STATE.grid_mode = M_LINK
       select_or_link(nana)
     end
