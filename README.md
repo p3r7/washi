@@ -49,7 +49,6 @@ you can then assign more outputs to more voices, generate a new random patch (`K
 
 ## known bugs
 
-- init patch after clear doesn't work (very weird)
 - self-patching a haleseq doesn't work
   need to implement the trig ins as a "clock-0" instruction, i.e. immediate callback on input change instead of waiting for next clock occurence
 
