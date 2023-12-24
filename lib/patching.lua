@@ -46,6 +46,22 @@ function patching.remove_link(links, o, i)
   end
 end
 
+function patching.remove_all_links_with(links, nana)
+  if patching.is_out(nana) then
+    local targets = links[nana.id]
+    while tab.count(targets) > 0 do
+      patching.remove_link(links, nana.id, targets[1])
+    end
+  else
+    local from_outs = tkeys(nana.incoming_vals)
+    for _, o_id in ipairs(from_outs) do
+      if o_id ~= 'GLOBAL' then
+        patching.remove_link(links, o_id, nana.id)
+      end
+    end
+  end
+end
+
 function patching.are_linked(links, o_id, i_id)
   return (links[o_id] ~= nil and tab.contains(links[o_id], i_id))
 end

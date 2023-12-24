@@ -147,19 +147,7 @@ local function remove_link(from_id, to_id)
 end
 
 local function remove_all_links(nana)
-  if patching.is_out(nana) then
-    local targets = links[nana.id]
-    while tab.count(targets) > 0 do
-      remove_link(nana.id, targets[1])
-    end
-  else
-    local from_outs = tkeys(nana.incoming_vals)
-    for _, o_id in ipairs(from_outs) do
-      if o_id ~= 'GLOBAL' then
-        remove_link(o_id, nana.id)
-      end
-    end
-  end
+  patching.remove_all_links_with(links, nana)
 end
 
 local function toggle_link(from_id, to_id)
