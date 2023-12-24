@@ -109,6 +109,7 @@ DRAW_M_TAME = 'tamed'
 DRAW_M_FOCUS = 'focus'
 DRAW_M_INVALID = 'invalid'
 DRAW_M_VALID = 'valid'
+DRAW_M_DELETE = 'delete'
 
 
 -- ------------------------------------------------------------------------
@@ -126,8 +127,9 @@ COLOR_BANANA_TRIG_OUT = {255, 0, 0}
 COLOR_LINK = {164, 164, 164}
 COLOR_LINK_FOCUSED = {164, 164, 164}
 COLOR_LINK_TAMED = {63, 63, 63}
-COLOR_INVALID = {95, 57, 57}
+COLOR_INVALID = {100, 100, 100}
 COLOR_VALID = {141, 187, 187}
+COLOR_DELETE = {95, 57, 57}
 
 -- COLOR_BG = {248, 247, 234}
 -- COLOR_LABEL = {0, 145, 190}

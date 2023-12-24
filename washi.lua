@@ -123,6 +123,7 @@ STATE = {
   mouse_panel_x = 0,
   mouse_panel_y = 0,
   mouse_potential_link_valid = false,
+  mouse_potential_link_exists = false,
   nana_under_cursor = nil,
 
   -- selection
@@ -154,10 +155,12 @@ local function toggle_link(from_id, to_id)
   local action = patching.toggle_link(links, from_id, to_id)
   if action == A_ADDED then
     STATE.selected_link = {from_id, to_id}
+    STATE.mouse_potential_link_exists = true
   else -- A_REMOVED
     if STATE.selected_link ~= nil
       and are_coords_same(STATE.selected_link, {from_id, to_id}) then
       STATE.selected_link = nil
+      STATE.mouse_potential_link_exists = false
     end
   end
 end
@@ -590,6 +593,14 @@ end
 -- ------------------------------------------------------------------------
 -- ux - linking
 
+function exists_link(nana1, nana2)
+  if patching.is_out(nana1) then
+    return patching.are_linked(links, nana1.id, nana2.id)
+  else
+    return patching.are_linked(links, nana2.id, nana1.id)
+  end
+end
+
 function valid_link(nana1, nana2)
   if nana1.id == nana2.id then
     return false
@@ -859,8 +870,12 @@ screen.mouse = function(x, y)
 
     if not STATE.nana_under_cursor then
       STATE.mouse_potential_link_valid = false
+      STATE.mouse_potential_link_exists = false
     else
       STATE.mouse_potential_link_valid = valid_link(STATE.selected_nana, STATE.nana_under_cursor)
+      if STATE.mouse_potential_link_valid then
+        STATE.mouse_potential_link_exists = exists_link(STATE.selected_nana, STATE.nana_under_cursor)
+      end
     end
 
     STATE.screen_dirty = true
@@ -1177,7 +1192,12 @@ function redraw()
                                 STATE.selected_nana, pages.index, DRAW_M_FOCUS)
 
     if seamstress then
-      local draw_mode = STATE.mouse_potential_link_valid and DRAW_M_VALID or DRAW_M_INVALID
+      local draw_mode = DRAW_M_INVALID
+      if STATE.mouse_potential_link_exists then
+        draw_mode = DRAW_M_DELETE
+      elseif STATE.mouse_potential_link_valid then
+        draw_mode = DRAW_M_VALID
+      end
       paperface.draw_link(STATE.selected_nana.x, STATE.selected_nana.y, STATE.selected_nana.parent.page,
                           STATE.mouse_panel_x, STATE.mouse_panel_y, pages.index,
                           pages.index, draw_mode)

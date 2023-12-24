@@ -625,6 +625,8 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mod
     col = COLOR_VALID
   elseif draw_mode == DRAW_M_INVALID then
     col = COLOR_INVALID
+  elseif draw_mode == DRAW_M_DELETE then
+    col = COLOR_DELETE
   end
 
   if norns then
