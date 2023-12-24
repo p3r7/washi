@@ -30,6 +30,10 @@ function patch.clear(STATE)
 
   patching.clear_all_ins(STATE.ins)
 
+  -- NB: clear the param value so that calls to `patch.init` would detect a change
+  params:set("clock_div_"..1, tab.key(CLOCK_DIVS, 'off'))
+  params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, 'off'))
+
   add_link(STATE, "norns_clock", "quantized_clock_global")
 end
 
@@ -48,8 +52,8 @@ function patch.init(STATE)
   -- NB: creates links bewteen `quantized_clock_global` & `haleseq_1`
   params:set("clock_div_"..1, tab.key(CLOCK_DIVS, '1/16'))
   params:set("vclock_div_"..1, tab.key(CLOCK_DIVS, '1/2'))
-  add_link(STATE, "pulse_divider_1_7", "haleseq_1_vclock")
 
+  add_link(STATE, "pulse_divider_1_7", "haleseq_1_vclock")
   add_link(STATE, "pulse_divider_1_3", "haleseq_2_vclock")
 
   -- add_link(STATE, "haleseq_1_a", "haleseq_2_clock")
