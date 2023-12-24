@@ -45,6 +45,13 @@ you can then assign more outputs to more voices, generate a new random patch (`K
 - `UP`/`DOWN`: previous/next panel
 
 
+## known bugs
+
+- init patch after clear doesn't work (very weird)
+- self-patching a haleseq doesn't work
+  need to implement the trig ins as a "clock-0" instruction, i.e. immediate callback on input change instead of waiting for next clock occurence
+
+
 ## acknowledgments
 
 the heart of it is a reproduction of the hale [8 Stage Complex Sequencing Programmer](https://www.modulargrid.net/s/hale-8-stage-complex-sequencing-programmer), itself based on the classic Serge Sequencer / Programmer.
