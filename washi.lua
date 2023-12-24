@@ -153,7 +153,12 @@ local function remove_all_links(nana)
       remove_link(nana.id, targets[1])
     end
   else
-    -- TODO:
+    local from_outs = tkeys(nana.incoming_vals)
+    for _, o_id in ipairs(from_outs) do
+      if o_id ~= 'GLOBAL' then
+        remove_link(o_id, nana.id)
+      end
+    end
   end
 end
 
