@@ -98,6 +98,14 @@ end
 -- ------------------------------------------------------------------------
 -- LOOKUP
 
+function patching.is_known_in(ins, i_id)
+  return (ins[i_id] ~= nil)
+end
+
+function patching.is_known_out(outs, o_id)
+  return (outs[o_id] ~= nil)
+end
+
 function patching.is_in(nana)
   return (nana.kind == 'in' or nana.kind == 'comparator')
 end
@@ -120,6 +128,7 @@ function patching.ins_from_labels(ins, in_labels)
 
   return res
 end
+
 
 -- ------------------------------------------------------------------------
 -- EVAL - INPUT
@@ -175,7 +184,10 @@ function patching.clear_unlinked_ins_list(outs, ins, links, ins_list)
     local i = ins[in_label]
     if i ~= nil then
       for out_label, _v in pairs(i.incoming_vals) do
-        if outs[out_label] == nil or links[out_label] == nil or not tab.contains(links[out_label], in_label) then
+        if out_label ~= 'GLOBAL'
+          and not (patching.is_known_out(outs, out_label)
+                   and patching.are_linked(links, out_label, in_label)) then
+          -- print("clearing link " .. out_label .. " -> " .. in_label)
           i.incoming_vals[out_label] = nil
         end
       end
