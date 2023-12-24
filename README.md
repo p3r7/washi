@@ -59,7 +59,7 @@ Removing a link interactively calls `patching.remove_link` which removes the `ou
 
 indeed, at this stage we call `patching.module_clear_unlinked_ins` which forces those associations to get forgotten from each banana input.
 
-this is decision is questionable, it might be better to do this synchronously and only call `i:update()` if there is no remaining link to an input.
+this design decision was done for model/state decoupling but is questionable from a performance perspective. it might be better to do everything synchronously and only call `i:update()` if there is no remaining link to an input.
 
 
 ## acknowledgments
