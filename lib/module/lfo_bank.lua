@@ -151,7 +151,7 @@ function LfoBank.new(id, STATE,
 
   p.i_rate = In.new(p.fqid.."_rate", p, nil, x, y+4)
   p.i_shape = In.new(p.fqid.."_shape", p, nil, x, y+5)
-  p.i_hold = In.new(p.fqid.."_hold", p, nil, x, y+6)
+  p.i_hold = Comparator.new(p.fqid.."_hold", p, nil, x, y+6)
 
   p.wave_outs = {}
 
