@@ -886,8 +886,12 @@ end
 -- ------------------------------------------------------------------------
 -- keys / encs
 
+shift = false
+
 if seamstress then
   screen.key = function(char, modifiers, is_repeat, state)
+
+    shift = kbdutil.isShift(modifiers)
 
     if char == nil then
       return
@@ -1187,12 +1191,17 @@ function redraw()
     local to_id = STATE.selected_link[2]
     paperface.redraw_link(outs[from_id], ins[to_id], pages.index, DRAW_M_FOCUS)
   elseif STATE.selected_nana ~= nil then
-    -- TODO: here
+
+    local draw_mode = DRAW_M_FOCUS
+    if shift then
+      draw_mode = DRAW_M_DELETE
+    end
+
     paperface.redraw_nana_links(outs, ins, links,
-                                STATE.selected_nana, pages.index, DRAW_M_FOCUS)
+                                STATE.selected_nana, pages.index, draw_mode)
 
     if seamstress then
-      local draw_mode = DRAW_M_INVALID
+      draw_mode = DRAW_M_INVALID
       if STATE.mouse_potential_link_exists then
         draw_mode = DRAW_M_DELETE
       elseif STATE.mouse_potential_link_valid then
