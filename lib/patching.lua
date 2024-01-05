@@ -49,6 +49,9 @@ end
 function patching.remove_all_links_with(links, nana)
   if patching.is_out(nana) then
     local targets = links[nana.id]
+    if targets == nil then
+      return
+    end
     while tab.count(targets) > 0 do
       patching.remove_link(links, nana.id, targets[1])
     end
