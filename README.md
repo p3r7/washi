@@ -57,7 +57,7 @@ you can then assign more outputs to more voices, generate a new random patch (`K
 
 Removing a link interactively calls `patching.remove_link` which removes the `output -> input` association in the "model" synchronously, but this only takes effect on the state of concerned modules at the next patch evaluation (`patching.fire_and_propagate` / `patching.fire_and_propagate_from_out`).
 
-indeed, at this stage we call `patching.module_clear_unlinked_ins` which forces those associations to get forgotten from each banana input.
+indeed, at this stage we call `patching.clear_all_unlinked_ins` which forces those associations to get forgotten from each banana input.
 
 this design decision was done for model/state decoupling but is questionable from a performance perspective. it might be better to do everything synchronously and only call `i:update()` if there is no remaining link to an input.
 

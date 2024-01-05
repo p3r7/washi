@@ -198,9 +198,8 @@ function patching.clear_all_ins(ins)
   end
 end
 
-function patching.clear_unlinked_ins_list(outs, ins, links, ins_list)
-  for _, in_label in ipairs(ins_list) do
-    local i = ins[in_label]
+function patching.clear_all_unlinked_ins(outs, ins, links)
+  for in_label, i in pairs(ins) do
     if i ~= nil then
       for out_label, _v in pairs(i.incoming_vals) do
         if out_label ~= 'GLOBAL'
@@ -213,13 +212,6 @@ function patching.clear_unlinked_ins_list(outs, ins, links, ins_list)
       i:update()
     end
   end
-end
-
-function patching.module_clear_unlinked_ins(outs, ins, links, m)
-  if m.ins == nil then
-    return
-  end
-  patching.clear_unlinked_ins_list(outs, ins, links, m.ins)
 end
 
 function patching.module_update_all_ins(m)
@@ -367,11 +359,7 @@ function patching.fire_and_propagate(outs, ins, links, link_props,
   dbg("TRIGGERED MODULES")
   dbg("----------")
 
-  for level, modules in ipairs(fired_modules) do
-    for _, m in ipairs(modules) do
-      patching.module_clear_unlinked_ins(outs, ins, links, m)
-    end
-  end
+  patching.clear_all_unlinked_ins(outs, ins, links)
 
   for level, modules in ipairs(fired_modules) do
     for _, m in ipairs(modules) do
@@ -428,11 +416,7 @@ function patching.fire_and_propagate_from_out(outs, ins, links, link_props,
   dbg("TRIGGERED MODULES")
   dbg("----------")
 
-  for level, modules in ipairs(fired_modules) do
-    for _, m in ipairs(modules) do
-      patching.module_clear_unlinked_ins(outs, ins, links, m)
-    end
-  end
+  patching.clear_all_unlinked_ins(outs, ins, links)
 
   for level, modules in ipairs(fired_modules) do
 
