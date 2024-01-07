@@ -11,6 +11,7 @@ local CvOut = include("washi/lib/submodule/cv_out")
 
 local paperface = include("washi/lib/paperface")
 local patching = include("washi/lib/patching")
+local patch = include("washi/lib/patch")
 
 include("washi/lib/consts")
 include("washi/lib/core")
@@ -218,7 +219,7 @@ function Haleseq:init_params()
                       local clock_id = "haleseq_"..self.id.."_clock"
                       for o, ins in pairs(self.STATE.links) do
                         if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(self.STATE.links, o, clock_id)
+                          patch.remove_link(self.STATE, o, clock_id)
                         end
                       end
 
@@ -234,7 +235,7 @@ function Haleseq:init_params()
 
                       for o, ins in pairs(self.STATE.links) do
                         if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-                          patching.remove_link(self.STATE.links, o, clock_id)
+                          patch.remove_link(self.STATE, o, clock_id)
                         end
                       end
 

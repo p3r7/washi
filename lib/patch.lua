@@ -9,13 +9,57 @@ local patch = {}
 local patching = include("washi/lib/patching")
 
 include("washi/lib/core")
+include("washi/lib/consts")
 
 
 -- ------------------------------------------------------------------------
--- helpers
+-- simple fns
 
-local function add_link(STATE, from_id, to_id)
+function patch.add_link(STATE, from_id, to_id)
   patching.add_link(STATE.links, from_id, to_id)
+end
+
+local add_link = patch.add_link
+
+local function clear_in_link(STATE, from_id, to_id)
+  local i = STATE.ins[to_id]
+  i.incoming_vals[from_id] = nil
+  i:update()
+end
+
+function patch.remove_link(STATE, from_id, to_id)
+  local action = patching.remove_link(STATE.links, from_id, to_id)
+  if action == A_REMOVED then
+    clear_in_link(STATE, from_id, to_id)
+  end
+  return action
+end
+
+function patch.toggle_link(STATE, from_id, to_id)
+  local action = patching.toggle_link(STATE.links, from_id, to_id)
+  if action == A_REMOVED then
+    clear_in_link(STATE, from_id, to_id)
+  end
+  return action
+end
+
+function patch.remove_all_links_with(STATE, nana)
+  if patching.is_out(nana) then
+    local targets = links[nana.id]
+    if targets == nil then
+      return
+    end
+    while tab.count(targets) > 0 do
+      patch.remove_link(STATE, nana.id, targets[1])
+    end
+  else
+    local from_outs = tkeys(nana.incoming_vals)
+    for _, o_id in ipairs(from_outs) do
+      if o_id ~= 'GLOBAL' then
+        patch.remove_link(STATE, o_id, nana.id)
+      end
+    end
+  end
 end
 
 

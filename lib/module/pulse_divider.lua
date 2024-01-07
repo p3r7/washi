@@ -14,6 +14,7 @@ local In = include("washi/lib/submodule/in")
 local Out = include("washi/lib/submodule/out")
 
 local patching = include("washi/lib/patching")
+local patch = include("washi/lib/patch")
 local paperface = include("washi/lib/paperface")
 include("washi/lib/consts")
 
@@ -87,7 +88,7 @@ function PulseDivider:quantized_clock_input_cb(v)
 
   for o, ins in pairs(self.STATE.links) do
     if util.string_starts(o, "quantized_clock_global_") and tab.contains(ins, clock_id) then
-      patching.remove_link(self.STATE.links, o, clock_id)
+      patch.remove_link(self.STATE, o, clock_id)
     end
   end
 

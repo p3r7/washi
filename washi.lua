@@ -140,19 +140,19 @@ STATE = {
 }
 
 local function add_link(from_id, to_id)
-  patching.add_link(links, from_id, to_id)
+  patch.add_link(STATE, from_id, to_id)
 end
 
 local function remove_link(from_id, to_id)
-  patching.remove_link(links, from_id, to_id)
+  patch.remove_link(STATE, from_id, to_id)
 end
 
 local function remove_all_links(nana)
-  patching.remove_all_links_with(links, nana)
+  patch.remove_all_links_with(STATE, nana)
 end
 
 local function toggle_link(from_id, to_id)
-  local action = patching.toggle_link(links, from_id, to_id)
+  local action = patch.toggle_link(STATE, from_id, to_id)
   if action == A_ADDED then
     STATE.selected_link = {from_id, to_id}
     STATE.mouse_potential_link_exists = true

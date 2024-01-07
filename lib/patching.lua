@@ -40,28 +40,13 @@ function patching.remove_link(links, o, i)
     end
   end
 
-  -- simplify links table
-  if did_something and tab.count(links[o]) == 0 then
-    links[o] = nil
-  end
-end
+  if did_something then
+    -- simplify links table
+    if tab.count(links[o]) == 0 then
+      links[o] = nil
+    end
 
-function patching.remove_all_links_with(links, nana)
-  if patching.is_out(nana) then
-    local targets = links[nana.id]
-    if targets == nil then
-      return
-    end
-    while tab.count(targets) > 0 do
-      patching.remove_link(links, nana.id, targets[1])
-    end
-  else
-    local from_outs = tkeys(nana.incoming_vals)
-    for _, o_id in ipairs(from_outs) do
-      if o_id ~= 'GLOBAL' then
-        patching.remove_link(links, o_id, nana.id)
-      end
-    end
+    return A_REMOVED
   end
 end
 
@@ -359,7 +344,7 @@ function patching.fire_and_propagate(outs, ins, links, link_props,
   dbg("TRIGGERED MODULES")
   dbg("----------")
 
-  patching.clear_all_unlinked_ins(outs, ins, links)
+  -- patching.clear_all_unlinked_ins(outs, ins, links)
 
   for level, modules in ipairs(fired_modules) do
     for _, m in ipairs(modules) do
@@ -416,7 +401,7 @@ function patching.fire_and_propagate_from_out(outs, ins, links, link_props,
   dbg("TRIGGERED MODULES")
   dbg("----------")
 
-  patching.clear_all_unlinked_ins(outs, ins, links)
+  -- patching.clear_all_unlinked_ins(outs, ins, links)
 
   for level, modules in ipairs(fired_modules) do
 
