@@ -400,7 +400,7 @@ function init()
   screen.line_width(1)
 
   if seamstress then
-     screen.set_size(SCREEN_W, SCREEN_H, 5)
+    screen.set_size(SCREEN_W, SCREEN_H, 5)
   end
 
   s_lattice = lattice:new{}
