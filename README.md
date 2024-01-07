@@ -43,8 +43,10 @@ you can then assign more outputs to more voices, generate a new random patch (`K
 - `i`: initial patch
 - `c`: clear all patch
 - `UP`/`DOWN`: previous/next panel
-- `left click`: link/unlink
+- `left click`: select banana, link/unlink
 - `right click`: scope
+- `ESC`: cancel selection
+- `SHIFT` + `DEL`: remove all links for selected banana
 
 
 ## known bugs
