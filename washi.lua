@@ -351,6 +351,8 @@ params.action_read = function(filename, name, pset_number)
 
   treplace(links, conf.links)
   treplace(link_props, conf.link_props)
+
+  patching.clear_all_unlinked_ins(STATE.outs, STATE.ins, STATE.links)
 end
 
 params.action_write = function(filename, name, pset_number)
