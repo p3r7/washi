@@ -356,7 +356,7 @@ function paperface.main_in_label(x, y, l)
 
     screen.level(l)
 
-    y = y - 1
+    x = x + 1
 
     screen.move(x, y + SCREEN_STAGE_W / 2)
     screen.line(x + (SCREEN_STAGE_W / 2) - 1, y + 1)
