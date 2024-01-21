@@ -438,14 +438,15 @@ function paperface.trig_in_label(x, y, l, fill)
     end
   elseif seamstress then
     x = x + 1
+    screen.move(x, y)
+    screen.line(x + SCREEN_STAGE_W - 1, y)
+
+    y = y + 1
     local half_w = math.floor(SCREEN_STAGE_W / 2)
     screen.move(x, y)
     screen.line(x + half_w, y + SCREEN_STAGE_W / 2)
 
     screen.move(x + half_w, y + SCREEN_STAGE_W / 2)
-    screen.line(x + SCREEN_STAGE_W - 1, y)
-
-    screen.move(x, y)
     screen.line(x + SCREEN_STAGE_W - 1, y)
   end
 
