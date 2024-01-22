@@ -39,13 +39,19 @@ local function are_same_col(c1, c2)
     and (c1[3] == c2[3])
 end
 
-function imgutils.bitmap_map_cols(bitmap, col_map)
-  for i=1, #bitmap, 3 do
-    local col = {bitmap[i], bitmap[i+1], bitmap[i+2]}
-    for from, to in pairs(col_map) do
-      if are_same_col(col, from) then
-        bitmap[i], bitmap[i+1], bitmap[i+2] = table.unpack(to)
-        break
+function imgutils.bitmap_map_cols(bitmap, w, h, col_map)
+  -- NB: 24 bit bitmaps have some padding mechanism to ensure a row is a multiple of 4 bytes
+  local row_size = math.ceil(w * 3 / 4) * 4
+
+  for y = 1, h do
+    for x = 1, row_size, 3 do
+      local i = (y - 1) * row_size + x
+      local col = {bitmap[i], bitmap[i+1], bitmap[i+2]}
+      for from, to in pairs(col_map) do
+        if are_same_col(col, from) then
+          bitmap[i], bitmap[i+1], bitmap[i+2] = table.unpack(to)
+          break
+        end
       end
     end
   end
@@ -58,7 +64,7 @@ end
 function imgutils.parse_bmp(filepath)
   local bmp = Bmp:from_file(filepath)
 
-  -- local w, h = bmp.dib_info.image_width, bmp.dib_info.image_height_raw
+  local w, h = bmp.dib_info.header.image_width, bmp.dib_info.header.image_height_raw
 
   local offset_bitmap = bmp.file_hdr.ofs_bitmap
   local file = io.open(filepath, "rb")
@@ -68,7 +74,7 @@ function imgutils.parse_bmp(filepath)
   -- NB: we also have access to a `bmp.bitmap` sub-object but idk how to manipulate it...
   local bitmap = imgutils.str_to_bitmap(bmp._raw_bitmap)
 
-  return raw_header, bitmap
+  return raw_header, bitmap, w, h
 end
 
 function imgutils.parse_png(filepath)
@@ -81,8 +87,8 @@ end
 -- file transformation
 
 function imgutils.bmp_color_mapped(src_filepath, dst_filepath, col_map)
-  local raw_header, bitmap = imgutils.parse_bmp(src_filepath)
-  imgutils.bitmap_map_cols(bitmap, col_map)
+  local raw_header, bitmap, w, h = imgutils.parse_bmp(src_filepath)
+  imgutils.bitmap_map_cols(bitmap, w, h, col_map)
 
   local raw_bitmap = imgutils.bitmap_to_str(bitmap)
 
