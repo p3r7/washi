@@ -2,14 +2,14 @@
 --
 -- This file is compatible with Lua 5.3
 
-local class = require("lib/kaitai/class")
+local class = include("lib/kaitai/class")
 if KaitaiStruct == nil then
   include("lib/kaitai/kaitaistruct")
 end
-local enum = require("lib/kaitai/enum")
-local str_decode = require("lib/kaitai/string_decode")
-local stringstream = require("lib/kaitai/string_stream")
-local utils = require("lib/kaitai/utils")
+local enum = include("lib/kaitai/enum")
+local str_decode = include("lib/kaitai/string_decode")
+local stringstream = include("lib/kaitai/string_stream")
+local utils = include("lib/kaitai/utils")
 
 --
 -- Test files for APNG can be found at the following locations:

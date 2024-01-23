@@ -417,7 +417,7 @@ local zzlib, zzlib_load_err = (function()
         package.path = (debug.getinfo(2, "S").source:match("^@(.*[/\\])") or "") .. "zzlib/?.lua" .. package.path
     end
 
-    local success, zzlib = pcall(function() return require("zzlib") end)
+    local success, zzlib = pcall(function() return include("zzlib") end)
     if not success then
         load_err = zzlib
         zzlib = nil

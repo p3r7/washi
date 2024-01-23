@@ -2,14 +2,14 @@
 --
 -- This file is compatible with Lua 5.3
 
-local class = require("lib/kaitai/class")
+local class = include("lib/kaitai/class")
 if KaitaiStruct == nil then
   include("lib/kaitai/kaitaistruct")
 end
-local enum = require("lib/kaitai/enum")
-local stringstream = require("lib/kaitai/string_stream")
-local str_decode = require("lib/kaitai/string_decode")
-local utils = require("lib/kaitai/utils")
+local enum = include("lib/kaitai/enum")
+local stringstream = include("lib/kaitai/string_stream")
+local str_decode = include("lib/kaitai/string_decode")
+local utils = include("lib/kaitai/utils")
 
 --
 -- The **BMP file format**, also known as **bitmap image file** or **device independent

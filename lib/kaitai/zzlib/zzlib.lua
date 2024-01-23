@@ -15,10 +15,10 @@ local infl
 local lua_version = tonumber(_VERSION:match("^Lua (.*)"))
 if not lua_version or lua_version < 5.3 then
   -- older version of Lua or Luajit being used - use bit/bit32-based implementation
-  infl = require("inflate-bit32")
+  infl = include("inflate-bit32")
 else
   -- From Lua 5.3, use implementation based on bitwise operators
-  infl = require("inflate-bwo")
+  infl = include("inflate-bwo")
 end
 
 local zzlib = {}
