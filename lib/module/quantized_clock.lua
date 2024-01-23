@@ -31,6 +31,7 @@ function QuantizedClock.new(id, STATE,
   -- --------------------------------
 
   p.STATE = STATE
+  STATE.modules[p.fqid] = p
 
   -- --------------------------------
   -- screen
@@ -141,18 +142,28 @@ end
 -- screen
 
 function QuantizedClock:redraw()
-  paperface.module_redraw(self)
+  paperface.module_redraw_labels(self)
 
+  -- NB: those are pre-rendred now
+  -- for i, v in ipairs(self.divs) do
+  --   local o = self.div_outs[i]
+  --   local x, y = paperface.panel_grid_to_screen(o)
+
+  --   local label_x = x + SCREEN_STAGE_W + 2
+  --   if seamstress then
+  --     label_x = label_x + 1
+  --   end
+
+  --   screen.level(SCREEN_LEVEL_LABEL)
+  --   screen.move(label_x, y + SCREEN_LABEL_Y_OFFSET)
+  --   screen.text(v)
+  -- end
+
+  local x, y = paperface.panel_grid_to_screen_all(self)
+
+  paperface.module_redraw_bananas(self)
   for i, v in ipairs(self.divs) do
-
     local o = self.div_outs[i]
-
-    local x = paperface.panel_grid_to_screen_x(o.x)
-    local y = paperface.panel_grid_to_screen_y(o.y)
-
-    screen.level(SCREEN_LEVEL_LABEL)
-    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_LABEL_Y_OFFSET)
-    screen.text(v)
 
     local trig = ( (self.STATE.superclk_t - o.last_changed_t) < NANA_TRIG_DRAW_T )
 
@@ -162,9 +173,8 @@ function QuantizedClock:redraw()
     if v == (self.mclock_div / 8) then
       self.mclock_mult_trig = trig
       local tame = (self.STATE.grid_mode == M_LINK or self.STATE.grid_mode == M_EDIT)
-      paperface.trig_in(paperface.panel_grid_to_screen_x(self.x), paperface.panel_grid_to_screen_y(self.y), trig, false, tame)
+      paperface.trig_in_banana(x, y, trig, false, tame)
     end
-
   end
 end
 

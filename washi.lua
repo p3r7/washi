@@ -24,11 +24,14 @@ local UI = require "ui"
 nb = include("washi/lib/nb/lib/nb")
 local inspect = include("washi/lib/inspect")
 
+local imgutils = include("washi/lib/imgutils")
 local paperface = include("washi/lib/paperface")
-local patching = include("washi/lib/patching")
 local Scope = include("washi/lib/scope")
 
 local patch = include("washi/lib/patch")
+local patching = include("washi/lib/patching")
+
+local Panel = include("washi/lib/panel")
 
 -- modules
 local NornsClock = include("washi/lib/module/norns_clock")
@@ -96,15 +99,22 @@ local dialOffset = UI.Dial.new(SCREEN_W/4 + SCREEN_W/2 - DIAL_W, SCREEN_H * 3/4 
 -- ------------------------------------------------------------------------
 -- patching
 
+panels = {}
+modules = {}
 ins = {}
 outs = {}
 links = {}
 link_props = {}
 coords_to_nana = {}
+module_prerenders = {}
 
 STATE = {
   -- super clock counter
   superclk_t = 0,
+
+  -- panels of modules
+  panels = panels,
+  modules = modules,
 
   -- patch
   ins = ins,
@@ -125,6 +135,8 @@ STATE = {
   mouse_potential_link_valid = false,
   mouse_potential_link_exists = false,
   nana_under_cursor = nil,
+  module_prerenders = {},
+  draw_mode = V_DRAW_MODE_NORNS,
 
   -- selection
   selected_nana = nil,
@@ -396,14 +408,37 @@ if seamstress then
   end
 end
 
+local function resize_according_to_draw_mode()
+  if not seamstress then
+    return
+  end
+
+  if STATE.draw_mode == V_DRAW_MODE_NORNS then
+    screen.set_size(SCREEN_W, SCREEN_H, 5)
+  else
+    screen.set_size(SCREEN_W * 2, SCREEN_H * MAX_PANELS_H, 3)
+  end
+end
+
+function toggle_draw_mode()
+  if not seamstress then
+    return
+  end
+
+  if STATE.draw_mode == V_DRAW_MODE_NORNS then
+    STATE.draw_mode = V_DRAW_MODE_ALL
+  else
+    STATE.draw_mode = V_DRAW_MODE_NORNS
+  end
+  resize_according_to_draw_mode()
+end
+
 
 function init()
   screen.aa(0)
   screen.line_width(1)
 
-  if seamstress then
-    screen.set_size(SCREEN_W, SCREEN_H, 5)
-  end
+  resize_according_to_draw_mode()
 
   s_lattice = lattice:new{}
 
@@ -478,9 +513,26 @@ function init()
 
 
   -- --------------------------------
-  -- modules
+  -- panels / modules
 
   params:add_separator("modules", "modules")
+
+  for i=1,#page_list do
+    local x, y, y_offset = 0, 0, 0
+    if i <= 2 then
+      x = 1
+      y = i
+      y_offset = util.round(SCREEN_H/2)
+    else
+      x = 2
+      y = i - 2
+    end
+
+    x = (x - 1) * SCREEN_W
+    y = (y - 1) * SCREEN_H + y_offset
+
+    STATE.panels[i] = Panel.new(i, STATE, x, y)
+  end
 
   norns_clock = NornsClock.init(STATE,
                                 tab.key(page_list, 'clock'), 2, 1)
@@ -503,7 +555,7 @@ function init()
 
   for i=1,NB_HALESEQS do
     local h = Haleseq.init(i, STATE, NB_STEPS, NB_VSTEPS,
-                           tab.key(page_list, 'haleseq '..i), 0, 0)
+                           tab.key(page_list, 'haleseq '..i), 1, 1)
     haleseqs[i] = h
   end
 
@@ -522,6 +574,9 @@ function init()
 
   patch.init(STATE)
 
+  for _, m in pairs(STATE.modules) do
+    table.insert(STATE.panels[m.page], m)
+  end
 
   -- --------------------------------
 
@@ -900,6 +955,12 @@ if seamstress then
     end
 
     if type(char) == "string" then
+      if char == "d" and state >= 1 then
+        if kbdutil.isShift(modifiers) then
+          toggle_draw_mode()
+        end
+      end
+
       if char == "s" and state >= 1 then
         STATE.grid_mode = M_SCOPE
       end
@@ -1073,7 +1134,12 @@ function redraw_clock_screen()
   quantized_clocks:redraw()
   norns_clock:redraw(quantized_clocks.mclock_mult_trig)
   if quantized_clocks.mclock_mult_trig then
-    paperface.draw_link(norns_clock.x, norns_clock.y, 1, quantized_clocks.x, quantized_clocks.y, 1, 1)
+    -- TODO: use dummy input/output instead!
+    -- assign them coordinates but use a prop to mark them as unselectable
+    local from_x, from_y = paperface.panel_grid_to_screen_all(norns_clock)
+    local to_x, to_y = paperface.panel_grid_to_screen_all(quantized_clocks)
+    paperface.draw_link_screen(from_x + SCREEN_STAGE_W/2, from_y + SCREEN_STAGE_W/2,
+                               to_x + SCREEN_STAGE_W/2, to_y + SCREEN_STAGE_W/2)
   end
 
   pulse_dividers[1]:redraw()
@@ -1110,7 +1176,7 @@ function redraw_link_edit()
   dialOffset:redraw()
 end
 
-function redraw()
+function redraw_norns()
   local screen_w, screen_h = screen_size()
 
   screen.clear()
@@ -1216,4 +1282,127 @@ function redraw()
   end
 
   screen.update()
+end
+
+function redraw_all_panels()
+  local screen_w, screen_h = screen_size()
+
+  screen.clear()
+
+  if seamstress then
+    screen.move(1, 1)
+    screen.color(table.unpack(COLOR_BG))
+    screen.rect_fill(screen_w, screen_h)
+  end
+
+  -- pages:redraw()
+
+  screen.level(15)
+
+  local curr_page = page_list[pages.index]
+
+  redraw_clock_screen()
+
+  rvgs[1]:redraw()
+  lfos[1]:redraw()
+  screen.level(SCREEN_LEVEL_LABEL)
+  for i, phase in ipairs(LFO_PHASES) do
+    if tab.contains({0, 90, 180, 270}, phase) then
+      local x, y = paperface.panel_grid_to_screen_all(lfos[1])
+      x = x + 2 * SCREEN_STAGE_W + 2
+      if seamstress then
+        x = x + 1
+      end
+      y = y + paperface.panel_grid_to_screen_y(i) + SCREEN_LABEL_Y_OFFSET
+      screen.move(x, y)
+      if norns then phase = phase.."°" end
+      screen.text(phase)
+    end
+  end
+  lfos[2]:redraw()
+
+  screen.level(SCREEN_LEVEL_LABEL)
+  local x, y = paperface.panel_grid_to_screen_all(lfos[2])
+  x = x + 2 * SCREEN_STAGE_W + 2
+  if seamstress then
+    x = x + 1
+  end
+  local yf = y + paperface.panel_grid_to_screen_y(1) + SCREEN_LABEL_Y_OFFSET
+  local ys = y + paperface.panel_grid_to_screen_y(7) + SCREEN_LABEL_Y_OFFSET
+  screen.move(x, yf)
+  screen.text("f")
+  screen.move(x, ys)
+  screen.text("s")
+
+  for _, o in ipairs(outputs) do
+    o:redraw()
+  end
+
+  for _, h in ipairs(haleseqs) do
+    h:redraw()
+  end
+
+  if should_display_grid_cursor() then
+    screen.aa(0)
+    screen.level(4)
+    local x0 = paperface.panel_grid_to_screen_x(STATE.grid_cursor)
+    if x0 == 0 then
+      x0 = 1
+    end
+    local x1 = paperface.panel_grid_to_screen_x(STATE.grid_cursor + g.cols)
+    local y0 = paperface.panel_grid_to_screen_y(1)
+    local y1 = paperface.panel_grid_to_screen_y(SCREEN_STAGE_Y_NB+1)
+    screen.rect(x0, 1, (x1 - x0), (y1 - y0))
+    screen.stroke()
+  end
+
+  if STATE.scope:is_on() then
+    STATE.scope:redraw(SCREEN_W/4, SCREEN_H/4, SCREEN_W/2, SCREEN_H/2)
+  end
+
+  local draw_mode = DRAW_M_NORMAL
+  if (STATE.grid_mode == M_LINK or STATE.grid_mode == M_EDIT) then
+    draw_mode = DRAW_M_TAME
+  end
+  -- print(draw_mode)
+  paperface.redraw_active_links(outs, ins,
+                                pages.index, draw_mode)
+
+  if STATE.grid_mode == M_EDIT and STATE.selected_link ~= nil then
+    redraw_link_edit()
+    local from_id = STATE.selected_link[1]
+    local to_id = STATE.selected_link[2]
+    paperface.redraw_link(outs[from_id], ins[to_id], pages.index, DRAW_M_FOCUS)
+  elseif STATE.selected_nana ~= nil then
+
+    local draw_mode = DRAW_M_FOCUS
+    if shift then
+      draw_mode = DRAW_M_DELETE
+    end
+
+    paperface.redraw_nana_links(outs, ins, links,
+                                STATE.selected_nana, pages.index, draw_mode)
+
+    if seamstress then
+      draw_mode = DRAW_M_INVALID
+      if STATE.mouse_potential_link_exists then
+        draw_mode = DRAW_M_DELETE
+      elseif STATE.mouse_potential_link_valid then
+        draw_mode = DRAW_M_VALID
+      end
+      paperface.draw_link(STATE.selected_nana.x, STATE.selected_nana.y, STATE.selected_nana.parent.page,
+                          STATE.mouse_panel_x, STATE.mouse_panel_y, pages.index,
+                          pages.index, draw_mode)
+    end
+  end
+
+  screen.update()
+end
+
+function redraw()
+  if norns or STATE.draw_mode == V_DRAW_MODE_NORNS then
+    redraw_norns()
+  else
+    redraw_all_panels()
+  end
 end

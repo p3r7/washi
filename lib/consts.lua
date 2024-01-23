@@ -77,6 +77,11 @@ NB_VSTEPS = 4
 SCREEN_W = 128
 SCREEN_H = 64
 
+MAX_PANELS_H = 3
+
+V_DRAW_MODE_NORNS = 1
+V_DRAW_MODE_ALL = 2
+
 
 -- ------------------------------------------------------------------------
 -- screen - paperface - grayscale

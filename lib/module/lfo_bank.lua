@@ -133,6 +133,7 @@ function LfoBank.new(id, STATE,
   -- --------------------------------
 
   p.STATE = STATE
+  STATE.modules[p.fqid] = p
 
   -- --------------------------------
   -- screen
@@ -280,7 +281,8 @@ end
 -- screen
 
 function LfoBank:redraw()
-  paperface.module_redraw(self)
+  paperface.module_redraw_labels(self)
+  paperface.module_redraw_bananas(self)
 end
 
 -- ------------------------------------------------------------------------

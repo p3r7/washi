@@ -39,6 +39,7 @@ function PulseDivider.new(id, STATE, divs,
   -- --------------------------------
 
   p.STATE = STATE
+  STATE.modules[p.fqid] = p
 
   -- --------------------------------
   -- screen
@@ -186,17 +187,20 @@ end
 -- screen
 
 function PulseDivider:redraw()
-  paperface.module_redraw(self)
-
-  -- labels
+  paperface.module_redraw_labels(self)
   screen.level(SCREEN_LEVEL_LABEL)
   for i, v in ipairs(self.divs) do
     local o = self.div_outs[i]
-    local x = paperface.panel_grid_to_screen_x(o.x)
-    local y = paperface.panel_grid_to_screen_y(o.y)
-    screen.move(x + SCREEN_STAGE_W + 2, y + SCREEN_LABEL_Y_OFFSET)
+    local x, y = paperface.panel_grid_to_screen_all(o)
+    local label_x = x + SCREEN_STAGE_W + 2
+    if seamstress then
+      label_x = label_x + 1
+    end
+    screen.move(label_x, y + SCREEN_LABEL_Y_OFFSET)
     screen.text("/"..v)
   end
+
+  paperface.module_redraw_bananas(self)
 end
 
 

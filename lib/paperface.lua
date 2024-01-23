@@ -12,6 +12,9 @@ local paperface = {}
 local Stage = include("washi/lib/submodule/stage")
 local patching = include("washi/lib/patching")
 
+local imgutils = include("washi/lib/imgutils")
+
+include("washi/lib/core")
 include("washi/lib/consts")
 
 
@@ -48,6 +51,46 @@ end
 
 function paperface.panel_grid_to_screen_y(v)
   return paperface.panel_grid_to_screen_x(v) + SCREEN_STAGE_Y_OFFSET
+end
+
+function paperface.panel_grid_to_screen(e)
+  return paperface.panel_grid_to_screen_x(e.x), paperface.panel_grid_to_screen_y(e.y)
+end
+
+local function element_panel(e)
+  if e.page then
+    return e.STATE.panels[e.page]
+  elseif e.parent then
+    return element_panel(e.parent)
+  end
+end
+
+local function element_state(e)
+  if e.STATE then
+    return e.STATE
+  elseif e.parent then
+    return element_state(e.parent)
+  end
+end
+
+function paperface.panel_grid_to_screen_all(e)
+  local panel = element_panel(e)
+
+  local STATE = element_state(e)
+
+  if panel == nil then
+    print("ERROR - attempting to draw element not attached to a manel")
+    return
+  end
+
+  local p_x, p_y = 0, 0
+  if STATE.draw_mode == V_DRAW_MODE_ALL then
+    p_x, p_y = panel.x, panel.y
+  end
+
+  local e_x, e_y = paperface.panel_grid_to_screen(e)
+
+  return e_x + p_x, e_y + p_y
 end
 
 function paperface.screen_x_to_panel_grid(v)
@@ -382,7 +425,7 @@ function paperface.main_in_label(x, y, l)
 end
 
 -- panel graphic (square)
-function paperface.trig_out_label(x, y, l)
+function paperface.out_label(x, y, l)
   screen.aa(0)
 
   if l == nil then l = SCREEN_LEVEL_LABEL end
@@ -461,57 +504,77 @@ end
 
 
 -- ------------------------------------------------------------------------
+-- screen - banana
+
+function paperface.main_in_banana(x, y, trig, tame)
+  if not trig then
+    return
+  end
+
+  local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+  paperface.banana(x, y, trig, level, COLOR_BANANA_CV_IN)
+end
+
+function paperface.trig_in_banana(x, y, trig, tame)
+  if not trig then
+    return
+  end
+
+  local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+  paperface.banana(x, y, trig, level, COLOR_BANANA_TRIG_IN)
+end
+
+function paperface.trig_out_banana(x, y, trig, tame)
+  if not trig then
+    return
+  end
+
+  local color = COLOR_BANANA_TRIG_OUT
+  local l = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+  paperface.banana(x, y, trig, l, color)
+end
+
+function paperface.cv_out_banana(x, y, trig, tame)
+  if not trig then
+    return
+  end
+
+  local color = COLOR_BANANA_CV_OUT
+  local l = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
+  paperface.banana(x, y, trig, l, color)
+end
+
+-- ------------------------------------------------------------------------
 -- screen - combined
 
 function paperface.main_in(x, y, trig, tame)
   paperface.main_in_label(x, y)
-  if trig then
-    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, level, COLOR_BANANA_CV_IN)
-  end
+  paperface.main_in_banana(x, y, trig, tame)
 end
 
 function paperface.trig_in(x, y, trig, filled, tame)
   paperface.trig_in_label(x, y, nil, filled)
-
-  -- nana
-  if trig then
-    local level = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, level, COLOR_BANANA_TRIG_IN)
-  end
-end
-
-function paperface.out(x, y, trig, tame, out_type, label_level)
-  if label_level == nil then label_level = SCREEN_LEVEL_LABEL end
-  paperface.trig_out_label(x, y, label_level)
-
-  local color
-  if out_type == "TRIG" then
-    color = COLOR_BANANA_TRIG_OUT
-  elseif out_type == "CV" then
-    color = COLOR_BANANA_CV_OUT
-  end
-
-  if trig then
-    l = (tame ~= nil and tame) and SCREEN_LEVEL_BANANA_TAMED or SCREEN_LEVEL_BANANA
-    paperface.banana(x, y, trig, l, color)
-  end
+  paperface.trig_in_banana(x, y, trig, tame)
 end
 
 function paperface.trig_out(x, y, trig, tame)
-  paperface.out(x, y, trig, tame, "TRIG")
+  paperface.out_label(x, y)
+  paperface.trig_out_banana(x, y, trig, tame)
 end
 
 function paperface.trig_out_spe(x, y, trig, tame)
-  paperface.out(x, y, trig, tame, "TRIG", SCREEN_LEVEL_LABEL_SPE)
+  paperface.out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
+  paperface.trig_out_banana(x, y, trig, tame)
 end
 
 function paperface.cv_out(x, y, trig, tame)
-  paperface.out(x, y, trig, tame, "CV")
+  paperface.out_label(x, y)
+  paperface.cv_out_banana(x, y, trig, tame)
 end
 
 function paperface.cv_out_spe(x, y, trig, tame)
-  paperface.out(x, y, trig, tame, "CV", SCREEN_LEVEL_LABEL_SPE)
+  paperface.out_label(x, y, SCREEN_LEVEL_LABEL_SPE)
+  paperface.cv_out_banana(x, y, trig, tame)
 end
 
 function paperface.is_in_selected(i)
@@ -542,51 +605,163 @@ function paperface.should_tame_out_redraw(o)
                or o.parent.STATE.selected_nana.id ~= o.id))
 end
 
-function paperface.in_redraw(i)
+function paperface.in_redraw_label(i)
   if i.x == nil or i.y == nil then
     return
   end
+  local x, y = paperface.panel_grid_to_screen_all(i)
 
-  local x = paperface.panel_grid_to_screen_x(i.x)
-  local y = paperface.panel_grid_to_screen_y(i.y)
-  local sclock_t = i.parent.STATE.superclk_t
   if i.kind == 'comparator' then
-    local triggered = ( paperface.is_in_selected(i)
-                        or ( (i.status == 1) or ( (sclock_t - i.last_up_t) < LINK_TRIG_DRAW_T) ) )
-    local tame = paperface.should_tame_in_redraw(i)
-    paperface.trig_in(x, y, triggered, false, tame)
+    paperface.trig_in_label(x, y)
   elseif i.kind == 'in' then
-    local triggered = paperface.is_in_selected(i)
-      or ( (sclock_t - i.last_changed_t) < LINK_TRIG_DRAW_T )
-    local tame = paperface.should_tame_in_redraw(i)
-    paperface.main_in(x, y, triggered, tame)
+    paperface.main_in_label(x, y)
   end
 end
 
-function paperface.out_redraw(o)
+function paperface.in_redraw_banana(i)
+  if i.x == nil or i.y == nil then
+    return
+  end
+  local x, y = paperface.panel_grid_to_screen_all(i)
+
+  local sclock_t = i.parent.STATE.superclk_t
+
+  local tame = paperface.should_tame_in_redraw(i)
+
+  if i.kind == 'comparator' then
+    local triggered = ( paperface.is_in_selected(i)
+                        or ( (i.status == 1) or ( (sclock_t - i.last_up_t) < LINK_TRIG_DRAW_T) ) )
+    paperface.trig_in_banana(x, y, triggered, false, tame)
+  elseif i.kind == 'in' then
+    local triggered = paperface.is_in_selected(i)
+      or ( (sclock_t - i.last_changed_t) < LINK_TRIG_DRAW_T )
+    paperface.main_in_banana(x, y, triggered, tame)
+  end
+end
+
+function paperface.in_redraw(i)
+  paperface.in_redraw_label(i)
+  paperface.in_redraw_banana(i)
+end
+
+function paperface.out_redraw_label(o)
   if o.x == nil or o.y == nil then
     return
   end
+  local x, y = paperface.panel_grid_to_screen_all(o)
 
-  local x = paperface.panel_grid_to_screen_x(o.x)
-  local y = paperface.panel_grid_to_screen_y(o.y)
+  paperface.out_label(x, y)
+end
+
+function paperface.out_redraw_banana(o)
+  if o.x == nil or o.y == nil then
+    return
+  end
+  local x, y = paperface.panel_grid_to_screen_all(o)
+
   local sclock_t = o.parent.STATE.superclk_t
   local triggered = ( paperface.is_out_selected(o)
                       or ( (sclock_t - o.last_changed_t) < LINK_TRIG_DRAW_T ) )
   local tame = paperface.should_tame_out_redraw(o)
   if o.kind == 'out' then
-    paperface.trig_out(x, y, triggered, tame)
+    paperface.trig_out_banana(x, y, triggered, tame)
   elseif o.kind == 'cv_out' then
-    paperface.cv_out(x, y, triggered, tame)
+    paperface.cv_out_banana(x, y, triggered, tame)
   end
 end
 
-function paperface.module_redraw(m)
+function paperface.out_redraw(o)
+  paperface.in_redraw_label(i)
+  paperface.in_redraw_banana(i)
+end
+
+function paperface.module_prerender_file_path(m)
+  if norns then
+    return _path.code .. "/img/module/" .. m.kind .. ".bmp"
+  end
+  if seamstress then
+    return seamstress.state.path .. "/img/module/" .. m.kind .. ".bmp"
+  end
+end
+
+function paperface.module_has_prerender(m)
+  local prerender_file_path = paperface.module_prerender_file_path(m)
+  return prerender_file_path and util.file_exists(prerender_file_path)
+end
+
+function paperface.get_module_prerender(m)
+  local prerender_file_path = paperface.module_prerender_file_path(m)
+  if norns then
+    return screen.load_png(prerender_file_path)
+  end
+  if seamstress then
+    local tmp_file = os.tmpname()
+    imgutils.bmp_color_mapped(prerender_file_path,
+                              tmp_file,
+                              {
+                                [{0, 0, 0}] = COLOR_BG,
+                                [{17, 17, 17}] = COLOR_LABEL,
+                                [{85, 85, 85}] = COLOR_LABEL_SPE,
+                              }
+    )
+
+    local texture = screen.new_texture_from_file(tmp_file)
+    os.remove(tmp_file)
+    return texture
+  end
+end
+
+function paperface.ensure_module_prerender_loaded(m)
+  if m.STATE.module_prerenders[m.kind] == nil then
+    m.STATE.module_prerenders[m.kind] = paperface.get_module_prerender(m)
+  end
+end
+
+-- NB: dbg non-cached version
+-- function paperface.display_module_prerender(m)
+--   local prerender_file_path = paperface.module_prerender_file_path(m)
+
+--   local x, y = paperface.panel_grid_to_screen(m)
+
+--   if norns then
+--     screen.display_png(prerender_file_path, x, y)
+--   end
+--   if seamstress then
+--     local prerender = screen.new_texture_from_file(prerender_file_path)
+--     prerender:render(x, y, 1)
+--   end
+-- end
+
+function paperface.display_module_prerender(m)
+  paperface.ensure_module_prerender_loaded(m)
+  local prerender = m.STATE.module_prerenders[m.kind]
+  if prerender == nil then
+    print("ERROR, failed prerendering " .. m.kind)
+    return false
+  end
+
+  local x, y = paperface.panel_grid_to_screen_all(m)
+  x = x - 1
+
+  if norns then
+    screen.display_image(prerender, x, y)
+  end
+  if seamstress then
+      prerender:render(x, y, 1)
+  end
+  return true
+end
+
+function paperface.module_redraw_labels(m)
+  if paperface.module_has_prerender(m) and paperface.display_module_prerender(m) then
+    return
+  end
+
   if m.ins ~= nil then
     for _, i_label in ipairs(m.ins) do
       local i = m.STATE.ins[i_label]
       if i ~= nil then
-        paperface.in_redraw(i)
+        paperface.in_redraw_label(i)
       end
     end
   end
@@ -595,21 +770,42 @@ function paperface.module_redraw(m)
     for _, o_label in pairs(m.outs) do
       local o = m.STATE.outs[o_label]
       if o ~= nil then
-        paperface.out_redraw(o)
+        paperface.out_redraw_label(o)
       end
     end
   end
+end
+
+function paperface.module_redraw_bananas(m)
+  if m.ins ~= nil then
+    for _, i_label in ipairs(m.ins) do
+      local i = m.STATE.ins[i_label]
+      if i ~= nil then
+        paperface.in_redraw_banana(i)
+      end
+    end
+  end
+
+  if m.outs ~= nil then
+    for _, o_label in pairs(m.outs) do
+      local o = m.STATE.outs[o_label]
+      if o ~= nil then
+        paperface.out_redraw_banana(o)
+      end
+    end
+  end
+end
+
+function paperface.module_redraw(m)
+  paperface.module_redraw_labels(m)
+  paperface.module_redraw_bananas(m)
 end
 
 
 -- ------------------------------------------------------------------------
 -- patch
 
-function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mode)
-  local startx = paperface.panel_grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
-  local starty = paperface.panel_grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
-  local endx = paperface.panel_grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
-  local endy = paperface.panel_grid_to_screen_y(iy) + SCREEN_STAGE_W/2 + (i_page - curr_page) * SCREEN_H
+function paperface.draw_link_screen(startx, starty, endx, endy)
   local midx = (endx + startx)/2
   local midy = (endy + starty)/2
 
@@ -646,15 +842,48 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mod
   screen.line_width(1)
 end
 
+function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mode)
+  local startx = paperface.panel_grid_to_screen_x(ox) + SCREEN_STAGE_W/2 -- + (curr_page - o_page) * SCREEN_W
+  local starty = paperface.panel_grid_to_screen_y(oy) + SCREEN_STAGE_W/2 + (o_page - curr_page) * SCREEN_H
+  local endx = paperface.panel_grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
+  local endy = paperface.panel_grid_to_screen_y(iy) + SCREEN_STAGE_W/2 + (i_page - curr_page) * SCREEN_H
+
+  paperface.draw_link_screen(startx, starty, endx, endy)
+end
+
+function paperface.draw_link_all(o, i, curr_page, draw_mode)
+  local startx, starty, endx, endy
+
+  if o.parent.STATE.draw_mode == V_DRAW_MODE_ALL then
+    startx, starty = paperface.panel_grid_to_screen_all(o)
+    endx, endy = paperface.panel_grid_to_screen_all(i)
+  else
+    startx = paperface.panel_grid_to_screen_x(o.x) -- + (curr_page - o_page) * SCREEN_W
+    starty = paperface.panel_grid_to_screen_y(o.y) + (o.parent.page - curr_page) * SCREEN_H
+    endx = paperface.panel_grid_to_screen_x(i.x) -- + (curr_page - i_page) * SCREEN_W
+    endy = paperface.panel_grid_to_screen_y(i.y) + (i.parent.page - curr_page) * SCREEN_H
+  end
+
+  startx = startx + SCREEN_STAGE_W/2
+  starty = starty + SCREEN_STAGE_W/2
+  endx = endx + SCREEN_STAGE_W/2
+  endy = endy + SCREEN_STAGE_W/2
+
+  paperface.draw_link_screen(startx, starty, endx, endy)
+end
+
 function paperface.redraw_link(o, i, curr_page, draw_mode)
     if (o.x == nil or o.y == nil) or (i.x == nil or i.y == nil) then
       return
     end
 
-    paperface.draw_link(o.x, o.y, o.parent.page,
-                        i.x, i.y, i.parent.page,
-                        curr_page,
-                        draw_mode)
+    -- paperface.draw_link(o.x, o.y, o.parent.page,
+    --                     i.x, i.y, i.parent.page,
+    --                     curr_page,
+    --                     draw_mode)
+    paperface.draw_link_all(o, i,
+                            curr_page,
+                            draw_mode)
 end
 
 function paperface.draw_input_links(outs, i, curr_page, draw_mode)
