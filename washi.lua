@@ -21,6 +21,8 @@ local lattice = require "lattice"
 local musicutil = require "musicutil"
 local UI = require "ui"
 
+local _mods = require 'core/mods'
+
 nb = include("washi/lib/nb/lib/nb")
 local inspect = include("washi/lib/inspect")
 
@@ -218,6 +220,8 @@ end
 -- state
 
 local s_lattice
+
+local ndi_image
 
 local g = nil
 local has_grid = false
@@ -433,6 +437,10 @@ function toggle_draw_mode()
   resize_according_to_draw_mode()
 end
 
+local function ndi_mod_on()
+  -- return (_mods.is_enabled('ndi-mod') and ndi_mod)
+  return false
+end
 
 function init()
   screen.aa(0)
@@ -449,6 +457,12 @@ function init()
 
   local scope = Scope.new('popup', STATE)
   STATE.scope = scope
+
+  if ndi_mod_on() then
+    ndi_image = screen.create_image(SCREEN_W * 2, SCREEN_H * MAX_PANELS_H)
+    ndi_mod.create_image_sender(ndi_image, "washi_full")
+    STATE.draw_mode = V_DRAW_MODE_ALL
+  end
 
   -- stages[5].o = 2
 
@@ -599,7 +613,11 @@ function init()
       while true do
         clock.sleep(step_s)
         if STATE.screen_dirty then
-          redraw()
+          if ndi_mod_on() then
+            ndi_redraw()
+          else
+            redraw()
+          end
           STATE.screen_dirty = false
         end
       end
@@ -631,6 +649,10 @@ end
 
 function cleanup()
   all_notes_off()
+
+  if ndi_image then
+    ndi_mod.destroy_image_sender(ndi_image)
+  end
 
   clock.cancel(redraw_clock)
   clock.cancel(grid_redraw_clock)
@@ -1399,7 +1421,14 @@ function redraw_all_panels()
   screen.update()
 end
 
+function ndi_redraw()
+  screen.draw_to(ndi_image, redraw_all_panels)
+end
+
 function redraw()
+  if ndi_mod_on() then
+    return
+  end
   if norns or STATE.draw_mode == V_DRAW_MODE_NORNS then
     redraw_norns()
   else
