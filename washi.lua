@@ -134,6 +134,7 @@ STATE = {
   mouse_panel_y = 0,
   mouse_potential_link_valid = false,
   mouse_potential_link_exists = false,
+  panel_under_cursor = nil,
   nana_under_cursor = nil,
   module_prerenders = {},
   draw_mode = V_DRAW_MODE_NORNS,
@@ -873,9 +874,36 @@ end
 -- ------------------------------------------------------------------------
 -- mouse
 
-local function nana_at_screen_coord(page_id, x, y)
-  local panel_coords = page_id.."."..paperface.screen_x_to_panel_grid(x).."."..paperface.screen_y_to_panel_grid(y)
+local function nana_at_screen_coord(panel_id, x, y)
+  if panel_id == nil then
+    return
+  end
+
+  if STATE.draw_mode == V_DRAW_MODE_ALL then
+    local panel = STATE.panels[panel_id]
+    x = x - panel.x
+    y = y - panel.y
+  end
+
+  local panel_coords = panel_id.."."..paperface.screen_x_to_panel_grid(x).."."..paperface.screen_y_to_panel_grid(y)
   return STATE.coords_to_nana[panel_coords]
+end
+
+local function in_panel_bounds(panel, x, y)
+  return panel.x <= x and x <= panel.x + SCREEN_W
+    and panel.y <= y and y <= panel.y + SCREEN_H
+end
+
+function panel_at_screen_coord(x, y)
+  if STATE.draw_mode == V_DRAW_MODE_NORNS then
+    return pages.index
+  end
+
+  for i, panel in ipairs(STATE.panels) do
+    if in_panel_bounds(panel, x, y) then
+      return i
+    end
+  end
 end
 
 local function reset_selection()
@@ -892,7 +920,7 @@ screen.click = function(x, y, state, button)
   end
 
   if state >= 1 then
-    local nana = nana_at_screen_coord(pages.index, x, y)
+    local nana = nana_at_screen_coord(STATE.panel_under_cursor, x, y)
 
     if nana == nil then
       reset_selection()
@@ -915,16 +943,22 @@ screen.mouse = function(x, y)
   STATE.mouse_x, STATE.mouse_y = x, y
   local prev_mouse_panel_x = STATE.mouse_panel_x
   local prev_mouse_panel_y = STATE.mouse_panel_y
-  STATE.mouse_panel_x, STATE.mouse_panel_y = paperface.screen_x_to_panel_grid(x), paperface.screen_y_to_panel_grid(y)
 
+  local panel_under_cursor = panel_at_screen_coord(x, y)
   local changed_panel_coord = (prev_mouse_panel_x ~= STATE.mouse_panel_x or prev_mouse_panel_y ~= STATE.mouse_panel_y )
 
+  STATE.mouse_panel_x, STATE.mouse_panel_y = paperface.screen_to_panel_grid_relative(STATE.panels[panel_under_cursor], x, y)
+
+  if STATE.panel_under_cursor ~= panel_under_cursor then
+    STATE.panel_under_cursor = panel_under_cursor
+    changed_panel_coord = true
+  end
+
   if changed_panel_coord then
-    STATE.nana_under_cursor = nana_at_screen_coord(pages.index, x, y)
+    STATE.nana_under_cursor = nana_at_screen_coord(STATE.panel_under_cursor, x, y)
   end
 
   if STATE.selected_nana and changed_panel_coord then
-
     if not STATE.nana_under_cursor then
       STATE.mouse_potential_link_valid = false
       STATE.mouse_potential_link_exists = false
@@ -1390,9 +1424,14 @@ function redraw_all_panels()
       elseif STATE.mouse_potential_link_valid then
         draw_mode = DRAW_M_VALID
       end
-      paperface.draw_link(STATE.selected_nana.x, STATE.selected_nana.y, STATE.selected_nana.parent.page,
-                          STATE.mouse_panel_x, STATE.mouse_panel_y, pages.index,
-                          pages.index, draw_mode)
+      if STATE.panel_under_cursor then
+        paperface.draw_link_all(STATE.selected_nana,
+                                {x=STATE.mouse_panel_x, y=STATE.mouse_panel_y, STATE=STATE, page=STATE.panel_under_cursor},
+                                STATE.panel_under_cursor, draw_mode)
+      end
+
+      -- paperface.draw_link(STATE.selected_nana.x, STATE.selected_nana.y, STATE.selected_nana.parent.page
+      -- pages.index, draw_mode)
     end
   end
 

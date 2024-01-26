@@ -101,6 +101,20 @@ function paperface.screen_y_to_panel_grid(v)
   return math.floor(paperface.screen_x_to_panel_grid(v - SCREEN_STAGE_Y_OFFSET ))
 end
 
+function paperface.screen_to_panel_grid_relative(panel, x, y)
+  if panel == nil then
+    return
+  end
+  local p_x, p_y = 0, 0
+  if STATE.draw_mode == V_DRAW_MODE_ALL then
+    p_x, p_y = panel.x, panel.y
+  end
+
+  local g_x, g_y = paperface.screen_x_to_panel_grid(x - p_x), paperface.screen_y_to_panel_grid(y - p_y)
+
+  return g_x, g_y
+end
+
 
 -- ------------------------------------------------------------------------
 -- grid
