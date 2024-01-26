@@ -819,7 +819,7 @@ end
 -- ------------------------------------------------------------------------
 -- patch
 
-function paperface.draw_link_screen(startx, starty, endx, endy)
+function paperface.draw_link_screen(startx, starty, endx, endy, draw_mode)
   local midx = (endx + startx)/2
   local midy = (endy + starty)/2
 
@@ -862,7 +862,7 @@ function paperface.draw_link(ix, iy, i_page, ox, oy, o_page, curr_page, draw_mod
   local endx = paperface.panel_grid_to_screen_x(ix) + SCREEN_STAGE_W/2 -- + (curr_page - i_page) * SCREEN_W
   local endy = paperface.panel_grid_to_screen_y(iy) + SCREEN_STAGE_W/2 + (i_page - curr_page) * SCREEN_H
 
-  paperface.draw_link_screen(startx, starty, endx, endy)
+  paperface.draw_link_screen(startx, starty, endx, endy, draw_mode)
 end
 
 function paperface.draw_link_all(o, i, curr_page, draw_mode)
@@ -883,7 +883,7 @@ function paperface.draw_link_all(o, i, curr_page, draw_mode)
   endx = endx + SCREEN_STAGE_W/2
   endy = endy + SCREEN_STAGE_W/2
 
-  paperface.draw_link_screen(startx, starty, endx, endy)
+  paperface.draw_link_screen(startx, starty, endx, endy, draw_mode)
 end
 
 function paperface.redraw_link(o, i, curr_page, draw_mode)
