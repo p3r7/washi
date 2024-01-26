@@ -79,7 +79,7 @@ function paperface.panel_grid_to_screen_absolute(e)
   local STATE = element_state(e)
 
   if panel == nil then
-    print("ERROR - attempting to draw element not attached to a manel")
+    print("ERROR - attempting to draw element not attached to a panel")
     return
   end
 
