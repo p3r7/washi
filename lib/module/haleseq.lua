@@ -896,7 +896,7 @@ function Haleseq:redraw_stage_state(s, stage)
   local play_trig = at and ((self.STATE.superclk_t - self.last_step_t) < trig_threshold_time())
   trig = paperface.is_out_selected(stage.o) or play_trig
   local tame = paperface.should_tame_out_redraw(stage.o)
-  local x, y = paperface.panel_grid_to_screen_all(stage.o)
+  local x, y = paperface.panel_grid_to_screen_absolute(stage.o)
 
   paperface.trig_out_banana(x, y, trig, tame)
   if not trig and at then
@@ -932,7 +932,7 @@ function Haleseq:redraw_stage_state(s, stage)
 
   -- trig in
   trig = paperface.is_in_selected(stage.i) or (self.g_btn == s)
-  x, y = paperface.panel_grid_to_screen_all(stage.i)
+  x, y = paperface.panel_grid_to_screen_absolute(stage.i)
   if params:get(self.fqid.."_preset") == s then
     if (self.g_btn == s) then -- FIXME: bad test
       paperface.trig_in(x, y, true)
@@ -994,7 +994,7 @@ function Haleseq:redraw_state()
     local at = (self.vstep == vs)
     local trig = at and (self.STATE.superclk_t - self.last_vstep_t) < trig_threshold_time()
     local tame = paperface.should_tame_out_redraw(o)
-    local x, y = paperface.panel_grid_to_screen_all(o)
+    local x, y = paperface.panel_grid_to_screen_absolute(o)
 
     -- NB: custom banana rendering for those
     paperface.cv_out_banana(x, y, trig, tame)
@@ -1008,20 +1008,20 @@ function Haleseq:redraw_state()
   local mux_o = self.cv_outs[self.nb_vsteps+1]
   local trig_mux = ((self.STATE.superclk_t - self.cv_outs[self.nb_vsteps+1].last_changed_t) < trig_threshold_time())
   tame = paperface.should_tame_out_redraw(mux_o)
-  local mux_x, mux_y = paperface.panel_grid_to_screen_all(mux_o)
+  local mux_x, mux_y = paperface.panel_grid_to_screen_absolute(mux_o)
   paperface.cv_out_banana(mux_x, mux_y, trig_mux, tame)
 
   -- CPO - Common Pulse Out
   local trig_cpo = (self.cpo.v > 0
                     or ((self.STATE.superclk_t - self.cpo.last_changed_t) < trig_threshold_time()))
   tame = paperface.should_tame_out_redraw(self.cpo)
-  local cpo_x, cpo_y = paperface.panel_grid_to_screen_all(self.cpo)
+  local cpo_x, cpo_y = paperface.panel_grid_to_screen_absolute(self.cpo)
   paperface.trig_out_banana(cpo_x, cpo_y, trig_cpo, tame)
 
   -- AEP - All Event Pulse
   local trig_aep = (self.aep.v > 0 or ((self.STATE.superclk_t - self.aep.last_changed_t) < trig_threshold_time()))
   tame = paperface.should_tame_out_redraw(self.aep)
-  local aep_x, aep_y = paperface.panel_grid_to_screen_all(self.aep)
+  local aep_x, aep_y = paperface.panel_grid_to_screen_absolute(self.aep)
   paperface.trig_out_banana(aep_x, aep_y, trig_aep, tame)
 
   -- right-hand ins

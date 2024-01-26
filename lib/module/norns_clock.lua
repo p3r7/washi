@@ -93,7 +93,7 @@ end
 function NornsClock:redraw(mult_trig)
   -- local trig = ((self.parent.STATE.superclk_t - last_mclock_tick_t) < trig_threshold_time())
 
-  local x, y = paperface.panel_grid_to_screen_all(self)
+  local x, y = paperface.panel_grid_to_screen_absolute(self)
 
   -- local trig = acum % (MCLOCK_DIVS / 8) == 0
 

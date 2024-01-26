@@ -159,7 +159,7 @@ function QuantizedClock:redraw()
   --   screen.text(v)
   -- end
 
-  local x, y = paperface.panel_grid_to_screen_all(self)
+  local x, y = paperface.panel_grid_to_screen_absolute(self)
 
   paperface.module_redraw_bananas(self)
   for i, v in ipairs(self.divs) do

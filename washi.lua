@@ -1136,8 +1136,8 @@ function redraw_clock_screen()
   if quantized_clocks.mclock_mult_trig then
     -- TODO: use dummy input/output instead!
     -- assign them coordinates but use a prop to mark them as unselectable
-    local from_x, from_y = paperface.panel_grid_to_screen_all(norns_clock)
-    local to_x, to_y = paperface.panel_grid_to_screen_all(quantized_clocks)
+    local from_x, from_y = paperface.panel_grid_to_screen_absolute(norns_clock)
+    local to_x, to_y = paperface.panel_grid_to_screen_absolute(quantized_clocks)
     paperface.draw_link_screen(from_x + SCREEN_STAGE_W/2, from_y + SCREEN_STAGE_W/2,
                                to_x + SCREEN_STAGE_W/2, to_y + SCREEN_STAGE_W/2)
   end
@@ -1308,7 +1308,7 @@ function redraw_all_panels()
   screen.level(SCREEN_LEVEL_LABEL)
   for i, phase in ipairs(LFO_PHASES) do
     if tab.contains({0, 90, 180, 270}, phase) then
-      local x, y = paperface.panel_grid_to_screen_all(lfos[1])
+      local x, y = paperface.panel_grid_to_screen_absolute(lfos[1])
       x = x + 2 * SCREEN_STAGE_W + 2
       if seamstress then
         x = x + 1
@@ -1322,7 +1322,7 @@ function redraw_all_panels()
   lfos[2]:redraw()
 
   screen.level(SCREEN_LEVEL_LABEL)
-  local x, y = paperface.panel_grid_to_screen_all(lfos[2])
+  local x, y = paperface.panel_grid_to_screen_absolute(lfos[2])
   x = x + 2 * SCREEN_STAGE_W + 2
   if seamstress then
     x = x + 1

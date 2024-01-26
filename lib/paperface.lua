@@ -73,7 +73,7 @@ local function element_state(e)
   end
 end
 
-function paperface.panel_grid_to_screen_all(e)
+function paperface.panel_grid_to_screen_absolute(e)
   local panel = element_panel(e)
 
   local STATE = element_state(e)
@@ -609,7 +609,7 @@ function paperface.in_redraw_label(i)
   if i.x == nil or i.y == nil then
     return
   end
-  local x, y = paperface.panel_grid_to_screen_all(i)
+  local x, y = paperface.panel_grid_to_screen_absolute(i)
 
   if i.kind == 'comparator' then
     paperface.trig_in_label(x, y)
@@ -622,7 +622,7 @@ function paperface.in_redraw_banana(i)
   if i.x == nil or i.y == nil then
     return
   end
-  local x, y = paperface.panel_grid_to_screen_all(i)
+  local x, y = paperface.panel_grid_to_screen_absolute(i)
 
   local sclock_t = i.parent.STATE.superclk_t
 
@@ -648,7 +648,7 @@ function paperface.out_redraw_label(o)
   if o.x == nil or o.y == nil then
     return
   end
-  local x, y = paperface.panel_grid_to_screen_all(o)
+  local x, y = paperface.panel_grid_to_screen_absolute(o)
 
   paperface.out_label(x, y)
 end
@@ -657,7 +657,7 @@ function paperface.out_redraw_banana(o)
   if o.x == nil or o.y == nil then
     return
   end
-  local x, y = paperface.panel_grid_to_screen_all(o)
+  local x, y = paperface.panel_grid_to_screen_absolute(o)
 
   local sclock_t = o.parent.STATE.superclk_t
   local triggered = ( paperface.is_out_selected(o)
@@ -740,7 +740,7 @@ function paperface.display_module_prerender(m)
     return false
   end
 
-  local x, y = paperface.panel_grid_to_screen_all(m)
+  local x, y = paperface.panel_grid_to_screen_absolute(m)
   x = x - 1
 
   if norns then
@@ -855,8 +855,8 @@ function paperface.draw_link_all(o, i, curr_page, draw_mode)
   local startx, starty, endx, endy
 
   if o.parent.STATE.draw_mode == V_DRAW_MODE_ALL then
-    startx, starty = paperface.panel_grid_to_screen_all(o)
-    endx, endy = paperface.panel_grid_to_screen_all(i)
+    startx, starty = paperface.panel_grid_to_screen_absolute(o)
+    endx, endy = paperface.panel_grid_to_screen_absolute(i)
   else
     startx = paperface.panel_grid_to_screen_x(o.x) -- + (curr_page - o_page) * SCREEN_W
     starty = paperface.panel_grid_to_screen_y(o.y) + (o.parent.page - curr_page) * SCREEN_H

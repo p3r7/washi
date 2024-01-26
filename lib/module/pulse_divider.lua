@@ -191,7 +191,7 @@ function PulseDivider:redraw()
   screen.level(SCREEN_LEVEL_LABEL)
   for i, v in ipairs(self.divs) do
     local o = self.div_outs[i]
-    local x, y = paperface.panel_grid_to_screen_all(o)
+    local x, y = paperface.panel_grid_to_screen_absolute(o)
     local label_x = x + SCREEN_STAGE_W + 2
     if seamstress then
       label_x = label_x + 1
