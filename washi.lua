@@ -55,6 +55,8 @@ include("washi/lib/consts")
 -- ------------------------------------------------------------------------
 -- conf
 
+local DBG_MOUSE = false
+
 -- local NB_HALESEQS = 1
 local NB_HALESEQS = 2
 local NB_OUTS = 6
@@ -941,21 +943,30 @@ end
 
 screen.mouse = function(x, y)
   STATE.mouse_x, STATE.mouse_y = x, y
-  local prev_mouse_panel_x = STATE.mouse_panel_x
-  local prev_mouse_panel_y = STATE.mouse_panel_y
 
   local panel_under_cursor = panel_at_screen_coord(x, y)
-  local changed_panel_coord = (prev_mouse_panel_x ~= STATE.mouse_panel_x or prev_mouse_panel_y ~= STATE.mouse_panel_y )
 
+  -- FIXME: bug w/ changed_panel_coord, nearly always false!
+  local prev_mouse_panel_x = STATE.mouse_panel_x
+  local prev_mouse_panel_y = STATE.mouse_panel_y
   STATE.mouse_panel_x, STATE.mouse_panel_y = paperface.screen_to_panel_grid_relative(STATE.panels[panel_under_cursor], x, y)
+
+  local changed_panel_coord = (prev_mouse_panel_x ~= STATE.mouse_panel_x or prev_mouse_panel_y ~= STATE.mouse_panel_y )
 
   if STATE.panel_under_cursor ~= panel_under_cursor then
     STATE.panel_under_cursor = panel_under_cursor
     changed_panel_coord = true
   end
 
-  if changed_panel_coord then
-    STATE.nana_under_cursor = nana_at_screen_coord(STATE.panel_under_cursor, x, y)
+  -- if changed_panel_coord then
+  local prev_nana_under_cursor = STATE.nana_under_cursor
+  STATE.nana_under_cursor = nana_at_screen_coord(panel_under_cursor, x, y)
+  -- end
+
+  if DBG_MOUSE then
+    if STATE.nana_under_cursor and STATE.nana_under_cursor ~= prev_nana_under_cursor then
+      print("under_cursor: "..STATE.nana_under_cursor.id)
+    end
   end
 
   if STATE.selected_nana and changed_panel_coord then
@@ -966,6 +977,10 @@ screen.mouse = function(x, y)
       STATE.mouse_potential_link_valid = valid_link(STATE.selected_nana, STATE.nana_under_cursor)
       if STATE.mouse_potential_link_valid then
         STATE.mouse_potential_link_exists = exists_link(STATE.selected_nana, STATE.nana_under_cursor)
+        if DBG_MOUSE then
+          local verb = STATE.mouse_potential_link_exists and "EXISTS" or "POSSIBLE"
+          print("link: "..STATE.nana_under_cursor.id .. " <-> " .. STATE.selected_nana.id .. " " .. verb)
+        end
       end
     end
 
