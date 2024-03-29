@@ -949,7 +949,6 @@ screen.mouse = function(x, y)
 
   local panel_under_cursor = panel_at_screen_coord(x, y)
 
-  -- FIXME: bug w/ changed_panel_coord, nearly always false!
   local prev_mouse_panel_x = STATE.mouse_panel_x
   local prev_mouse_panel_y = STATE.mouse_panel_y
   STATE.mouse_panel_x, STATE.mouse_panel_y = paperface.screen_to_panel_grid_relative(STATE.panels[panel_under_cursor], x, y)
