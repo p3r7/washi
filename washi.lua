@@ -1442,8 +1442,18 @@ function redraw_all_panels()
         draw_mode = DRAW_M_VALID
       end
       if STATE.panel_under_cursor then
-        paperface.draw_link_all(STATE.selected_nana,
-                                {x=STATE.mouse_panel_x, y=STATE.mouse_panel_y, STATE=STATE, page=STATE.panel_under_cursor},
+        local nana_under_mouse = {x=STATE.mouse_panel_x, y=STATE.mouse_panel_y, parent={STATE=STATE, page=STATE.panel_under_cursor}}
+        local o
+        local i
+        if patching.is_out(STATE.selected_nana) then
+          o = STATE.selected_nana
+          i = nana_under_mouse
+        else
+          o = nana_under_mouse
+          i = STATE.selected_nana
+        end
+        paperface.draw_link_all(o,
+                                i,
                                 STATE.panel_under_cursor, draw_mode)
       end
 
