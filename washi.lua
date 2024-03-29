@@ -441,7 +441,10 @@ function init()
   screen.aa(0)
   screen.line_width(1)
 
-  resize_according_to_draw_mode()
+  if seamstress then
+    STATE.draw_mode = V_DRAW_MODE_ALL
+    resize_according_to_draw_mode()
+  end
 
   s_lattice = lattice:new{}
 
